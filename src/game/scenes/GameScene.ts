@@ -747,10 +747,10 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Wall roughness: sparse soil lumps along straight tunnel edges, chosen by a
-    // stable coordinate hash so they never flicker (underground only). The 15px
-    // end margins keep lumps clear of the corner wedges (14px).
-    const LUMP_LEN = [16, 10, 18];
+    // Wall roughness: low asymmetric soil lumps along straight tunnel edges,
+    // chosen by a stable coordinate hash so they never flicker (underground
+    // only). The 15px end margins keep lumps clear of the corner wedges (14px).
+    const LUMP_LEN = [12, 8, 14, 10, 16];
     const tx0 = Math.max(0, Math.floor(cam.scrollX / TILE_PX));
     const tx1 = Math.min(WORLD_W - 1, Math.ceil((cam.scrollX + cam.width) / TILE_PX));
     for (let ty = y0; ty <= y1; ty++) {
@@ -762,8 +762,8 @@ export class GameScene extends Phaser.Scene {
           const ny = ty + (side === 0 ? -1 : side === 1 ? 1 : 0);
           if (getTile(w, nx, ny) === Tile.Air) continue;
           const h = ((tx * 73856093) ^ (ty * 19349663) ^ ((side + 1) * 83492791)) >>> 0;
-          if (h % 100 >= 42) continue; // ~42% of wall faces get one lump
-          const v = h % 3;
+          if (h % 100 >= 68) continue; // ~68% of wall faces get one lump
+          const v = h % 5;
           const len = LUMP_LEN[v];
           const off = 15 + ((h >> 4) % (TILE_PX - len - 30));
           const img = this.cornerAt(n++);

@@ -177,15 +177,28 @@ export function biteFrames() {
 export function cornerFrames() {
   const out = {};
   // Lump silhouettes are shared across bands (same shapes, different material).
-  const LENS = [16, 10, 18];
+  // Five asymmetric profiles (beta-shaped, skewed peaks) at a low ~2.4px height:
+  // subtler than before, but placed more densely by the scene.
+  const LENS = [12, 8, 14, 10, 16];
+  const SKEW = [
+    [1.2, 2.6],
+    [2.4, 1.2],
+    [1.4, 3.2],
+    [3.0, 1.4],
+    [2.0, 2.2],
+  ];
   const lumpDepths = LENS.map((L, v) => {
-    const rnd = texRng(0x1a4b + v);
-    const depth = [];
+    const rnd = texRng(0x1a4b + v * 7);
+    const [a, b] = SKEW[v];
+    const raw = [];
+    let peak = 0;
     for (let x = 0; x < L; x++) {
-      const base = Math.sin((Math.PI * x) / (L - 1)) * 3.2;
-      depth.push(Math.max(0, Math.round(base + rnd() * 1.4 - 0.7)));
+      const t = (x + 0.5) / L;
+      const val = t ** a * (1 - t) ** b;
+      raw.push(val);
+      if (val > peak) peak = val;
     }
-    return depth;
+    return raw.map((val) => Math.max(0, Math.round((val / peak) * 2.4 + rnd() * 1.2 - 0.6)));
   });
 
   for (let band = 0; band < 6; band++) {
@@ -208,7 +221,7 @@ export function cornerFrames() {
     };
     out[`cornerRound_p${band}`] = wedge(14);
 
-    for (let v = 0; v < 3; v++) {
+    for (let v = 0; v < LENS.length; v++) {
       const L = LENS[v];
       const depth = lumpDepths[v];
       const h = new Sprite(L, 5);
