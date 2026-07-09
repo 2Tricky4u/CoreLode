@@ -8,10 +8,13 @@ import {
   SURFACE_ROW,
   type SimEvent,
   TILE_PX,
+  Tile,
   WORLD_H,
   WORLD_W,
   getTile,
   isArtifact,
+  isDirt,
+  isGas,
   isMineral,
   podDepthFt,
   saleValue,
@@ -85,6 +88,8 @@ export class GameScene extends Phaser.Scene {
   private introPending = false;
   /** Viewport-culled colour-blind glyph pool for on-screen minerals. */
   private glyphs: Phaser.GameObjects.Text[] = [];
+  /** Viewport-culled tunnel-corner softeners (fillets + chamfers). */
+  private corners: Phaser.GameObjects.Image[] = [];
   private emberTimer = 0;
   private audioTimer = 0;
 
@@ -142,7 +147,8 @@ export class GameScene extends Phaser.Scene {
 
   create(data: { gasHint: boolean }): void {
     const s = this.state;
-    this.glyphs = []; // scene shutdown destroyed the old pool; drop stale refs
+    this.glyphs = []; // scene shutdown destroyed the old pools; drop stale refs
+    this.corners = [];
 
     // --- sky gradient (canvas strip, stretched full-screen, behind everything) ---
     const skyTex = this.canvasTex('skyTex', 1, 64);
@@ -682,9 +688,64 @@ export class GameScene extends Phaser.Scene {
       this.vignette.setAlpha(this.damageFlash ? this.vignetteAlpha : 0);
     }
 
+    this.updateCorners();
     this.updateGlyphs();
     this.drawSky(depth);
     this.drawLight(depth, darkness);
+  }
+
+  /**
+   * Soften the tunnel grid: at every visible grid intersection, a lone air
+   * quadrant among soil gets a rounded soil fillet (concave corner), and a lone
+   * soil quadrant among air gets its point shaved cave-dark (convex corner).
+   * Hard tiles (boulders/lava/bedrock) keep their sharp machined edges.
+   */
+  private updateCorners(): void {
+    const cam = this.cameras.main;
+    const w = this.state.world;
+    const R = 14; // cornerRound frame size
+    const x0 = Math.max(1, Math.floor(cam.scrollX / TILE_PX));
+    const x1 = Math.min(WORLD_W - 1, Math.ceil((cam.scrollX + cam.width) / TILE_PX) + 1);
+    const y0 = Math.max(SURFACE_ROW + 1, Math.floor(cam.scrollY / TILE_PX));
+    const y1 = Math.min(WORLD_H - 1, Math.ceil((cam.scrollY + cam.height) / TILE_PX) + 1);
+    let n = 0;
+    const soilish = (t: number) => isDirt(t) || isMineral(t) || isArtifact(t) || isGas(t);
+    for (let cy = y0; cy <= y1; cy++) {
+      for (let cx = x0; cx <= x1; cx++) {
+        // Quadrants around the grid corner point (cx,cy): TL TR BL BR.
+        let airMask = 0;
+        let airCount = 0;
+        let ok = true;
+        for (let i = 0; i < 4; i++) {
+          const t = getTile(w, cx - 1 + (i & 1), cy - 1 + (i >> 1));
+          if (t === Tile.Air) {
+            airMask |= 1 << i;
+            airCount++;
+          } else if (!soilish(t)) {
+            ok = false;
+            break;
+          }
+        }
+        if (!ok || (airCount !== 1 && airCount !== 3)) continue;
+        // The quadrant that owns the blob: the lone air (fillet) or lone soil (chamfer).
+        const qi = [1, 2, 4, 8].indexOf(airCount === 1 ? airMask : ~airMask & 15);
+        const img = this.cornerAt(n++);
+        img.setPosition(cx * TILE_PX - (qi & 1 ? 0 : R), cy * TILE_PX - (qi & 2 ? 0 : R));
+        img.setFlip(!(qi & 1), !(qi & 2)); // authored hugging TL; mirror into place
+        img.setTint(airCount === 1 ? BAND_TINTS[bandAt(cy)] : 0x140c1c);
+        img.setVisible(true);
+      }
+    }
+    for (let i = n; i < this.corners.length; i++) this.corners[i].setVisible(false);
+  }
+
+  private cornerAt(i: number): Phaser.GameObjects.Image {
+    let img = this.corners[i];
+    if (!img) {
+      img = this.add.image(0, 0, 'atlas', 'cornerRound').setOrigin(0).setDepth(1);
+      this.corners[i] = img;
+    }
+    return img;
   }
 
   /** Colour-blind ore glyphs: pooled labels over on-screen minerals only. */

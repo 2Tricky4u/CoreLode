@@ -3,7 +3,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { biteFrames, explosionFrames, miscFx, particleFrames } from './fx.mjs';
+import { biteFrames, cornerFrames, explosionFrames, miscFx, particleFrames } from './fx.mjs';
 import { P } from './palette.mjs';
 import { Sprite, texRng, writePng } from './png.mjs';
 import { artifactFrames } from './sprites/artifacts.mjs';
@@ -79,6 +79,7 @@ export function buildFrames() {
   Object.assign(frames, particleFrames());
   Object.assign(frames, miscFx());
   Object.assign(frames, biteFrames());
+  Object.assign(frames, cornerFrames());
   for (let i = 0; i < 5; i++) frames[`building${i}`] = buildingFrame(i);
   Object.assign(frames, portraitFrames());
 

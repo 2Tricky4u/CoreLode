@@ -159,6 +159,26 @@ export function biteFrames() {
   return out;
 }
 
+/**
+ * Quarter-round corner softener for dug tunnels — kills the 90° grid angles.
+ * Authored white hugging the top-left corner (arc opens bottom-right), with a
+ * ragged drilled edge; the scene tints it per use (soil fillet in concave air
+ * corners, cave-dark chamfer shaving convex soil points) and flips it into the
+ * other three orientations.
+ */
+export function cornerFrames() {
+  const R = 14;
+  const s = new Sprite(R, R);
+  for (let y = 0; y < R; y++)
+    for (let x = 0; x < R; x++) {
+      const jag = ((x * 31 + y * 17) % 5) * 0.45; // deterministic crumble
+      const d = Math.hypot(x + 0.5, y + 0.5) + jag;
+      if (d < R - 1.2) s.px(x, y, P.white);
+      else if (d < R + 0.6) s.px(x, y, P.white, 110); // soft arc edge
+    }
+  return { cornerRound: s };
+}
+
 export function miscFx() {
   const out = {};
   // fireball with outline + hot core + trailing edge
