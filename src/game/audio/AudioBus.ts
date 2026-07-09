@@ -7,7 +7,7 @@ import { SFX, type SfxKey, type SimEvent } from '@core/index';
 import { AmbienceBus } from './AmbienceBus';
 import type { PieceName } from './music/patterns';
 import { MusicPlayer } from './music/player';
-import { isUnlocked, playZzfx, unlockAudio } from './zzfx';
+import { audioContext, isUnlocked, playZzfx, unlockAudio } from './zzfx';
 
 export class AudioBus {
   sfxVolume = 1;
@@ -71,10 +71,21 @@ export class AudioBus {
     playZzfx(params, volume * this.sfxVolume);
   }
 
+  /** Live drill-loop pitch (1 = as authored) — ramped with dig progress by the scene. */
+  setDrillPitch(rate: number): void {
+    const ctx = audioContext();
+    if (!this.drillLoop || !ctx) return;
+    this.drillLoop.playbackRate.setTargetAtTime(rate, ctx.currentTime, 0.05);
+  }
+
   onEvent(e: SimEvent): void {
     switch (e.t) {
       case 'sfx':
         this.play(e.key);
+        break;
+      case 'tileCleared':
+        // The block gives way under the drill (blast clears are voiced by 'explosion').
+        if (e.cause === 'drill') this.play('digBreak', 0.6);
         break;
       case 'collected':
         // Rarer mineral → higher, brighter chime. Tier 0-9, artifacts fanfare.
@@ -121,8 +132,10 @@ export class AudioBus {
 
   setLoops(drilling: boolean, thrusting: boolean): void {
     if (!isUnlocked()) return;
-    if (drilling && !this.drillLoop)
+    if (drilling && !this.drillLoop) {
       this.drillLoop = playZzfx(SFX.drillLoop, 0.5 * this.sfxVolume, true);
+      if (this.drillLoop) this.drillLoop.playbackRate.value = 0.8; // fresh block starts low
+    }
     if (!drilling && this.drillLoop) {
       this.drillLoop.stop();
       this.drillLoop = null;

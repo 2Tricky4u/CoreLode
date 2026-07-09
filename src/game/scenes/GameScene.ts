@@ -4,6 +4,7 @@ import {
   COLLECTIBLES,
   DAY_LENGTH_TICKS,
   type GameState,
+  PHYSICS,
   SURFACE_ROW,
   type SimEvent,
   TILE_PX,
@@ -72,6 +73,8 @@ export class GameScene extends Phaser.Scene {
   private embersE!: Phaser.GameObjects.Particles.ParticleEmitter;
 
   private chargeSprites: Phaser.GameObjects.Sprite[] = [];
+  private crackSprite!: Phaser.GameObjects.Sprite;
+  private digFxTimer = 0;
   private guardianSprite: Phaser.GameObjects.Sprite | null = null;
   private guardianHalo: Phaser.GameObjects.Image | null = null;
   private screenShake = true;
@@ -176,6 +179,9 @@ export class GameScene extends Phaser.Scene {
     this.pod = new PodView(this, s);
     this.pod.create();
     this.boss = new BossView(this, s);
+
+    // Crack overlay for the tile currently being drilled (above terrain, below the pod).
+    this.crackSprite = this.add.sprite(0, 0, 'atlas', 'crack0').setDepth(6).setVisible(false);
 
     // --- glows ---
     this.headGlow = this.add
@@ -597,6 +603,38 @@ export class GameScene extends Phaser.Scene {
     this.thrustGlow.setPosition(this.pod.sprite.x, this.pod.sprite.y + 26);
     this.thrustGlow.setAlpha(inputUp ? 0.35 + (this.fxFull ? Math.random() * 0.15 : 0) : 0);
     this.audio.setLoops(s.pod.mode === 'dig', inputUp);
+
+    // --- drilling feedback: crack overlay, straining loop pitch, chip spray ---
+    const job = s.pod.drilling;
+    if (job && !job.broken) {
+      // Cracks spread until the tile gives way at digBreakAtPx.
+      const crack = Math.min(1, job.traveledPx / PHYSICS.digBreakAtPx);
+      this.crackSprite
+        .setPosition((job.targetX + 0.5) * TILE_PX, (job.targetY + 0.5) * TILE_PX)
+        .setFrame(`crack${Math.min(2, Math.floor(crack * 3))}`)
+        .setVisible(true);
+    } else {
+      this.crackSprite.setVisible(false);
+    }
+    if (job) {
+      // The auger strains upward in pitch across the block, resetting per dig.
+      const prog = Math.min(1, job.traveledPx / PHYSICS.digDonePx);
+      this.audio.setDrillPitch(0.8 + 0.45 * prog + Math.sin(this.time.now / 60) * 0.02);
+      this.digFxTimer += dtMs;
+      if (this.digFxTimer > 70) {
+        this.digFxTimer = 0;
+        const dx = job.dir === 'down' ? 0 : job.dir === 'left' ? -1 : 1;
+        const dy = job.dir === 'down' ? 1 : 0;
+        const tipX = this.pod.sprite.x + dx * 26;
+        const tipY = this.pod.sprite.y + dy * 26;
+        this.debrisE.setParticleTint(BAND_TINTS[bandAt(job.targetY)]);
+        this.debrisE.explode(this.fxFull ? 2 : 1, tipX, tipY);
+        const target = getTile(s.world, job.targetX, job.targetY);
+        if (this.fxFull && (isMineral(target) || isArtifact(target)) && Math.random() < 0.6) {
+          this.embersE.explode(1, tipX, tipY); // the gem glints as it's cut
+        }
+      }
+    }
 
     // Pod headlight glow (brighter as it gets darker).
     const depth = podDepthFt(s.pod);

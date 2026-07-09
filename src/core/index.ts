@@ -26,6 +26,7 @@ export type { SimEvent, EventSink, DamageCause } from './events';
 export { getTile, setTile } from './world/world';
 export { Tile, isGas, isLava, isBoulder, isMineral, isArtifact, isDirt } from './world/tiles';
 export * from './data/constants';
+export { PHYSICS } from './data/physics';
 export { COLLECTIBLES } from './data/minerals';
 export {
   UPGRADES,

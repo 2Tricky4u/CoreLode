@@ -17,6 +17,7 @@ import {
   bayCapacity,
   bayUsed,
   createRun,
+  drillSpeed,
   podDepthFt,
   podTileX,
   podTileY,
@@ -111,6 +112,15 @@ describe('drilling', () => {
     const out = step(s, { down: true }, 40);
     expect(out.some((e) => e.t === 'cargoFullLost')).toBe(true);
     expect(s.pod.bayContents[1]).toBe(0);
+  });
+
+  it('early drill tiers are tuned slower; top tier and Fractal Bit stay verbatim', () => {
+    const s = run();
+    expect(drillSpeed(s.pod)).toBeCloseTo(1.2); // tier 0: 2 × 0.6 (deliberate deviation)
+    s.pod.upgrades.drill = 6;
+    expect(drillSpeed(s.pod)).toBe(12); // top tier converges to the verbatim value
+    s.pod.blueprints.push('fractalDrill');
+    expect(drillSpeed(s.pod)).toBe(15); // blueprint override untouched
   });
 
   it('never drills boulders with a standard bit', () => {

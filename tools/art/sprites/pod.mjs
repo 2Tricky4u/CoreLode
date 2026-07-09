@@ -112,6 +112,26 @@ const overlay = (base, over) => {
 };
 
 /**
+ * Rotating-auger illusion: rewrite the drill cone's two greys (d/D) into helix
+ * thread bands that crawl along the dig axis each phase (4 phases = one cycle).
+ * Applied to the ARM sprite only — the body's treads share these colors.
+ */
+const same = (r, g, b, c) => r === c[0] && g === c[1] && b === c[2];
+function threadify(arm, axis, phase) {
+  const s = arm.clone();
+  for (let y = 0; y < s.h; y++)
+    for (let x = 0; x < s.w; x++) {
+      const [r, g, b, a] = s.get(x, y);
+      if (a === 0) continue;
+      if (!same(r, g, b, P.smokeyAsh) && !same(r, g, b, P.heather)) continue;
+      // helix slant: the off-axis coordinate shears the band by half its value
+      const t = axis === 'y' ? y + (x >> 1) : x + (y >> 1);
+      s.px(x, y, (t + phase) % 4 < 2 ? P.heather : P.smokeyAsh);
+    }
+  return s;
+}
+
+/**
  * The grids draw the hull left-of-centre (columns 2-35 of 50) so the side drill
  * arm has room. PodView renders at origin 0.5, so as authored the hull sits 6px
  * left of the pod's collision box and visibly clips into unmined rock on the
@@ -130,10 +150,15 @@ const recenter = (sprite) => {
 
 export function podFrames() {
   const base = grid(BODY, L);
-  const side0 = overlay(base, grid(ARM_SIDE, L));
-  const side1 = overlay(base, grid(ARM_SIDE, L).shifted(2, 0));
-  const down0 = overlay(base, grid(ARM_DOWN, L));
-  const down1 = overlay(base, grid(ARM_DOWN, L).shifted(0, 2));
+  // 4 spin phases per drill direction; odd phases judder 1 px along the dig axis.
+  const sideArm = grid(ARM_SIDE, L);
+  const downArm = grid(ARM_DOWN, L);
+  const sides = [0, 1, 2, 3].map((ph) =>
+    overlay(base, threadify(ph % 2 ? sideArm.shifted(1, 0) : sideArm, 'x', ph)),
+  );
+  const downs = [0, 1, 2, 3].map((ph) =>
+    overlay(base, threadify(ph % 2 ? downArm.shifted(0, 1) : downArm, 'y', ph)),
+  );
   // fly frames: base nudged (bob) — flame itself is a runtime particle + glow
   const fly0 = base.clone();
   const fly1 = base.shifted(0, -1);
@@ -164,10 +189,14 @@ export function podFrames() {
       pod_idle: base,
       pod_fly0: fly0,
       pod_fly1: fly1,
-      pod_drill_down0: down0,
-      pod_drill_down1: down1,
-      pod_drill_side0: side0,
-      pod_drill_side1: side1,
+      pod_drill_down0: downs[0],
+      pod_drill_down1: downs[1],
+      pod_drill_down2: downs[2],
+      pod_drill_down3: downs[3],
+      pod_drill_side0: sides[0],
+      pod_drill_side1: sides[1],
+      pod_drill_side2: sides[2],
+      pod_drill_side3: sides[3],
       pod_hurt: hurt,
     }).map(([k, v]) => [k, recenter(v)]),
   );

@@ -104,6 +104,49 @@ export function particleFrames() {
   return out;
 }
 
+/**
+ * Drill-progress overlays: crack0..crack2 — a jagged crack web radiating from
+ * the drill's contact point, growing until the tile gives way. Two-tone strokes
+ * (black core + faint light lip on the top-left) so they read on every soil
+ * band, light or dark. No outlines (terrain rule).
+ */
+export function crackFrames() {
+  const out = {};
+  for (let stage = 0; stage < 3; stage++) {
+    const s = new Sprite(50, 50);
+    const rnd = texRng(0xc4ac + 7); // same layout every stage; only the extent grows
+    const rays = 7;
+    const reach = [9, 15, 22][stage];
+    for (let k = 0; k < rays; k++) {
+      if (stage === 0 && k % 2 === 1) continue; // stage 0: only a few hairlines
+      let a = (k / rays) * Math.PI * 2 + rnd() * 0.7;
+      let x = 25;
+      let y = 25;
+      const len = reach * (0.7 + rnd() * 0.5);
+      for (let d = 0; d < len; d++) {
+        x += Math.cos(a);
+        y += Math.sin(a);
+        a += (rnd() - 0.5) * 0.55; // jagged wander
+        const xi = Math.round(x);
+        const yi = Math.round(y);
+        s.px(xi, yi, P.black, 205);
+        // continuous faint lit lip on the top-left — keeps cracks legible on dark bands
+        if (s.a(xi - 1, yi - 1) === 0) s.px(xi - 1, yi - 1, P.heather, 55);
+        if (stage === 2 && d % 4 === 0) s.px(xi + 1, yi, P.black, 120); // widen late cracks
+      }
+    }
+    // Growing bite pit at the contact point.
+    const pit = [1, 2, 4][stage];
+    s.circle(25, 25, pit, P.black, 225);
+    if (stage === 2) {
+      s.px(23, 22, P.twine, 140); // displaced grit
+      s.px(28, 27, P.twine, 110);
+    }
+    out[`crack${stage}`] = s;
+  }
+  return out;
+}
+
 export function miscFx() {
   const out = {};
   // fireball with outline + hot core + trailing edge

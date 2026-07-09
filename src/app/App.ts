@@ -385,13 +385,24 @@ export class App {
   }
 
   private onGameOver(cause: 'hull' | 'fuel'): void {
+    const host = this.host;
     this.audio.stopLoops();
+    this.audio.stopMusic(); // the mine bed must not play over the wreck
+    // Let the explosion ring out, then the somber sting under the dialog.
+    setTimeout(() => this.audio.play('gameOver'), 650);
+    const stats = {
+      depthFt: host?.state.story.maxDepthFt ?? 0,
+      cash: host?.state.pod.cash ?? 0,
+      points: host?.state.pod.points ?? 0,
+      tilesDug: host?.state.stats.tilesDug ?? 0,
+    };
     void storage.listSaves().then((slots) => {
       const has = slots.some((s) => s.key.startsWith('manual') || s.key.startsWith('auto'));
       openGameOver(
         this.modals,
         cause,
         has,
+        stats,
         () => void this.loadMostRecent(),
         () => void this.showTitle(),
       );

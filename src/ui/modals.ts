@@ -157,6 +157,7 @@ function openFuel(m: ModalManager, s: GameState, command: (c: Command) => void):
 function openSell(m: ModalManager, s: GameState, command: (c: Command) => void): void {
   const body = el('div', { class: 'dialog-body' });
   const render = () => {
+    const prevScroll = body.querySelector('.cargo-list')?.scrollTop ?? 0;
     const rows = el('div', { class: 'cargo-list' });
     let total = 0;
     s.pod.bayContents.forEach((n, i) => {
@@ -187,6 +188,7 @@ function openSell(m: ModalManager, s: GameState, command: (c: Command) => void):
       el('p', { class: 'total', text: `Total: $${total.toLocaleString('en-US')}` }),
       statusLine(s),
     );
+    rows.scrollTop = prevScroll; // re-render must not yank the list back to the top
   };
   render();
   const sellBtn = el(
@@ -206,6 +208,7 @@ function openSell(m: ModalManager, s: GameState, command: (c: Command) => void):
 function openUpgrades(m: ModalManager, s: GameState, command: (c: Command) => void): void {
   const body = el('div', { class: 'dialog-body' });
   const render = () => {
+    const prevScroll = body.querySelector('.upgrade-grid')?.scrollTop ?? 0;
     const grid = el('div', { class: 'upgrade-grid' });
     for (const cat of UPGRADE_CATEGORIES) {
       const tierIdx = s.pod.upgrades[cat];
@@ -230,6 +233,7 @@ function openUpgrades(m: ModalManager, s: GameState, command: (c: Command) => vo
       grid.append(row);
     }
     body.replaceChildren(el('p', { text: t('bldOutfitterBlurb') }), grid, statusLine(s));
+    grid.scrollTop = prevScroll; // re-render must not yank the list back to the top
   };
   render();
   m.open(dialog(t('bldOutfitter'), body, el('div', { class: 'btn-row' }, exitBtn(m))));
@@ -238,6 +242,7 @@ function openUpgrades(m: ModalManager, s: GameState, command: (c: Command) => vo
 function openItems(m: ModalManager, s: GameState, command: (c: Command) => void): void {
   const body = el('div', { class: 'dialog-body' });
   const render = () => {
+    const prevScroll = body.querySelector('.item-list')?.scrollTop ?? 0;
     const list = el('div', { class: 'item-list' });
     for (const item of ITEMS.filter((i) => i.shopVisible)) {
       // Prices are flat (verbatim from the original) — bulk buttons are pure convenience.
@@ -278,6 +283,7 @@ function openItems(m: ModalManager, s: GameState, command: (c: Command) => void)
       text: `${t('uiRepairFull')} ($${(missing * REPAIR_COST_PER_HP).toLocaleString('en-US')})`,
     });
     body.replaceChildren(el('p', { text: t('bldItemShopBlurb') }), list, repairBtn, statusLine(s));
+    list.scrollTop = prevScroll; // re-render must not yank the list back to the top
   };
   render();
   m.open(dialog(t('bldItemShop'), body, el('div', { class: 'btn-row' }, exitBtn(m))));
@@ -390,21 +396,47 @@ export function openPause(
   );
 }
 
+export interface GameOverStats {
+  depthFt: number;
+  cash: number;
+  points: number;
+  tilesDug: number;
+}
+
 export function openGameOver(
   m: ModalManager,
   cause: 'hull' | 'fuel',
   canLoad: boolean,
+  stats: GameOverStats,
   onLoad: () => void,
   onTitle: () => void,
 ): void {
+  const statRow = (label: string, value: string) =>
+    el(
+      'div',
+      { class: 'go-stat' },
+      el('span', { class: 'go-stat-label', text: label }),
+      el('span', { class: 'go-stat-value', text: value }),
+    );
   const body = el(
     'div',
-    { class: 'dialog-body' },
-    el('p', { class: 'danger-text', text: t(cause === 'hull' ? 'gameOverHull' : 'gameOverFuel') }),
+    { class: 'dialog-body go-body' },
+    el('div', { class: 'go-title', text: t('gameOverTitle') }),
+    el('p', { class: 'go-cause', text: t(cause === 'hull' ? 'gameOverHull' : 'gameOverFuel') }),
+    el(
+      'div',
+      { class: 'go-stats' },
+      statRow(t('goDepth'), `${Math.min(0, Math.round(stats.depthFt)).toLocaleString('en-US')} ft`),
+      statRow(t('goDug'), stats.tilesDug.toLocaleString('en-US')),
+      statRow(t('goCash'), `$${Math.floor(stats.cash).toLocaleString('en-US')}`),
+      statRow(t('goScore'), stats.points.toLocaleString('en-US')),
+    ),
+    el('p', { class: 'go-epitaph', text: t('goEpitaph') }),
   );
   m.open(
-    dialog(
-      t('gameOverTitle'),
+    el(
+      'div',
+      { class: 'dialog game-over' },
       body,
       el(
         'div',

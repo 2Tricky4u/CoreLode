@@ -175,3 +175,6 @@ challenges — not in this SWF; wiki + designed values stand).
 - Sim runs at the original **42 Hz fixed timestep** (render interpolated to display rate) so every
   per-frame constant above applies verbatim — no unit conversion layer.
 - Clean-room content: all names/dialog above are reference only; shipped game uses new text/names.
+- Drill pacing: effective dig speed = table value × `DRILL_SPEED_TUNE` (0.6…1 by tier, `physics.ts`)
+  so early blocks take ~1.6× longer; the table itself stays verbatim and the top tier (12 px/fr)
+  and Fractal Bit (15) are unchanged.

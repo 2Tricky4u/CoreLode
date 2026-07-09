@@ -133,3 +133,121 @@
   color: var(--c-danger);
   font-weight: bold;
 }
+
+/* ---- Game over: the rig is gone. Red emergency palette, glitching title,
+   scanline sweep, run stats. ---- */
+.dialog.game-over {
+  background: linear-gradient(180deg, #2a0d14 0%, #140c1c 80%);
+  border-color: var(--c-danger);
+  box-shadow: 0 0 0 3px #000, 0 0 34px #d9576366, 0 12px 46px #000e;
+  min-width: 380px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  animation: go-slam 260ms cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+.dialog.game-over::after {
+  /* CRT scanlines drifting over everything */
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, #0000 0 2px, #00000042 2px 4px);
+  animation: go-scan 9s linear infinite;
+}
+@keyframes go-slam {
+  0% {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(0.97);
+    opacity: 1;
+  }
+  75% {
+    transform: scale(1.02) translateX(-2px);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes go-scan {
+  from {
+    background-position-y: 0;
+  }
+  to {
+    background-position-y: 120px;
+  }
+}
+.go-title {
+  font-size: 34px;
+  font-weight: bold;
+  letter-spacing: 6px;
+  color: var(--c-danger);
+  text-shadow: 0 0 18px #d95763aa, 2px 2px 0 #000;
+  margin: 10px 0 2px;
+  animation: go-flicker 2.4s steps(1) infinite;
+}
+@keyframes go-flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  7% {
+    opacity: 0.55;
+  }
+  9% {
+    opacity: 1;
+  }
+  53% {
+    opacity: 0.7;
+  }
+  55% {
+    opacity: 1;
+  }
+  81% {
+    opacity: 0.45;
+  }
+  83% {
+    opacity: 1;
+  }
+}
+.go-cause {
+  color: var(--c-text);
+  font-style: italic;
+  opacity: 0.9;
+}
+.go-stats {
+  margin: 10px auto 2px;
+  width: min(320px, 90%);
+  border-top: 1px solid #d9576344;
+  border-bottom: 1px solid #d9576344;
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.go-stat {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+.go-stat-label {
+  color: var(--c-danger);
+  letter-spacing: 1px;
+  opacity: 0.85;
+}
+.go-stat-value {
+  color: var(--c-gold);
+  font-weight: bold;
+}
+.go-epitaph {
+  font-size: 11px;
+  opacity: 0.6;
+  margin-top: 4px;
+}
+.dialog.game-over .btn-col {
+  margin-top: 12px;
+  position: relative;
+  z-index: 1;
+}

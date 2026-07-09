@@ -47,6 +47,13 @@ export const PHYSICS = {
   itemCooldownFrames: 5,
 } as const;
 
+/**
+ * Deliberate remake deviation (user-tuned): early drill tiers bite slower so
+ * upgrades feel meaningful; converges to the verbatim table by the top tier.
+ * Applied in drillSpeed(); UPGRADES.drill stays verbatim for the fidelity record.
+ */
+export const DRILL_SPEED_TUNE = [0.6, 0.7, 0.78, 0.85, 0.92, 0.97, 1] as const;
+
 /** Per-frame thrust acceleration for a pod of the given engine power and mass. */
 export const thrustAccel = (enginePower: number, mass: number): number =>
   enginePower / mass / PHYSICS.thrustDivisor;

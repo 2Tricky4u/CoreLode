@@ -6,7 +6,7 @@ import { SURFACE_ROW, TILE_PX, WORLD_W } from '../data/constants';
 import type { ItemId } from '../data/items';
 import { COLLECTIBLES } from '../data/minerals';
 /** Game state shapes + run construction. Pure data — serializable as-is. */
-import { PHYSICS } from '../data/physics';
+import { DRILL_SPEED_TUNE, PHYSICS } from '../data/physics';
 import { UPGRADES, type UpgradeCategory } from '../data/upgrades';
 import { Rng, hash32 } from '../lib/rng';
 import { applyMaze } from '../world/mazes';
@@ -147,7 +147,9 @@ export const radiatorMult = (p: PodState): number =>
 export const bayCapacity = (p: PodState): number =>
   p.blueprints.includes('pocketSingularity') ? 9_999 : UPGRADES.bay[p.upgrades.bay].stat;
 export const drillSpeed = (p: PodState): number =>
-  p.blueprints.includes('fractalDrill') ? 15 : UPGRADES.drill[p.upgrades.drill].stat;
+  p.blueprints.includes('fractalDrill')
+    ? 15
+    : UPGRADES.drill[p.upgrades.drill].stat * (DRILL_SPEED_TUNE[p.upgrades.drill] ?? 1);
 export const hasFractalDrill = (p: PodState): boolean => p.blueprints.includes('fractalDrill');
 
 export const podMass = (p: PodState): number => {
