@@ -13,6 +13,9 @@ export class PodView {
 
   create(): void {
     this.sprite = this.scene.add.sprite(this.state.pod.x, this.state.pod.y, 'atlas', 'pod_idle');
+    // Frames are 56px tall but the body occupies rows 0-49 (the down-drill auger
+    // hangs below) — anchor so the 50px body stays centred on the collision box.
+    this.sprite.setOrigin(0.5, 25 / 56);
     this.sprite.setDepth(10);
   }
 

@@ -31,7 +31,7 @@ const families = [
   ...['pod_idle', 'pod_hurt'],
   ...[0, 1].map((i) => `pod_fly${i}`),
   ...[0, 1, 2, 3].flatMap((i) => [`pod_drill_down${i}`, `pod_drill_side${i}`]),
-  ...[0, 1, 2].map((i) => `crack${i}`),
+  ...[0, 1, 2, 3].flatMap((i) => [`bite_down${i}`, `bite_side${i}`]),
   ...[1, 2].flatMap((f) => [`boss${f}_a`, `boss${f}_b`]),
   ...[0, 1, 2, 3, 4].map((i) => `boom${i}`),
   ...[0, 1, 2].map((i) => `dust${i}`),

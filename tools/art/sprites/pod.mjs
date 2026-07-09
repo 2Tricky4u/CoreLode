@@ -76,6 +76,8 @@ const ARM_SIDE = [
   '..................ooo....',
 ];
 
+// Down drill: full-size auger emerging BELOW the tread band (rows 23+ clear the
+// body entirely), matching the side drill's cone length. 28 rows → 56px frame.
 // biome-ignore format: pixel grids are aligned by hand
 const ARM_DOWN = [
   '.........................',
@@ -96,17 +98,22 @@ const ARM_DOWN = [
   '.........................',
   '.........................',
   '.........................',
-  '.........oooo............',
-  '........oLBBBo...........',
-  '........oBDDDo...........',
-  '........oDDDdo...........',
-  '.........oDddo...........',
-  '.........oddo............',
-  '..........oo.............',
+  '.........................',
+  '.......oooooo............',
+  '......oLBBBBBo...........',
+  '......oBDDDDDo...........',
+  '......oDDDDDdo...........',
+  '......oDDDDddo...........',
+  '.......oDDDddo...........',
+  '.......oDDddo............',
+  '........oddo.............',
+  '.........oo..............',
 ];
 
 const overlay = (base, over) => {
-  const s = base.clone();
+  // Tall canvas: the down drill extends below the 50px body (frame is 56px).
+  const s = new Sprite(base.w, FRAME_H);
+  s.blit(base, 0, 0);
   s.blit(over, 0, 0);
   return s;
 };
@@ -139,7 +146,9 @@ function threadify(arm, axis, phase) {
  * then still fits inside the frame.
  */
 const FRAME_W = 60;
-const FRAME_H = 50;
+/** 56 not 50: the down-drill auger hangs below the body. The body still occupies
+ *  rows 0-49, so PodView anchors with origin y = 25/56 to keep alignment. */
+const FRAME_H = 56;
 const HULL_SHIFT = 11; // hull centre 18.5 → 29.5 = centre of a 60px frame
 
 const recenter = (sprite) => {

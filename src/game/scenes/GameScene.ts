@@ -180,8 +180,8 @@ export class GameScene extends Phaser.Scene {
     this.pod.create();
     this.boss = new BossView(this, s);
 
-    // Crack overlay for the tile currently being drilled (above terrain, below the pod).
-    this.crackSprite = this.add.sprite(0, 0, 'atlas', 'crack0').setDepth(6).setVisible(false);
+    // Hole-bite overlay for the tile currently being drilled (above terrain, below the pod).
+    this.crackSprite = this.add.sprite(0, 0, 'atlas', 'bite_down0').setDepth(6).setVisible(false);
 
     // --- glows ---
     this.headGlow = this.add
@@ -604,14 +604,16 @@ export class GameScene extends Phaser.Scene {
     this.thrustGlow.setAlpha(inputUp ? 0.35 + (this.fxFull ? Math.random() * 0.15 : 0) : 0);
     this.audio.setLoops(s.pod.mode === 'dig', inputUp);
 
-    // --- drilling feedback: crack overlay, straining loop pitch, chip spray ---
+    // --- drilling feedback: hole being carved, straining loop pitch, chip spray ---
     const job = s.pod.drilling;
     if (job && !job.broken) {
-      // Cracks spread until the tile gives way at digBreakAtPx.
-      const crack = Math.min(1, job.traveledPx / PHYSICS.digBreakAtPx);
+      // The notch eats into the tile from the drilled face until it gives way
+      // at digBreakAtPx (top entry leaves the block reading as a U).
+      const bite = Math.min(1, job.traveledPx / PHYSICS.digBreakAtPx);
       this.crackSprite
         .setPosition((job.targetX + 0.5) * TILE_PX, (job.targetY + 0.5) * TILE_PX)
-        .setFrame(`crack${Math.min(2, Math.floor(crack * 3))}`)
+        .setFrame(`bite_${job.dir === 'down' ? 'down' : 'side'}${Math.min(3, Math.floor(bite * 4))}`)
+        .setFlipX(job.dir === 'left') // side frames enter from the left face
         .setVisible(true);
     } else {
       this.crackSprite.setVisible(false);

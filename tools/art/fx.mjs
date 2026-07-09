@@ -105,44 +105,56 @@ export function particleFrames() {
 }
 
 /**
- * Drill-progress overlays: crack0..crack2 — a jagged crack web radiating from
- * the drill's contact point, growing until the tile gives way. Two-tone strokes
- * (black core + faint light lip on the top-left) so they read on every soil
- * band, light or dark. No outlines (terrain rule).
+ * Drill-progress overlays: bite_down0..3 / bite_side0..3 — a ragged hole carved
+ * out of the tile from the drilled face (top entry leaves the block reading as
+ * a U). The notch interior is painted the cave background color, which is
+ * indistinguishable from a real dug hole over the tilemap. Crack hairlines
+ * radiate from the notch rim. side frames enter from the LEFT face; the scene
+ * flips them for right-face (leftward) digs.
  */
-export function crackFrames() {
+export function biteFrames() {
+  const BG = [20, 12, 28]; // matches the camera background = "transparent" hole
   const out = {};
-  for (let stage = 0; stage < 3; stage++) {
-    const s = new Sprite(50, 50);
-    const rnd = texRng(0xc4ac + 7); // same layout every stage; only the extent grows
-    const rays = 7;
-    const reach = [9, 15, 22][stage];
-    for (let k = 0; k < rays; k++) {
-      if (stage === 0 && k % 2 === 1) continue; // stage 0: only a few hairlines
-      let a = (k / rays) * Math.PI * 2 + rnd() * 0.7;
-      let x = 25;
-      let y = 25;
-      const len = reach * (0.7 + rnd() * 0.5);
-      for (let d = 0; d < len; d++) {
-        x += Math.cos(a);
-        y += Math.sin(a);
-        a += (rnd() - 0.5) * 0.55; // jagged wander
-        const xi = Math.round(x);
-        const yi = Math.round(y);
-        s.px(xi, yi, P.black, 205);
-        // continuous faint lit lip on the top-left — keeps cracks legible on dark bands
-        if (s.a(xi - 1, yi - 1) === 0) s.px(xi - 1, yi - 1, P.heather, 55);
-        if (stage === 2 && d % 4 === 0) s.px(xi + 1, yi, P.black, 120); // widen late cracks
+  const DEPTHS = [7, 14, 23, 34]; // how far the notch has eaten in, per stage
+  for (let stage = 0; stage < 4; stage++) {
+    const depth = DEPTHS[stage];
+    const half = 9 + stage * 2; // notch half-width, widening as the auger sinks
+    for (const face of ['down', 'side']) {
+      const s = new Sprite(50, 50);
+      const rnd = texRng(0xb17e + (face === 'down' ? 0 : 97)); // stable per face
+      const cracks = [];
+      for (let i = -half; i <= half; i++) {
+        // rounded tip + ragged crumble edge
+        const d = Math.max(2, depth - (i * i) / half + Math.floor(rnd() * 4) - 2);
+        if (face === 'down') {
+          const x = 25 + i;
+          for (let y = 0; y < d; y++) s.px(x, y, BG);
+          s.px(x, Math.round(d), P.black, 215); // rim
+          if (rnd() < 0.35) s.px(x, Math.round(d) + 1, P.black, 110);
+        } else {
+          const y = 25 + i;
+          for (let x = 0; x < d; x++) s.px(x, y, BG);
+          s.px(Math.round(d), y, P.black, 215);
+          if (rnd() < 0.35) s.px(Math.round(d) + 1, y, P.black, 110);
+        }
+        if (Math.abs(Math.abs(i) - (half - 2)) < 1) cracks.push(i); // seed cracks near corners
       }
+      // Hairline cracks wandering on from the notch rim.
+      for (const i of cracks.slice(0, 2 + stage)) {
+        let a = face === 'down' ? Math.PI / 2 + (i < 0 ? 0.5 : -0.5) : (i < 0 ? -0.4 : 0.4);
+        let x = face === 'down' ? 25 + i : depth;
+        let y = face === 'down' ? depth : 25 + i;
+        for (let d = 0; d < 6 + stage * 3; d++) {
+          x += Math.cos(a);
+          y += Math.sin(a);
+          a += (rnd() - 0.5) * 0.6;
+          const xi = Math.round(x);
+          const yi = Math.round(y);
+          if (s.a(xi, yi) === 0) s.px(xi, yi, P.black, 190);
+        }
+      }
+      out[`bite_${face}${stage}`] = s;
     }
-    // Growing bite pit at the contact point.
-    const pit = [1, 2, 4][stage];
-    s.circle(25, 25, pit, P.black, 225);
-    if (stage === 2) {
-      s.px(23, 22, P.twine, 140); // displaced grit
-      s.px(28, 27, P.twine, 110);
-    }
-    out[`crack${stage}`] = s;
   }
   return out;
 }
