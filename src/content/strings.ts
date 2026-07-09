@@ -268,6 +268,13 @@ export const STRINGS: Record<string, string> = {
   uiNoPauseArena: 'No pausing in the deep.',
   uiScore: 'SCORE',
   uiStats: 'Contract Statistics',
+  invTitle: 'CARGO HOLD',
+  invBlurb: 'Everything in the bay. Drop dead weight to make room for richer ore.',
+  invEmpty: '— hold is empty —',
+  invDropOne: 'Drop one overboard',
+  invDropAll: 'Drop the whole stack',
+  invMassUnit: 'mass',
+  uiNoInventoryArena: 'No time to sort cargo down here.',
 };
 
 export const t = (key: string): string => STRINGS[key] ?? key;

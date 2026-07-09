@@ -47,6 +47,8 @@ export class Hud {
   private pointsText: HTMLElement;
   private itemButtons = new Map<ItemId, HTMLElement>();
   onUseItem: ((id: ItemId) => void) | null = null;
+  /** Cargo-bar tap / I key — opens the in-field inventory. */
+  onInventory: (() => void) | null = null;
 
   private timerNode: HTMLElement;
   private showTimer = false;
@@ -71,6 +73,11 @@ export class Hud {
         el('span', { class: 'bar-label', text: label }),
         el('div', { class: 'bar-track' }, fill),
       );
+
+    const cargoBar = bar(t('hudCargo'), this.cargoFill);
+    cargoBar.classList.add('hud-bar-cargo');
+    cargoBar.title = `${t('invTitle')} [I]`;
+    cargoBar.addEventListener('click', () => this.onInventory?.());
 
     const hotbar = el('div', { class: 'hotbar' });
     for (const item of ITEMS.filter((i) => i.shopVisible)) {
@@ -115,7 +122,7 @@ export class Hud {
         { class: 'hud-left' },
         bar(t('hudFuel'), this.fuelFill),
         bar(t('hudHull'), this.hullFill),
-        bar(t('hudCargo'), this.cargoFill),
+        cargoBar,
       ),
       el('div', { class: 'hud-mid' }, this.depthText, this.pointsText, this.timerNode),
       el('div', { class: 'hud-right' }, this.cashText, hotbar),

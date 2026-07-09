@@ -27,7 +27,14 @@ import { TouchControls } from '@ui/TouchControls';
 import { UiRoot } from '@ui/UiRoot';
 import { showFatal } from '@ui/fatal';
 import { helpScreen } from '@ui/help';
-import { ModalManager, openBuilding, openGameOver, openPause, openTransmission } from '@ui/modals';
+import {
+  ModalManager,
+  openBuilding,
+  openGameOver,
+  openInventory,
+  openPause,
+  openTransmission,
+} from '@ui/modals';
 import {
   ScreenHost,
   challengeScreen,
@@ -66,6 +73,8 @@ export class App {
     this.hud.onInteract = () => this.input.queueInteract();
     this.input.attach(window);
     this.input.onPause = () => this.togglePause();
+    this.input.onInventory = () => this.openInventoryModal();
+    this.hud.onInventory = () => this.openInventoryModal();
     this.audio.attachUnlock();
 
     // Modal keyboard shortcuts (ESC/ENTER) are ignored while a screen is layered on top.
@@ -365,6 +374,17 @@ export class App {
       () => this.pumpPendingTransmission(),
       () => this.audio.play('textBlip', 0.25),
     );
+  }
+
+  /** The in-field cargo inventory (I key / cargo-bar tap) — jettison anywhere. */
+  private openInventoryModal(): void {
+    const host = this.host;
+    if (!host || this.screens.visible || this.modals.isOpen) return;
+    if (host.state.boss && host.state.outcome === 'active') {
+      this.ui.toast(t('uiNoInventoryArena')); // same rule as pausing: not in the arena
+      return;
+    }
+    openInventory(this.modals, host.state, (c) => host.command(c));
   }
 
   private togglePause(): void {

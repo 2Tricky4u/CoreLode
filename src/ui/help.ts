@@ -35,6 +35,7 @@ export function helpScreen(onBack: () => void): HTMLElement {
       ? row(['↑', 'k'], 'Fire the thruster and fly (burns fuel)')
       : row(['↑', 'W'], 'Fire the thruster and fly (burns fuel)'),
     row([INTERACT_LABEL], 'Interact — open the building you are standing on'),
+    row(['I'], 'Cargo hold — inspect and jettison minerals, anywhere'),
     row(['Esc', 'P'], 'Pause (disabled during the final fight)'),
     el('p', {
       class: 'help-note',

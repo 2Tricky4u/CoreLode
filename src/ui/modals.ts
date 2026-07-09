@@ -16,6 +16,7 @@ import {
   TRANSMISSIONS,
   UPGRADES,
   UPGRADE_CATEGORIES,
+  bayCapacity,
   bayUsed,
   maxHull,
   saleValue,
@@ -394,6 +395,105 @@ export function openPause(
       ),
     ),
   );
+}
+
+/** Chip color per collectible index — the GEM_RAMPS base colors (tools/art/palette.mjs). */
+const COLLECTIBLE_HEX = [
+  '#595652', // ferrite
+  '#8a6f30', // bronzite
+  '#cbdbfc', // argentite
+  '#df7126', // aurite
+  '#9badb7', // platinite
+  '#5fcde4', // einsteinium
+  '#6abe30', // emerald
+  '#ac3232', // ruby
+  '#cbdbfc', // diamond
+  '#76428a', // amazonite
+  '#d9a066', // fossil
+  '#8a6f30', // cache
+  '#9badb7', // xeno
+  '#df7126', // idol
+];
+
+/**
+ * The in-field cargo inventory (I key, anywhere) — the original's depth-management
+ * tool: inspect the bay and jettison dead weight mid-shaft to make room for
+ * richer ore. Values shown are what the processor would pay at this NG+ level.
+ */
+export function openInventory(m: ModalManager, s: GameState, command: (c: Command) => void): void {
+  const body = el('div', { class: 'dialog-body inv-body' });
+  const render = () => {
+    const prevScroll = body.querySelector('.inv-list')?.scrollTop ?? 0;
+    const used = bayUsed(s.pod);
+    const cap = bayCapacity(s.pod);
+    const gauge = el(
+      'div',
+      { class: 'inv-gauge' },
+      el('div', {
+        class: `inv-gauge-fill ${used >= cap ? 'full' : ''}`,
+        style: `width:${Math.min(100, (used / cap) * 100)}%`,
+      }),
+      el('span', { class: 'inv-gauge-text', text: `${used} / ${cap}` }),
+    );
+    const list = el('div', { class: 'inv-list' });
+    let totalValue = 0;
+    let totalMass = 0;
+    s.pod.bayContents.forEach((n, i) => {
+      if (n === 0) return;
+      const def = COLLECTIBLES[i];
+      const value = saleValue(def.value, s.level);
+      totalValue += n * value;
+      totalMass += n * def.mass;
+      const drop = (count: number) => {
+        for (let k = 0; k < count; k++) command({ c: 'jettison', collectibleId: i });
+        render();
+      };
+      list.append(
+        el(
+          'div',
+          { class: 'inv-row' },
+          el('span', { class: 'inv-chip', style: `background:${COLLECTIBLE_HEX[i] ?? '#fff'}` }),
+          el(
+            'div',
+            { class: 'inv-info' },
+            el('strong', { text: `${n}× ${t(def.key)}` }),
+            el('small', {
+              class: 'muted',
+              text: `$${value.toLocaleString('en-US')} · ${t('invMassUnit')} ${def.mass}`,
+            }),
+          ),
+          el(
+            'div',
+            { class: 'inv-actions' },
+            el('button', {
+              class: 'btn tiny',
+              title: t('invDropOne'),
+              onclick: () => drop(1),
+              text: '−1',
+            }),
+            el('button', {
+              class: 'btn tiny danger',
+              title: t('invDropAll'),
+              onclick: () => drop(n),
+              text: 'all',
+            }),
+          ),
+        ),
+      );
+    });
+    body.replaceChildren(
+      el('p', { text: t('invBlurb') }),
+      gauge,
+      used === 0 ? el('p', { class: 'muted', text: t('invEmpty') }) : list,
+      el('p', {
+        class: 'total',
+        text: `Total: $${totalValue.toLocaleString('en-US')} · ${t('invMassUnit')} ${totalMass}`,
+      }),
+    );
+    list.scrollTop = prevScroll;
+  };
+  render();
+  m.open(dialog(t('invTitle'), body, el('div', { class: 'btn-row' }, exitBtn(m))));
 }
 
 export interface GameOverStats {

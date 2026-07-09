@@ -74,6 +74,8 @@ export class InputManager {
   /** When false (a modal/screen owns focus), gameplay input is ignored. */
   gameFocus = true;
   onPause: (() => void) | null = null;
+  /** I opens the cargo inventory anywhere (authentic key, same in both schemes). */
+  onInventory: (() => void) | null = null;
   private scheme: ControlScheme = 'classic';
 
   setScheme(scheme: ControlScheme): void {
@@ -100,6 +102,7 @@ export class InputManager {
       if (item) this.itemQueue.push(item);
       if (INTERACT_KEYS.includes(e.code)) this.interactQueued = true;
       if (e.code === 'Escape' || e.code === 'KeyP') this.onPause?.();
+      if (e.code === 'KeyI') this.onInventory?.();
       this.prevent(e);
     });
     target.addEventListener('keyup', (e) => {
