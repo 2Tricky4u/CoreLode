@@ -75,6 +75,12 @@
   display: flex;
   flex-direction: column;
 }
+.item-buy {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
 .upgrade-cat {
   width: 90px;
   font-size: 11px;

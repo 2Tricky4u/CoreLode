@@ -21,6 +21,7 @@ import {
   saleValue,
   tankCapacity,
 } from '@core/index';
+import { itemKeyLabel } from '@input/InputManager';
 import { el } from './reactive';
 
 export class ModalManager {
@@ -239,6 +240,17 @@ function openItems(m: ModalManager, s: GameState, command: (c: Command) => void)
   const render = () => {
     const list = el('div', { class: 'item-list' });
     for (const item of ITEMS.filter((i) => i.shopVisible)) {
+      // Prices are flat (verbatim from the original) — bulk buttons are pure convenience.
+      const buyBtn = (qty: number) =>
+        el('button', {
+          class: `btn ${qty > 1 ? 'tiny' : ''} ${s.pod.cash >= item.price * qty ? '' : 'disabled'}`,
+          title: `$${(item.price * qty).toLocaleString('en-US')}`,
+          onclick: () => {
+            command({ c: 'buyItem', item: item.id, qty });
+            render();
+          },
+          text: qty === 1 ? t('uiBuy') : `×${qty}`,
+        });
       list.append(
         el(
           'div',
@@ -247,19 +259,12 @@ function openItems(m: ModalManager, s: GameState, command: (c: Command) => void)
             'div',
             { class: 'item-info' },
             el('strong', {
-              text: `${t(item.key)} [${item.hotkey}] — $${item.price.toLocaleString('en-US')}`,
+              text: `${t(item.key)} [${itemKeyLabel(item.id)}] — $${item.price.toLocaleString('en-US')}`,
             }),
             el('small', { text: t(`${item.key}Desc`) }),
             el('small', { class: 'muted', text: `owned: ${s.pod.inventory[item.id] ?? 0}` }),
           ),
-          el('button', {
-            class: `btn ${s.pod.cash >= item.price ? '' : 'disabled'}`,
-            onclick: () => {
-              command({ c: 'buyItem', item: item.id, qty: 1 });
-              render();
-            },
-            text: t('uiBuy'),
-          }),
+          el('div', { class: 'item-buy' }, buyBtn(1), buyBtn(5), buyBtn(10)),
         ),
       );
     }

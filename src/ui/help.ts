@@ -5,7 +5,7 @@
  */
 import { t } from '@content/strings';
 import { BUILDINGS, FUEL_PRICE_PER_L, ITEMS, REPAIR_COST_PER_HP } from '@core/index';
-import { INTERACT_LABEL } from '@input/InputManager';
+import { INTERACT_LABEL, currentScheme, itemKeyLabel } from '@input/InputManager';
 import { el } from './reactive';
 
 const key = (k: string) => el('kbd', { class: 'key', text: k });
@@ -24,21 +24,28 @@ const section = (title: string, ...children: HTMLElement[]) =>
 const bullet = (text: string) => el('li', { text });
 
 export function helpScreen(onBack: () => void): HTMLElement {
+  const vim = currentScheme() === 'vim';
   const movement = section(
     'Controls',
-    row(['←', '→', 'A', 'D'], 'Move — or drill sideways when standing on the ground'),
-    row(['↓', 'S'], 'Drill straight down'),
-    row(['↑', 'W'], 'Fire the thruster and fly (burns fuel)'),
+    vim
+      ? row(['←', '→', 'h', 'l'], 'Move — or drill sideways when standing on the ground')
+      : row(['←', '→', 'A', 'D'], 'Move — or drill sideways when standing on the ground'),
+    vim ? row(['↓', 'j'], 'Drill straight down') : row(['↓', 'S'], 'Drill straight down'),
+    vim
+      ? row(['↑', 'k'], 'Fire the thruster and fly (burns fuel)')
+      : row(['↑', 'W'], 'Fire the thruster and fly (burns fuel)'),
     row([INTERACT_LABEL], 'Interact — open the building you are standing on'),
     row(['Esc', 'P'], 'Pause (disabled during the final fight)'),
     el('p', {
       class: 'help-note',
-      text: 'You can never drill upward, and sideways drilling only works from a standstill. Hold a direction for a moment and the drill bites in.',
+      text: vim
+        ? 'Vim scheme: h/j/k/l to move (WASD is off — that is the point), x deletes a tile, d deletes a bigger one, r repairs, f refuels, g goes to the top, G goes to the bottom of the file. Switch back in Settings.'
+        : 'You can never drill upward, and sideways drilling only works from a standstill. Hold a direction for a moment and the drill bites in. (A vim key scheme is available in Settings.)',
     }),
   );
 
   const itemRows = ITEMS.filter((i) => i.shopVisible).map((i) =>
-    row([i.hotkey], `${t(i.key)} — $${i.price.toLocaleString('en-US')}`),
+    row([itemKeyLabel(i.id)], `${t(i.key)} — $${i.price.toLocaleString('en-US')}`),
   );
   const items = section(
     'Item hotkeys',

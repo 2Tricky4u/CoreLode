@@ -1,7 +1,13 @@
 /**
  * Merges keyboard + gamepad + touch into one IntentFrame per tick.
- * Item hotkeys are authentic: F reserve fuel, R nano-welders, X dynamite,
- * C plastique, Q discount teleporter, M priority transporter, 0 core teleporter.
+ * Two key schemes (Settings → controls):
+ *  - classic (default, authentic): arrows/WASD move; F fuel, R nano-welders,
+ *    X dynamite, C plastique, Q discount tp, M priority tp, 0 core tp.
+ *  - vim (trainer): h/j/k/l move (WASD disabled so the muscle memory sticks;
+ *    arrows stay, as in real vim); items keep vim mnemonics — x (delete char =
+ *    small blast), d (delete = big blast), r (replace = repair), f (find =
+ *    fuel), t (till = risky teleport), g (gg → top = safe transport to the
+ *    surface), G (→ bottom of file = the Core Teleporter).
  * Central edge detection: useItem fires exactly once per press.
  */
 import type { IntentFrame, ItemId } from '@core/index';
@@ -10,7 +16,9 @@ import type { IntentFrame, ItemId } from '@core/index';
 export const INTERACT_KEYS = ['KeyE', 'Enter', 'Space'];
 export const INTERACT_LABEL = 'E';
 
-const ITEM_KEYS: Record<string, ItemId> = {
+export type ControlScheme = 'classic' | 'vim';
+
+const CLASSIC_ITEM_KEYS: Record<string, ItemId> = {
   KeyF: 'reserveFuel',
   KeyR: 'nanoWelders',
   KeyX: 'dynamite',
@@ -19,6 +27,40 @@ const ITEM_KEYS: Record<string, ItemId> = {
   KeyM: 'priorityTransporter',
   Digit0: 'coreTeleporter',
 };
+/** KeyG is resolved separately: g = priority transporter, G (shift) = core teleporter. */
+const VIM_ITEM_KEYS: Record<string, ItemId> = {
+  KeyF: 'reserveFuel',
+  KeyR: 'nanoWelders',
+  KeyX: 'dynamite',
+  KeyD: 'plastique',
+  KeyT: 'discountTeleporter',
+};
+
+/** Display labels per scheme (HUD hotbar, shop rows, help screen). */
+const ITEM_LABELS: Record<ControlScheme, Record<ItemId, string>> = {
+  classic: {
+    reserveFuel: 'F',
+    nanoWelders: 'R',
+    dynamite: 'X',
+    plastique: 'C',
+    discountTeleporter: 'Q',
+    priorityTransporter: 'M',
+    coreTeleporter: '0',
+  },
+  vim: {
+    reserveFuel: 'f',
+    nanoWelders: 'r',
+    dynamite: 'x',
+    plastique: 'd',
+    discountTeleporter: 't',
+    priorityTransporter: 'g',
+    coreTeleporter: 'G',
+  },
+};
+
+let activeScheme: ControlScheme = 'classic';
+export const currentScheme = (): ControlScheme => activeScheme;
+export const itemKeyLabel = (id: ItemId): string => ITEM_LABELS[activeScheme][id];
 
 export class InputManager {
   private keys = new Set<string>();
@@ -32,13 +74,29 @@ export class InputManager {
   /** When false (a modal/screen owns focus), gameplay input is ignored. */
   gameFocus = true;
   onPause: (() => void) | null = null;
+  private scheme: ControlScheme = 'classic';
+
+  setScheme(scheme: ControlScheme): void {
+    if (scheme === this.scheme) return;
+    this.scheme = scheme;
+    activeScheme = scheme;
+    this.clearHeld(); // a held key must not survive a remap
+  }
+
+  private itemFor(e: KeyboardEvent): ItemId | null {
+    if (this.scheme === 'vim') {
+      if (e.code === 'KeyG') return e.shiftKey ? 'coreTeleporter' : 'priorityTransporter';
+      return VIM_ITEM_KEYS[e.code] ?? null;
+    }
+    return CLASSIC_ITEM_KEYS[e.code] ?? null;
+  }
 
   attach(target: Window): void {
     target.addEventListener('keydown', (e) => {
       if (!this.gameFocus) return;
       if (e.repeat) return this.prevent(e);
       this.keys.add(e.code);
-      const item = ITEM_KEYS[e.code];
+      const item = this.itemFor(e);
       if (item) this.itemQueue.push(item);
       if (INTERACT_KEYS.includes(e.code)) this.interactQueued = true;
       if (e.code === 'Escape' || e.code === 'KeyP') this.onPause?.();
@@ -125,11 +183,13 @@ export class InputManager {
     const useItem = this.itemQueue.shift() ?? this.touchItemQueue.shift() ?? pad.item ?? null;
     const interact = this.interactQueued || pad.interact;
     this.interactQueued = false;
+    // vim: hjkl replace WASD entirely (training wheels off); arrows remain, as in real vim.
+    const vim = this.scheme === 'vim';
     return {
-      left: k.has('ArrowLeft') || k.has('KeyA') || this.touch.left || pad.left,
-      right: k.has('ArrowRight') || k.has('KeyD') || this.touch.right || pad.right,
-      up: k.has('ArrowUp') || k.has('KeyW') || this.touch.up || pad.up,
-      down: k.has('ArrowDown') || k.has('KeyS') || this.touch.down || pad.down,
+      left: k.has('ArrowLeft') || k.has(vim ? 'KeyH' : 'KeyA') || this.touch.left || pad.left,
+      right: k.has('ArrowRight') || k.has(vim ? 'KeyL' : 'KeyD') || this.touch.right || pad.right,
+      up: k.has('ArrowUp') || k.has(vim ? 'KeyK' : 'KeyW') || this.touch.up || pad.up,
+      down: k.has('ArrowDown') || k.has(vim ? 'KeyJ' : 'KeyS') || this.touch.down || pad.down,
       useItem,
       interact,
     };

@@ -70,6 +70,15 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     affectsFidelity: false,
   },
   {
+    id: 'controlScheme',
+    labelKey: 'setControlScheme',
+    category: 'controls',
+    type: 'enum',
+    default: 'classic',
+    options: ['classic', 'vim'],
+    affectsFidelity: false,
+  },
+  {
     id: 'touchControls',
     labelKey: 'setTouchControls',
     category: 'controls',

@@ -214,10 +214,12 @@ export class App {
       this.host !== null && (touchMode === 'on' || (touchMode === 'auto' && isTouchDevice())),
     );
     this.touch.setLayout(String(fx.touchLayout) === 'left' ? 'left' : 'right');
+    this.input.setScheme(String(fx.controlScheme) === 'vim' ? 'vim' : 'classic');
 
     // HUD-side QoL (independent of the Phaser scene).
     this.hud.setSpeedrunTimer(Boolean(fx.speedrunTimer));
     this.hud.setMinimap(Boolean(fx.minimap));
+    this.hud.refreshHotkeys(); // hotbar labels follow the key scheme
 
     // Push live FX into the running play field (if any).
     const scene = this.phaser?.scene?.isActive('game')

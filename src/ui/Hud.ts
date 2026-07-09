@@ -24,7 +24,7 @@ import {
   podTileY,
   tankCapacity,
 } from '@core/index';
-import { INTERACT_LABEL } from '@input/InputManager';
+import { INTERACT_LABEL, itemKeyLabel } from '@input/InputManager';
 import { el } from './reactive';
 
 /** Native minimap resolution (CSS upscales it, pixelated). */
@@ -126,6 +126,15 @@ export class Hud {
   setSpeedrunTimer(on: boolean): void {
     this.showTimer = on;
     this.timerNode.classList.toggle('hidden', !on);
+  }
+
+  /** Re-label the hotbar keys after a control-scheme change. */
+  refreshHotkeys(): void {
+    for (const [id, btn] of this.itemButtons) {
+      const label = itemKeyLabel(id);
+      btn.querySelector('.hotbar-key')!.textContent = label;
+      btn.title = btn.title.replace(/\[[^\]]*\]$/, `[${label}]`);
+    }
   }
 
   setMinimap(on: boolean): void {
