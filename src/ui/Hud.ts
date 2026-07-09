@@ -7,14 +7,31 @@ import {
   type GameState,
   ITEMS,
   type ItemId,
+  SURFACE_ROW,
+  Tile,
+  WORLD_H,
+  WORLD_W,
   bayCapacity,
   bayUsed,
+  getTile,
+  isArtifact,
+  isBoulder,
+  isLava,
+  isMineral,
   maxHull,
   podDepthFt,
+  podTileX,
+  podTileY,
   tankCapacity,
 } from '@core/index';
 import { INTERACT_LABEL } from '@input/InputManager';
 import { el } from './reactive';
+
+/** Native minimap resolution (CSS upscales it, pixelated). */
+const MAP_W = WORLD_W;
+const MAP_H = 200;
+/** Soil tint per depth band (mirrors GameScene BAND_TINTS). */
+const MAP_BANDS = ['#d9a066', '#8f563b', '#663931', '#45283c', '#45283c', '#323c39'];
 
 export class Hud {
   readonly node: HTMLElement;
@@ -30,6 +47,14 @@ export class Hud {
   private pointsText: HTMLElement;
   private itemButtons = new Map<ItemId, HTMLElement>();
   onUseItem: ((id: ItemId) => void) | null = null;
+
+  private timerNode: HTMLElement;
+  private showTimer = false;
+  private minimapNode: HTMLElement;
+  private minimapCanvas: HTMLCanvasElement;
+  private minimapCtx: CanvasRenderingContext2D | null;
+  private showMinimap = false;
+  private minimapFrame = 0;
 
   constructor() {
     this.fuelFill = el('div', { class: 'bar-fill fuel' });
@@ -63,6 +88,14 @@ export class Hud {
       hotbar.append(btn);
     }
 
+    this.timerNode = el('span', { class: 'hud-timer hidden', text: '00:00.00' });
+
+    this.minimapCanvas = el('canvas', { class: 'minimap-canvas' });
+    this.minimapCanvas.width = MAP_W;
+    this.minimapCanvas.height = MAP_H;
+    this.minimapCtx = this.minimapCanvas.getContext('2d');
+    this.minimapNode = el('div', { class: 'hud-minimap hidden' }, this.minimapCanvas);
+
     this.promptText = el('span', { class: 'prompt-text', text: '' });
     this.promptNode = el(
       'button',
@@ -84,9 +117,20 @@ export class Hud {
         bar(t('hudHull'), this.hullFill),
         bar(t('hudCargo'), this.cargoFill),
       ),
-      el('div', { class: 'hud-mid' }, this.depthText, this.pointsText),
+      el('div', { class: 'hud-mid' }, this.depthText, this.pointsText, this.timerNode),
       el('div', { class: 'hud-right' }, this.cashText, hotbar),
+      this.minimapNode,
     );
+  }
+
+  setSpeedrunTimer(on: boolean): void {
+    this.showTimer = on;
+    this.timerNode.classList.toggle('hidden', !on);
+  }
+
+  setMinimap(on: boolean): void {
+    this.showMinimap = on;
+    this.minimapNode.classList.toggle('hidden', !on);
   }
 
   /** `null` hides the prompt; a building name shows "[E] Enter <name>". */
@@ -123,5 +167,53 @@ export class Hud {
       btn.querySelector('.hotbar-count')!.textContent = String(count);
       btn.classList.toggle('empty', count === 0);
     }
+
+    if (this.showTimer) this.timerNode.textContent = formatTime(s.tick);
+    // Minimap redraws at ~6 Hz — the world changes slowly, a full redraw each frame is wasteful.
+    if (this.showMinimap && this.minimapFrame++ % 10 === 0) this.drawMinimap(s);
   }
+
+  /** Depth strip: soil bands + minerals/hazards + the pod's position. Gas draws as soil (fidelity). */
+  private drawMinimap(s: GameState): void {
+    const ctx = this.minimapCtx;
+    if (!ctx) return;
+    ctx.fillStyle = '#0a0a12';
+    ctx.fillRect(0, 0, MAP_W, MAP_H);
+    for (let cy = 0; cy < MAP_H; cy++) {
+      const y = Math.floor((cy / MAP_H) * WORLD_H);
+      const band = Math.max(
+        0,
+        Math.min(5, Math.floor(((y - SURFACE_ROW) / (WORLD_H - SURFACE_ROW)) * 6)),
+      );
+      for (let x = 0; x < WORLD_W; x++) {
+        const t = getTile(s.world, x, y);
+        if (t === Tile.Air) continue; // leave tunnels as the dark background
+        let color: string;
+        if (isMineral(t) || isArtifact(t)) color = '#fbf236';
+        else if (isLava(t)) color = '#d95763';
+        else if (isBoulder(t)) color = '#6c6c6c';
+        else color = MAP_BANDS[band]; // dirt, gas, turf, barrier, bedrock — all soil-colored
+        ctx.fillStyle = color;
+        ctx.fillRect(x, cy, 1, 1);
+      }
+    }
+    // Pod marker.
+    const px = podTileX(s.pod);
+    const py = Math.floor((podTileY(s.pod) / WORLD_H) * MAP_H);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillRect(0, py, MAP_W, 1);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(Math.max(0, Math.min(WORLD_W - 2, px - 1)), Math.max(0, py - 1), 3, 3);
+  }
+}
+
+/** Ticks (42 Hz) → mm:ss.cs. */
+function formatTime(ticks: number): string {
+  const totalCs = Math.floor((ticks / 42) * 100);
+  const cs = totalCs % 100;
+  const totalS = Math.floor(totalCs / 100);
+  const ss = totalS % 60;
+  const mm = Math.floor(totalS / 60);
+  const p2 = (n: number) => String(n).padStart(2, '0');
+  return `${p2(mm)}:${p2(ss)}.${p2(cs)}`;
 }

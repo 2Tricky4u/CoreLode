@@ -17,6 +17,7 @@ import { migrateAndValidate } from '@core/save/migrate';
 import { GameHost } from '@game/GameHost';
 import { AudioBus } from '@game/audio/AudioBus';
 import { createPhaserGame } from '@game/phaserGame';
+import type { GameScene } from '@game/scenes/GameScene';
 import { InputManager } from '@input/InputManager';
 import { entropySeed, isTouchDevice } from '@platform/env';
 import { copyToClipboard, downloadText, pickTextFile } from '@platform/exporter';
@@ -66,6 +67,9 @@ export class App {
     this.input.attach(window);
     this.input.onPause = () => this.togglePause();
     this.audio.attachUnlock();
+
+    // Modal keyboard shortcuts (ESC/ENTER) are ignored while a screen is layered on top.
+    this.modals.keyGuard = () => !this.screens.visible;
 
     this.modals.onOpenChange = (open) => {
       this.input.gameFocus = !open && !this.screens.visible;
@@ -209,6 +213,24 @@ export class App {
     this.touch.setVisible(
       this.host !== null && (touchMode === 'on' || (touchMode === 'auto' && isTouchDevice())),
     );
+    this.touch.setLayout(String(fx.touchLayout) === 'left' ? 'left' : 'right');
+
+    // HUD-side QoL (independent of the Phaser scene).
+    this.hud.setSpeedrunTimer(Boolean(fx.speedrunTimer));
+    this.hud.setMinimap(Boolean(fx.minimap));
+
+    // Push live FX into the running play field (if any).
+    const scene = this.phaser?.scene?.isActive('game')
+      ? (this.phaser.scene.getScene('game') as GameScene | null)
+      : null;
+    scene?.applyFx({
+      screenShake: Boolean(fx.screenShake),
+      gasHint: Boolean(fx.gasShimmerHint),
+      fxFull: fx.fxDensity !== 'reduced',
+      damageFlash: Boolean(fx.damageFlash),
+      pixelPerfect: Boolean(fx.pixelPerfect),
+      oreGlyphs: Boolean(fx.oreGlyphs),
+    });
   }
 
   // ---------- run lifecycle ----------
@@ -245,6 +267,9 @@ export class App {
         screenShake: Boolean(this.fx.screenShake),
         gasHint: Boolean(this.fx.gasShimmerHint),
         fxFull: this.fx.fxDensity !== 'reduced',
+        damageFlash: Boolean(this.fx.damageFlash),
+        pixelPerfect: Boolean(this.fx.pixelPerfect),
+        oreGlyphs: Boolean(this.fx.oreGlyphs),
       });
 
       // HUD refresh loop (display-rate, cheap).

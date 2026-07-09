@@ -86,6 +86,37 @@
   opacity: 0.8;
   text-shadow: 1px 1px 0 #000;
 }
+.hud-timer {
+  display: block;
+  font-size: calc(var(--px) * 11px);
+  color: var(--c-text);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 1px 1px 0 #000;
+  opacity: 0.9;
+}
+.hud-timer.hidden {
+  display: none;
+}
+
+/* Depth minimap — pinned to the right edge, below the HUD row. */
+.hud-minimap {
+  position: absolute;
+  top: calc(var(--px) * 60px);
+  right: calc(var(--px) * 8px);
+  padding: calc(var(--px) * 2px);
+  background: #140c1ccc;
+  border: 1px solid var(--c-panel2);
+  pointer-events: none;
+}
+.hud-minimap.hidden {
+  display: none;
+}
+.minimap-canvas {
+  display: block;
+  width: calc(var(--px) * 54px);
+  height: calc(var(--px) * 200px);
+  image-rendering: pixelated;
+}
 .hud-right {
   display: flex;
   flex-direction: column;

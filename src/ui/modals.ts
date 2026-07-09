@@ -26,11 +26,40 @@ import { el } from './reactive';
 export class ModalManager {
   private stack: HTMLElement[] = [];
   onOpenChange: ((open: boolean) => void) | null = null;
+  /** When set and returning false, keyboard shortcuts are ignored (e.g. a screen is layered on top). */
+  keyGuard: (() => boolean) | null = null;
 
-  constructor(private layer: HTMLElement) {}
+  constructor(private layer: HTMLElement) {
+    // Capture phase: must run BEFORE InputManager's window listener, and swallow the
+    // event — closing a modal re-enables gameFocus synchronously, so the same keydown
+    // would otherwise fall through and re-open the pause menu (Esc) or re-trigger the
+    // building interact (Enter).
+    window.addEventListener('keydown', (e) => this.onKey(e), true);
+  }
 
   get isOpen(): boolean {
     return this.stack.length > 0;
+  }
+
+  /**
+   * ESC dismisses (clicks the top dialog's [data-cancel] button, if any);
+   * ENTER fires the obvious primary action then closes ("act then close").
+   */
+  private onKey(e: KeyboardEvent): void {
+    if (!this.isOpen || (this.keyGuard && !this.keyGuard())) return;
+    if (e.key !== 'Escape' && e.key !== 'Enter') return;
+    e.preventDefault();
+    e.stopImmediatePropagation(); // the modal owns this key; nothing downstream may see it
+    const top = this.stack[this.stack.length - 1];
+    if (e.key === 'Escape') {
+      top.querySelector<HTMLElement>('[data-cancel]')?.click();
+    } else {
+      const primary = top.querySelector<HTMLButtonElement>('.btn.primary:not(.disabled)');
+      if (!primary) return; // no obvious action (e.g. the outfitter) — do nothing
+      primary.click();
+      // If the primary didn't already close its own modal, close it now (act-then-close).
+      if (this.stack[this.stack.length - 1] === top) this.close();
+    }
   }
 
   open(content: HTMLElement): void {
@@ -54,7 +83,7 @@ const dialog = (title: string, body: HTMLElement, footer: HTMLElement): HTMLElem
   el('div', { class: 'dialog' }, el('h2', { class: 'dialog-title', text: title }), body, footer);
 
 const exitBtn = (m: ModalManager, label = t('uiExit')): HTMLElement =>
-  el('button', { class: 'btn', onclick: () => m.close() }, label);
+  el('button', { class: 'btn', 'data-cancel': 'true', onclick: () => m.close() }, label);
 
 export function openBuilding(
   m: ModalManager,
@@ -297,6 +326,7 @@ export function openTransmission(
     'button',
     {
       class: 'btn primary',
+      'data-cancel': 'true',
       onclick: () => {
         clearInterval(iv);
         m.close();
@@ -329,6 +359,7 @@ export function openPause(
           'button',
           {
             class: 'btn primary',
+            'data-cancel': 'true',
             onclick: () => {
               m.close();
               onResume();

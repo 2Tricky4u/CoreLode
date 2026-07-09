@@ -9,6 +9,9 @@ import {
   TILE_PX,
   WORLD_H,
   WORLD_W,
+  getTile,
+  isArtifact,
+  isMineral,
   podDepthFt,
   saleValue,
 } from '@core/index';
@@ -32,6 +35,19 @@ const bandAt = (rowY: number): number =>
 
 const LIGHT_W = 275; // half-res light buffer, scaled ×2 over a 550×400 view
 const LIGHT_H = 200;
+
+/** Colour-blind mineral markers, indexed by tile id − 6 (Tile.MineralFirst); artifacts share ✦. */
+const ORE_GLYPHS = ['Fe', 'Bz', 'Ag', 'Au', 'Pt', 'Es', 'Em', 'Ru', 'Di', 'Az', '✦', '✦', '✦', '✦'];
+
+/** Live-tunable presentation options (mirrors the QoL settings that affect the play field). */
+export interface FxOptions {
+  screenShake: boolean;
+  gasHint: boolean;
+  fxFull: boolean;
+  damageFlash: boolean;
+  pixelPerfect: boolean;
+  oreGlyphs: boolean;
+}
 
 export class GameScene extends Phaser.Scene {
   private host!: GameHost;
@@ -59,6 +75,11 @@ export class GameScene extends Phaser.Scene {
   private guardianSprite: Phaser.GameObjects.Sprite | null = null;
   private guardianHalo: Phaser.GameObjects.Image | null = null;
   private screenShake = true;
+  private damageFlash = true;
+  private pixelPerfect = true;
+  private oreGlyphs = false;
+  /** Viewport-culled colour-blind glyph pool for on-screen minerals. */
+  private glyphs: Phaser.GameObjects.Text[] = [];
   private emberTimer = 0;
   private audioTimer = 0;
 
@@ -72,11 +93,35 @@ export class GameScene extends Phaser.Scene {
     screenShake: boolean;
     gasHint: boolean;
     fxFull?: boolean;
+    damageFlash?: boolean;
+    pixelPerfect?: boolean;
+    oreGlyphs?: boolean;
   }): void {
     this.host = data.host;
     this.audio = data.audio;
     this.screenShake = data.screenShake;
     this.fxFull = data.fxFull ?? true;
+    this.damageFlash = data.damageFlash ?? true;
+    this.pixelPerfect = data.pixelPerfect ?? true;
+    this.oreGlyphs = data.oreGlyphs ?? false;
+  }
+
+  /** Push live QoL/FX changes into the running scene (called by App.applySettings). */
+  applyFx(opts: FxOptions): void {
+    this.screenShake = opts.screenShake;
+    this.fxFull = opts.fxFull;
+    this.damageFlash = opts.damageFlash;
+    this.oreGlyphs = opts.oreGlyphs;
+    this.tiles?.setGasHint(opts.gasHint);
+    this.setPixelPerfect(opts.pixelPerfect);
+    if (!opts.oreGlyphs) for (const g of this.glyphs) g.setVisible(false);
+  }
+
+  private setPixelPerfect(on: boolean): void {
+    this.pixelPerfect = on;
+    this.cameras.main?.setRoundPixels(on);
+    // The Phaser texture filter is fixed at boot; rounding responds live.
+    if (this.game.canvas) this.game.canvas.style.imageRendering = on ? 'pixelated' : 'auto';
   }
 
   get state(): GameState {
@@ -90,6 +135,7 @@ export class GameScene extends Phaser.Scene {
 
   create(data: { gasHint: boolean }): void {
     const s = this.state;
+    this.glyphs = []; // scene shutdown destroyed the old pool; drop stale refs
 
     // --- sky gradient (canvas strip, stretched full-screen, behind everything) ---
     const skyTex = this.canvasTex('skyTex', 1, 64);
@@ -225,6 +271,7 @@ export class GameScene extends Phaser.Scene {
     cam.setBounds(0, -100_000 * 4, WORLD_W * TILE_PX, 100_000 * 4 + WORLD_H * TILE_PX);
     cam.startFollow(this.pod.sprite, false, 0.12, 0.12);
     cam.setBackgroundColor(0x140c1c);
+    this.setPixelPerfect(this.pixelPerfect);
 
     this.host.onEvent((e) => this.onSimEvent(e));
   }
@@ -492,16 +539,56 @@ export class GameScene extends Phaser.Scene {
       this.audio.ambience.update(depth, lavaNear, driving);
     }
 
-    // Damage vignette decay.
+    // Damage vignette decay — the red flash is owned by the damageFlash toggle.
     if (this.vignetteAlpha > 0) {
       this.vignetteAlpha = Math.max(0, this.vignetteAlpha - dtMs / 700);
-      this.vignette.setAlpha(
-        this.screenShake ? this.vignetteAlpha : Math.min(this.vignetteAlpha, 0.35),
-      );
+      this.vignette.setAlpha(this.damageFlash ? this.vignetteAlpha : 0);
     }
 
+    this.updateGlyphs();
     this.drawSky(depth);
     this.drawLight(depth, darkness);
+  }
+
+  /** Colour-blind ore glyphs: pooled labels over on-screen minerals only. */
+  private updateGlyphs(): void {
+    if (!this.oreGlyphs) return; // pool is hidden by applyFx when toggled off
+    const cam = this.cameras.main;
+    const x0 = Math.max(0, Math.floor(cam.scrollX / TILE_PX));
+    const x1 = Math.min(WORLD_W - 1, Math.ceil((cam.scrollX + cam.width) / TILE_PX));
+    const y0 = Math.max(0, Math.floor(cam.scrollY / TILE_PX));
+    const y1 = Math.min(WORLD_H - 1, Math.ceil((cam.scrollY + cam.height) / TILE_PX));
+    let n = 0;
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const t = getTile(this.state.world, x, y);
+        if (!isMineral(t) && !isArtifact(t)) continue;
+        const g = this.glyphAt(n++);
+        g.setText(ORE_GLYPHS[t - 6] ?? '✦');
+        g.setPosition(x * TILE_PX + TILE_PX / 2, y * TILE_PX + TILE_PX / 2);
+        g.setVisible(true);
+      }
+    }
+    for (let i = n; i < this.glyphs.length; i++) this.glyphs[i].setVisible(false);
+  }
+
+  private glyphAt(i: number): Phaser.GameObjects.Text {
+    let g = this.glyphs[i];
+    if (!g) {
+      g = this.add
+        .text(0, 0, '', {
+          fontFamily: 'Courier New, monospace',
+          fontSize: '13px',
+          fontStyle: 'bold',
+          color: '#140c1c',
+          stroke: '#ffffff',
+          strokeThickness: 3,
+        })
+        .setOrigin(0.5)
+        .setDepth(8);
+      this.glyphs[i] = g;
+    }
+    return g;
   }
 
   /** Sky gradient + day/night tint + stars fading in with altitude. */

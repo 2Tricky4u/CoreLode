@@ -45,4 +45,9 @@ export class TouchControls {
   setVisible(on: boolean): void {
     this.node.style.display = on ? '' : 'none';
   }
+
+  setLayout(layout: 'left' | 'right'): void {
+    this.node.classList.remove('layout-left', 'layout-right');
+    this.node.classList.add(`layout-${layout}`);
+  }
 }
