@@ -1,0 +1,113 @@
+.screen-layer {
+  z-index: 30;
+}
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at 50% 30%, #45283c 0%, #140c1c 70%);
+  overflow-y: auto;
+}
+.title-screen {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+}
+.game-title {
+  font-size: clamp(38px, 9vw, 84px);
+  color: var(--c-gold);
+  letter-spacing: 6px;
+  text-shadow: 4px 4px 0 var(--c-accent), 8px 8px 0 #000;
+}
+.tagline {
+  color: var(--c-text);
+  opacity: 0.85;
+}
+.menu {
+  min-width: 260px;
+}
+.menu .btn {
+  font-size: 16px;
+  padding: 12px;
+}
+.credits {
+  font-size: 11px;
+  opacity: 0.5;
+  max-width: 420px;
+}
+.panel {
+  background: var(--c-panel);
+  border: 3px solid var(--c-panel2);
+  padding: 18px 22px;
+  min-width: min(560px, 94vw);
+  max-width: 94vw;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+.panel h2 {
+  color: var(--c-gold);
+  margin-bottom: 10px;
+}
+.slot-list,
+.challenge-list,
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.slot,
+.challenge-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  background: #00000033;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+.slot.empty {
+  opacity: 0.5;
+}
+.slot-actions {
+  display: flex;
+  gap: 4px;
+}
+.ch-info {
+  display: flex;
+  flex-direction: column;
+}
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 5px 8px;
+  background: #00000033;
+  font-size: 13px;
+}
+.setting-row.fidelity {
+  border-left: 3px solid var(--c-accent);
+}
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  border-bottom: 1px dashed var(--c-panel2);
+  font-size: 13px;
+}
+.epilogue,
+.ngplus {
+  white-space: pre-wrap;
+  color: var(--c-gold);
+  margin: 8px 0;
+  font-size: 13px;
+}
+.reward {
+  color: var(--c-good);
+  font-weight: bold;
+}

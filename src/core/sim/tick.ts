@@ -1,0 +1,132 @@
+/**
+ * The fixed 42 Hz tick pipeline — the entire system order lives here.
+ * The host must not call tick() while paused (modals/menus own that gate).
+ */
+import { BUILDINGS } from '../data/buildings';
+import { SURFACE_ROW, TILE_PX } from '../data/constants';
+import type { EventSink } from '../events';
+import type { IntentFrame } from '../intents';
+import { stepBoss } from './boss';
+import { stepDrilling } from './drilling';
+import { stepCharges } from './explosives';
+import { tryUseItem } from './items';
+import { stepPhysics } from './physics';
+import { stepScripted } from './scripted';
+import { type GameState, bayContentsCount, challengeDef, podDepthFt, podTileX } from './state';
+
+export function tick(s: GameState, input: IntentFrame, out: EventSink): void {
+  if (s.outcome !== 'active') return;
+  s.tick++;
+  s.stats.ticks++;
+  const p = s.pod;
+
+  // 1. snapshot for render interpolation
+  p.prevX = p.x;
+  p.prevY = p.y;
+  if (s.boss) {
+    s.boss.prevX = s.boss.x;
+    s.boss.prevY = s.boss.y;
+  }
+
+  // 2. timers
+  if (p.itemCooldown > 0) p.itemCooldown--;
+  if (p.itemLock > 0) p.itemLock--;
+  if (p.lavaLatch > 0) p.lavaLatch--;
+
+  // 3. item use (edge intent)
+  if (input.useItem) tryUseItem(s, input.useItem, out);
+
+  // 4. drilling (owns movement during a dig) then free movement
+  stepDrilling(s, input, out);
+  if (p.mode !== 'dig') stepPhysics(s, input, out);
+
+  // 5. placed charges
+  stepCharges(s, out);
+
+  // 6. surface buildings (grounded on the surface row, latched per visit)
+  const onSurface = p.mode === 'ground' && Math.abs(p.y + 21 - SURFACE_ROW * TILE_PX) < 6;
+  if (onSurface) {
+    const col = podTileX(p);
+    const b = BUILDINGS.find((bd) => col >= bd.colStart && col <= bd.colEnd) ?? null;
+    if (b && p.buildingLatch !== b.id) {
+      p.buildingLatch = b.id;
+      out.push({ t: 'enterBuilding', id: b.id });
+    } else if (!b) {
+      p.buildingLatch = null;
+    }
+  } else if (p.mode !== 'ground') {
+    p.buildingLatch = null;
+  }
+
+  // 7. scripted events (transmissions, eggs, quakes)
+  stepScripted(s, out);
+
+  // 8. boss (arena only)
+  stepBoss(s, out);
+
+  // 9. death conditions
+  if (s.outcome === 'active') {
+    if (p.hp <= 0) {
+      s.outcome = 'destroyed';
+      out.push({ t: 'podExploded', cause: 'hull' });
+    } else if (p.fuel <= 0 && p.mode !== 'ground') {
+      // out of fuel airborne/digging → the pod is lost (authentic: explosion)
+      s.outcome = 'destroyed';
+      out.push({ t: 'podExploded', cause: 'fuel' });
+    } else if (p.fuel <= 0 && p.mode === 'ground' && podDepthFt(p) < -1) {
+      // stranded underground with a dry tank → also lost
+      s.outcome = 'destroyed';
+      out.push({ t: 'podExploded', cause: 'fuel' });
+    }
+    if (p.fuel > 0 && p.fuel < 2) out.push({ t: 'fuelLow' });
+  }
+
+  // 10. challenge objectives / timer
+  stepChallenge(s, out);
+}
+
+function stepChallenge(s: GameState, out: EventSink): void {
+  const ch = challengeDef(s);
+  if (!ch || s.outcome !== 'active') return;
+
+  if (s.tick >= s.challengeEndTick) {
+    s.outcome = 'challengeLost';
+    out.push({ t: 'challengeResult', win: false, elapsedTicks: s.tick });
+    return;
+  }
+
+  const o = ch.objective;
+  let win = false;
+  switch (o.kind) {
+    case 'earnCash':
+      win = s.pod.cash >= o.amount;
+      break;
+    case 'reachDepthFt':
+      win = s.story.maxDepthFt <= o.ft;
+      break;
+    case 'collectMineral':
+      win =
+        bayContentsCount(s.pod, o.collectibleId) + (s.stats.soldCount[o.collectibleId] ?? 0) >=
+        o.count;
+      break;
+    case 'destroyStones':
+      win = s.stats.stonesDestroyed >= o.count;
+      break;
+    case 'collectNoDamage':
+      win = s.stats.damageTaken === 0 && s.stats.collectedTotal >= o.count;
+      break;
+    case 'haulMassInOneTrip':
+      win = s.stats.biggestSaleMass >= o.mass;
+      break;
+    case 'reachExit':
+      win = s.stats.exitReached;
+      break;
+    case 'sellMineral':
+      win = s.stats.soldCount[o.collectibleId] > 0;
+      break;
+  }
+  if (win) {
+    s.outcome = 'challengeWon';
+    out.push({ t: 'challengeResult', win: true, elapsedTicks: s.tick });
+  }
+}

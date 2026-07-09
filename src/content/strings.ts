@@ -1,0 +1,265 @@
+/**
+ * ALL display text — the clean-room content pack. Mechanics reference these by
+ * key only, so the entire fiction is swappable in this one file.
+ * Wordplay: Mr. Nomed = "demon" reversed (the original used Natas/Satan);
+ * NEVAEH = "heaven" reversed (original: Mr. Dog/God).
+ */
+
+export const STRINGS: Record<string, string> = {
+  // --- meta ---
+  title: 'CORELODE',
+  tagline: 'Dig deep. Get rich. Read your contract.',
+
+  // --- minerals & artifacts ---
+  ferrite: 'Ferrite',
+  bronzite: 'Bronzite',
+  argentite: 'Argentite',
+  aurite: 'Aurite',
+  platinite: 'Platinite',
+  einsteinium: 'Einsteinium',
+  emerald: 'Emerald',
+  ruby: 'Ruby',
+  diamond: 'Diamond',
+  amazonite: 'Amazonite',
+  fossil: 'Saurian Fossil',
+  cache: "Prospector's Cache",
+  xenoSkeleton: 'Xeno Skeleton',
+  sacredIdol: 'Sacred Idol',
+  tyrantSuit: "Mr. Nomed's Tailored Suit",
+  tyrantStaff: "Mr. Nomed's Obsidian Cane",
+  tyrantMonocle: "Mr. Nomed's Laser Monocle",
+  tyrantHooves: "the Tyrant's Hooves",
+  tyrantHorns: "the Tyrant's Horns",
+  tyrantEyeR: "the Tyrant's Ember Eye (right)",
+  tyrantEyeL: "the Tyrant's Ember Eye (left)",
+  tyrantBoiler: "the Tyrant's Furnace Heart",
+  peaceReward: 'Martian Reward for Restoring Peace',
+  natasShares: '250,000 Shares of Nomed Industries',
+
+  // --- upgrades (name grid) ---
+  drill0: 'Stock Bit',
+  drill1: 'Argent Bit',
+  drill2: 'Aurite Bit',
+  drill3: 'Emerald Bit',
+  drill4: 'Ruby Bit',
+  drill5: 'Diamond Bit',
+  drill6: 'Amazonite Bit',
+  hull0: 'Stock Hull',
+  hull1: 'Ferrite Hull',
+  hull2: 'Bronzite Hull',
+  hull3: 'Forged-Steel Hull',
+  hull4: 'Platinite Hull',
+  hull5: 'Einsteinium Hull',
+  hull6: 'Field-Shielded Hull',
+  engine0: 'Stock Engine',
+  engine1: 'Twin-Piston 1.6L',
+  engine2: 'Turbo 2.0L',
+  engine3: 'Hexad 3.8L',
+  engine4: 'Supercharged 5.0L',
+  engine5: 'Duodec 6.0L',
+  engine6: 'Meteor-16 Racing Engine',
+  fuelTank0: 'Micro Tank',
+  fuelTank1: 'Standard Tank',
+  fuelTank2: 'Big Tank',
+  fuelTank3: 'Grand Tank',
+  fuelTank4: 'Colossal Tank',
+  fuelTank5: 'Behemoth Tank',
+  fuelTank6: 'Compression Cistern',
+  radiator0: 'Stock Fan',
+  radiator1: 'Twin Fans',
+  radiator2: 'Mono Turbine',
+  radiator3: 'Twin Turbines',
+  radiator4: 'Cryonic Cooler',
+  radiator5: 'Tri-Turbine Cryo Array',
+  bay0: 'Micro Hold',
+  bay1: 'Standard Hold',
+  bay2: 'Big Hold',
+  bay3: 'Grand Hold',
+  bay4: 'Colossal Hold',
+  bay5: 'Behemoth Hold',
+
+  // --- blueprints (Goldium relic schematics) ---
+  bpFractalDrill: 'Fractal Bit',
+  bpPhoenixHull: 'Phoenix Hull',
+  bpSlipstream: 'Slipstream Engine',
+  bpSiphonTank: 'Siphon Tank',
+  bpMagmaTap: 'Magma Tap',
+  bpSingularity: 'Pocket Singularity',
+  bpFound: 'RELIC SCHEMATIC RECOVERED',
+
+  // --- items ---
+  itemReserveFuel: 'Reserve Fuel Cell',
+  itemReserveFuelDesc:
+    'Portable backup — injects up to 25 liters straight into the main tank. Usable anywhere.',
+  itemNanoWelders: 'Nano-Welders',
+  itemNanoWeldersDesc:
+    'A swarm of hull-crawling welders. Repairs up to 30 damage — anytime, anywhere.',
+  itemDynamite: 'Dynamite',
+  itemDynamiteDesc:
+    'Blasts a small area clear around your rig. Destroys embedded minerals too — aim before you light.',
+  itemPlastique: 'Plastic Explosive',
+  itemPlastiqueDesc:
+    'An enormous blast that clears a large area around your rig. Minerals in range are vaporized.',
+  itemDiscountTeleporter: 'Discount Teleporter',
+  itemDiscountTeleporterDesc:
+    'Flings you somewhere above the surface. The warranty card is blank. (Results may vary.)',
+  itemPriorityTransporter: 'Priority Transporter',
+  itemPriorityTransporterDesc:
+    'Safely and accurately returns you above ground. Keep arms and legs inside the rig.',
+  itemCoreTeleporter: 'Core Teleporter',
+  itemCoreTeleporterDesc: "Teleports you directly to the planet's core. Why does this exist?",
+
+  // --- buildings ---
+  bldFuel: 'Fuel-O-Tron 3000',
+  bldProcessor: 'SmeltMax 5000',
+  bldOutfitter: 'PodWerks 9000',
+  bldItemShop: 'Fix-Rite 2200',
+  bldSaveStation: 'SaveMate 64',
+  bldFuelBlurb: 'Pump the good stuff. $1 per liter.',
+  bldProcessorBlurb: 'One button. Whole hold. Instant money.',
+  bldOutfitterBlurb: 'Six ways to make the rig less disappointing.',
+  bldItemShopBlurb: 'Consumables and hull repair ($15 per point).',
+  bldSaveBlurb: 'Quantum-state your progress. No refunds on regret.',
+
+  // --- speakers ---
+  spkEmployer: 'MR. NOMED',
+  spkRig7: 'Rig 7 — Op. Halvorsen',
+  spkRig9: 'Rig 9 — Op. Voss',
+  spkUnknown: 'UNKNOWN RIG',
+  spkOpenChannel: 'OPEN CHANNEL',
+  spkDispatch: 'DISPATCH (AUTO)',
+  spkNoCallerId: '(no caller ID)',
+  spkDeity: 'NEVAEH',
+
+  // --- transmissions (14 beats, authentic depths; fully rewritten prose) ---
+  txStart:
+    "Rig 13, is it? Welcome to Nomed Industries, Martian Division.\n\nSmall wrinkle: we forgot to fuel you on the drop. The Fuel-O-Tron is to your LEFT — fill her up.\n\nDecent miners have been… hard to keep, since the strange activity started. That's why I pay premium rates for everything shiny you haul out of this dust. Mind your fuel, mind your hull — and dig DEEP. The best of everything is at the bottom.",
+  tx500:
+    "Five hundred feet on your first tour! You're adapting to the Martian soil beautifully.\n\nA little something extra is on your account. Call it an appetite— excuse me. An *appetizer*.",
+  tx1000:
+    "A thousand feet — I've wired you a proper bonus for that.\n\nOur instruments are picking up heavy vibrations from the planet core. They seem to be causing tremors… and some garbled, misdirected transmissions. Ignore them. Keep up the good work!",
+  tx1750:
+    '—repeat, DO NOT run your floodlights— they open when the light hits them— the eyes— oh god, THE EYES—\n\n[SIGNAL LOST]',
+  tx2100:
+    "New blood on the band! Halvorsen, Rig 7. Only miner who hasn't disappeared around here in three years, which makes me either lucky or overdue.\n\nOne more week and I retire rich to the moons of Jupiter — me, the wife, our three girls. Stick near the caverns, kid. And don't trust a bonus you didn't earn.",
+  tx2500:
+    "Is anyone there?! I need help — I can't feel my legs—\n\noh no. He's coming back. HE'S COMING BACK—\n\n[CHANNEL CLOSED BY DISPATCH]",
+  tx3100:
+    "How are you making out, kid? Free tip from an old rig: don't neglect your radiator. Kissed a magma pocket an hour ago — twin turbines drank the heat like it was lemonade. Barely scratched the paint. Probably saved my life.",
+  tx3500:
+    "Once again, congratulations — you've gone farther than even I anticipated. Another bonus, enclosed. The dead spend nothing, so stay careful:\n\nbelow 4,700 feet the ground EXHALES. Vapor pockets. Invisible. Corrosive. I'm told *excruciating*.\n\nOne more thing — your altimeter is only rated to about 6,000 feet. Past that, turn back. Really. It's just too dangerous.",
+  tx4100:
+    "Trapped… in a crevasse. Quake snapped my drill and the tank's dry.\n\nThis is probably my last transmission. Tell my girls I— \n\nwait. What? YOU!? What are you doing down—AAARGH!\n\n[SIGNAL LOST]",
+  tx4500:
+    "OH BABY!!! THIS IS IT! THE CORE LODE!!! I'm parked on it — one seam, wide as a canyon, and it GLOWS— I'm rich, I'm FILTHY rich!! Drinks are on Voss, forever—\n\nhey. What the— NO. IT CAN'T BE—\n\n[SIGNAL LOST]",
+  tx6200: 'RIG 13. You are in violation of the terms of your employment. TURN BACK IMMEDIATELY.',
+  tx7000:
+    'Return to the surface this instant, or you will be terminated…\n\ner. As in FIRED. Obviously.',
+  txBossIntro:
+    "So. The little digger kept digging.\n\nThere was never an office upstairs, Rig 13. Your paychecks came from BELOW. I have worn a thousand names in a thousand ledgers — tonight you may use the one on your contract: NOMED.\n\nThe core lode is mine. It has ALWAYS been mine. I told you to turn back. Now I'll take my machine, my money, and your pathetic little life.\n\nSEE YOU AT THE BOTTOM!!",
+  txBossForm2:
+    'Hahh… HA! You scratch deeper than the last thousand contractors put together.\n\nVery well. Let us do away with the SUIT.\n\nBEHOLD MY TRUE FORM!!!',
+  txVictory:
+    "Enough… ENOUGH! Take it, then — the lode, the crown, the daylight. Take it ALL, you magnificent little machine.\n\nBested by a leased mining rig… I, sovereign of every wicked thing that crawls or contracts!\n\n…There's a management position waiting whenever you tire of the sun, Rig 13. Everyone signs with me twice.",
+
+  // --- sky easter eggs ---
+  egg5000:
+    'Altitude bonus request… approved? Nobody has ever filed one of these. Legal says pay it.\n\nPlease come down.',
+  egg10000: 'Someone up here likes you.',
+  egg100000:
+    'MORTAL. THOU HAST FLOWN AN HUNDRED THOUSAND FEET STRAIGHT UPWARD IN A RENTED MINING POD.\n\nVERILY — FIND THEE A HOBBY.\n\n(with love, NEVAEH)',
+
+  // --- endings / meta screens ---
+  epilogue:
+    'The seam is yours. The crown is heavy.\n\nPursuant to clause 66, all assets of Nomed Industries transfer to the bearer of the contract.\n\n— CONTRACT COMPLETE —',
+  ngPlusPrompt: 'Sign another tour? The pay is worse. The glory is doubled.',
+  gameOverTitle: 'RIG LOST',
+  gameOverHull: 'Hull integrity failed. The dust keeps what it takes.',
+  gameOverFuel: 'Dry tank. Nobody is coming this deep.',
+  loadLastSave: 'Load last save',
+  backToTitle: 'Back to title',
+  newGame: 'New Contract',
+  continueGame: 'Continue',
+  challenges: 'Proving Grounds',
+  settings: 'Settings',
+  credits: 'A clean-room homage to the 2004 mining classic. All-new code, art, audio, and words.',
+
+  // --- challenge names/blurbs ---
+  ch1: 'Payday Sprint',
+  ch1Blurb: 'Earn $5,000 in three minutes. Stock rig, no excuses.',
+  ch2: 'Down in Two',
+  ch2Blurb: 'Reach −1,000 ft in two minutes.',
+  ch3: 'Fumes',
+  ch3Blurb: 'Reach −750 ft on a single stock tank. No refueling.',
+  ch4: 'Glass Cannonball',
+  ch4Blurb: 'Collect 15 minerals without taking a single point of damage.',
+  ch5: 'Demolition Permit',
+  ch5Blurb: 'Destroy 20 stones with the supplied explosives.',
+  ch6: 'Argent Rush',
+  ch6Blurb: 'Collect 10 Argentite before the clock runs out.',
+  ch7: 'Hot Feet',
+  ch7Blurb: 'Cross the lava shelf and tag the beacon.',
+  ch8: 'Hold Your Breath',
+  ch8Blurb: 'Descend through the gas belt to −5,250 ft and live.',
+  ch9: 'Aurite Fever',
+  ch9Blurb: 'Fill a 40-unit hold with Aurite only.',
+  ch10: 'No Way Home',
+  ch10Blurb: 'Reach −2,500 ft. Teleporters confiscated.',
+  ch11: 'Heavy Lifter',
+  ch11Blurb: 'Deliver 500 units of ore mass in a single sale.',
+  ch12: 'Bottom Feeder',
+  ch12Blurb: 'Sell one Amazonite. The rig is maxed; the planet is not amused.',
+  maze1: 'The Wormworks',
+  maze1Blurb: 'A drill-proof labyrinth. Find the beacon.',
+  maze2: 'Magma Veins',
+  maze2Blurb: 'The walls sweat fire. Find the beacon.',
+  maze3: 'The Vault',
+  maze3Blurb: 'Gas, drops, and dead ends. Find the beacon.',
+  chReward: 'All trials complete — the FRACTAL BIT schematic is yours.',
+
+  // --- settings labels ---
+  setMusicVol: 'Music volume',
+  setSfxVol: 'SFX volume',
+  setScreenShake: 'Screen shake',
+  setDamageFlash: 'Damage flash',
+  setPixelPerfect: 'Pixel-perfect scaling',
+  setTouchControls: 'Touch controls',
+  setTouchLayout: 'Touch layout',
+  setAutosave: 'Autosave on surfacing (QoL)',
+  setMinimap: 'Minimap (QoL)',
+  setSpeedrunTimer: 'Speedrun timer (QoL)',
+  setOreGlyphs: 'Colorblind ore glyphs (QoL)',
+  setGasShimmer: 'Gas shimmer hint (QoL)',
+  setSeededRuns: 'Seeded runs (QoL)',
+  setPuristMode: 'PURIST MODE (forces all QoL off)',
+
+  // --- HUD / UI ---
+  hudFuel: 'FUEL',
+  hudHull: 'HULL',
+  hudCargo: 'CARGO',
+  hudCash: '$',
+  hudDepth: 'ft.',
+  uiBuy: 'Buy',
+  uiSell: 'Sell Everything',
+  uiFill: 'Fill Tank',
+  uiRepairFull: 'Full Repair',
+  uiExit: 'Exit',
+  uiSave: 'Save Game',
+  uiSaved: 'Game saved.',
+  uiLoad: 'Load',
+  uiDelete: 'Delete',
+  uiExport: 'Export',
+  uiImport: 'Import',
+  uiEmptySlot: '— empty slot —',
+  uiConfirm: 'OK',
+  uiCargoFull: 'CARGO HOLD FULL!',
+  uiJettisonHint: 'Click cargo to jettison',
+  uiPaused: 'PAUSED',
+  uiResume: 'Resume',
+  uiQuit: 'Quit to title',
+  uiNoPauseArena: 'No pausing in the deep.',
+  uiScore: 'SCORE',
+  uiStats: 'Contract Statistics',
+};
+
+export const t = (key: string): string => STRINGS[key] ?? key;

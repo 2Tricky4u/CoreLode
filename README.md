@@ -1,0 +1,52 @@
+# CORELODE
+
+*Dig deep. Get rich. Read your contract.*
+
+A **clean-room, browser-only remake** of the 2004 Flash mining classic — identical mechanics
+and numbers, all-new code, art, audio, and words. TypeScript + Phaser 3, no server, no plugins.
+
+## Play / develop
+
+```bash
+npm install
+npm run dev        # → http://localhost:5173
+npm test           # 52 sim tests incl. the encoded canonical ruleset
+npm run build      # atlas → typecheck → production bundle in dist/
+npm run preview    # serve the production build
+```
+
+Deploy: any static host (GitHub/GitLab Pages — set `BASE_PATH=/repo-name/` when building).
+
+## Controls
+
+Arrows / WASD — move, fly (up), and drill (down/left/right; you can never drill upward;
+sideways only from a standstill). Items: **F** fuel cell · **R** nano-welders · **X** dynamite ·
+**C** plastic explosive · **Q** discount teleporter · **M** priority transporter. Esc/P pauses
+(not in the deep). Touch controls and gamepads are supported.
+
+## Fidelity
+
+The entire ruleset was recovered from the original game's bytecode and encoded as data +
+CI-gated tests — see `docs/calibration.md` for every constant and its provenance
+(42 Hz sim, 36×600 world, exact worldgen algorithm, physics integrator, fall-damage rule,
+fuel-burn formulas, the full transmission schedule, boss tables, NG+ scaling, even the
+undocumented earthquake mechanic and boss loot). Values not recoverable are marked `CAL()`
+and tuned against the Ruffle-hosted original (`docs/fidelity-checklist.md`).
+
+Quality-of-life extras (autosave, minimap, colorblind glyphs, seeded runs, speedrun timer)
+all default **OFF**; Purist Mode force-disables them.
+
+## Architecture
+
+- `src/core/` — the whole game as pure TypeScript (zero Phaser/DOM; CI-enforced by
+  `tools/check-layering.mjs`). Fixed 42 Hz tick, typed events out, commands in.
+- `src/game/` — thin Phaser 3 presentation (tilemap, sprites, camera, ZzFX audio).
+- `src/ui/` — DOM overlay (HUD, shops, transmissions, screens); no framework.
+- `src/content/strings.ts` — every name and line of dialog (the clean-room content pack).
+- `tools/gen-art.mjs` — procedural DB32 pixel-art atlas generator (no binary assets in git).
+
+## License notes
+
+Original code/art/text throughout; SFX are runtime-synthesized (ZzFX). Game mechanics and
+numeric constants are not copyrightable; this project ships no asset, name, or text from the
+2004 original. See `assets/CREDITS.md`.

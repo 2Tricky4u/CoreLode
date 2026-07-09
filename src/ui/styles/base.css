@@ -1,0 +1,124 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+:root {
+  --px: 1;
+  --c-bg: #140c1c;
+  --c-panel: #222034;
+  --c-panel2: #3f3f74;
+  --c-text: #cbdbfc;
+  --c-accent: #df7126;
+  --c-gold: #fbf236;
+  --c-danger: #d95763;
+  --c-good: #6abe30;
+}
+html,
+body {
+  height: 100%;
+  background: var(--c-bg);
+  overflow: hidden;
+  font-family: "Courier New", ui-monospace, monospace;
+  color: var(--c-text);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+#stage {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+#game,
+#game canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+#game canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+#ui {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.layer > * {
+  pointer-events: auto;
+}
+button.btn {
+  font-family: inherit;
+  font-weight: bold;
+  background: var(--c-panel2);
+  color: var(--c-text);
+  border: 2px solid var(--c-text);
+  border-radius: 3px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 14px;
+}
+button.btn:hover {
+  filter: brightness(1.25);
+}
+button.btn.primary {
+  background: var(--c-accent);
+  color: #140c1c;
+  border-color: var(--c-gold);
+}
+button.btn.danger {
+  background: #45283c;
+  border-color: var(--c-danger);
+  color: var(--c-danger);
+}
+button.btn.tiny {
+  padding: 2px 7px;
+  font-size: 12px;
+}
+button.btn.disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 10px;
+}
+.btn-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+.muted {
+  opacity: 0.6;
+}
+.toast-layer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 8vh;
+  gap: 6px;
+  z-index: 40;
+}
+.toast {
+  background: var(--c-panel);
+  border: 2px solid var(--c-gold);
+  color: var(--c-gold);
+  padding: 6px 16px;
+  font-weight: bold;
+  transition: opacity 0.4s;
+}
+.toast.fade {
+  opacity: 0;
+}

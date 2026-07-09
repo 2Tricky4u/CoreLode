@@ -1,0 +1,117 @@
+.hud-layer {
+  z-index: 10;
+}
+.hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 6px 10px;
+  gap: 10px;
+  background: linear-gradient(#140c1cee, #140c1c00);
+  pointer-events: none;
+}
+.hud > * {
+  pointer-events: auto;
+}
+.hud-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 180px;
+}
+.hud-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bar-label {
+  font-size: 10px;
+  width: 44px;
+  letter-spacing: 1px;
+}
+.bar-track {
+  flex: 1;
+  height: 10px;
+  background: #000;
+  border: 1px solid var(--c-panel2);
+}
+.bar-fill {
+  height: 100%;
+  transition: width 0.15s linear;
+}
+.bar-fill.fuel {
+  background: var(--c-gold);
+}
+.bar-fill.hull {
+  background: var(--c-good);
+}
+.bar-fill.cargo {
+  background: var(--c-accent);
+}
+.bar-fill.warn {
+  background: var(--c-danger);
+  animation: blink 0.6s steps(2) infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0.4;
+  }
+}
+.hud-mid {
+  text-align: center;
+  font-weight: bold;
+}
+.hud-depth {
+  font-size: 18px;
+  color: var(--c-gold);
+  display: block;
+}
+.hud-points {
+  font-size: 11px;
+  opacity: 0.8;
+}
+.hud-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.hud-cash {
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--c-good);
+}
+.hotbar {
+  display: flex;
+  gap: 4px;
+}
+.hotbar-btn {
+  width: 34px;
+  height: 34px;
+  background: var(--c-panel);
+  border: 1px solid var(--c-panel2);
+  color: var(--c-text);
+  font-family: inherit;
+  cursor: pointer;
+  position: relative;
+  font-size: 11px;
+}
+.hotbar-btn .hotbar-key {
+  position: absolute;
+  top: 1px;
+  left: 3px;
+  color: var(--c-gold);
+  font-weight: bold;
+}
+.hotbar-btn .hotbar-count {
+  position: absolute;
+  bottom: 1px;
+  right: 3px;
+}
+.hotbar-btn.empty {
+  opacity: 0.35;
+}

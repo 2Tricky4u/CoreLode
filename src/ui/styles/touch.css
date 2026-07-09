@@ -1,0 +1,40 @@
+.touch-controls {
+  position: absolute;
+  bottom: 12px;
+  z-index: 15;
+  opacity: 0.75;
+}
+.touch-controls.layout-right {
+  right: 14px;
+}
+.touch-controls.layout-left {
+  left: 14px;
+}
+.tc-pad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.tc-mid {
+  display: flex;
+  gap: 4px;
+}
+.tc-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  background: var(--c-panel);
+  border: 2px solid var(--c-panel2);
+  color: var(--c-text);
+  font-size: 20px;
+  touch-action: none;
+}
+.tc-btn:active {
+  background: var(--c-accent);
+}
+@media (hover: hover) and (pointer: fine) {
+  .touch-controls.auto-hidden {
+    display: none;
+  }
+}
