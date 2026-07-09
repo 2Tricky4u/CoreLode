@@ -81,8 +81,15 @@ export class ModalManager {
   }
 }
 
-const dialog = (title: string, body: HTMLElement, footer: HTMLElement): HTMLElement =>
-  el('div', { class: 'dialog' }, el('h2', { class: 'dialog-title', text: title }), body, footer);
+/** theme: per-menu mood class (see themes.css) — 't-fuel', 't-smelt', 't-blueprint', … */
+const dialog = (title: string, body: HTMLElement, footer: HTMLElement, theme = ''): HTMLElement =>
+  el(
+    'div',
+    { class: `dialog ${theme}` },
+    el('h2', { class: 'dialog-title', text: title }),
+    body,
+    footer,
+  );
 
 const exitBtn = (m: ModalManager, label = t('uiExit')): HTMLElement =>
   el('button', { class: 'btn', 'data-cancel': 'true', onclick: () => m.close() }, label);
@@ -120,14 +127,30 @@ function statusLine(s: GameState): HTMLElement {
   });
 }
 
+/** The pump's amber LCD: blocky level bar + litres readout. */
+function pumpLcd(s: GameState): HTMLElement {
+  const cap = tankCapacity(s.pod);
+  const cells = 14;
+  const lit = Math.round((s.pod.fuel / cap) * cells);
+  const bar = '▮'.repeat(lit) + '▯'.repeat(Math.max(0, cells - lit));
+  return el(
+    'div',
+    { class: 'pump-lcd' },
+    el('span', { class: 'pump-lcd-label', text: 'FUEL' }),
+    el('span', { class: 'pump-lcd-bar', text: bar }),
+    el('span', { class: 'pump-lcd-val', text: `${s.pod.fuel.toFixed(1)}/${cap}L` }),
+  );
+}
+
 function openFuel(m: ModalManager, s: GameState, command: (c: Command) => void): void {
   const body = el(
     'div',
     { class: 'dialog-body' },
     el('p', { text: t('bldFuelBlurb') }),
+    pumpLcd(s),
     statusLine(s),
   );
-  const buttons = el('div', { class: 'btn-row' });
+  const buttons = el('div', { class: 'btn-row pump-keys' });
   for (const liters of FUEL_BUY_BUTTONS) {
     buttons.append(
       el(
@@ -147,10 +170,15 @@ function openFuel(m: ModalManager, s: GameState, command: (c: Command) => void):
       t('uiFill'),
     ),
   );
-  const dlg = dialog(t('bldFuel'), body, el('div', { class: 'btn-row' }, buttons, exitBtn(m)));
+  const dlg = dialog(
+    t('bldFuel'),
+    body,
+    el('div', { class: 'btn-row' }, buttons, exitBtn(m)),
+    't-fuel',
+  );
   const refresh = (fn: () => void) => {
     fn();
-    body.replaceChildren(el('p', { text: t('bldFuelBlurb') }), statusLine(s));
+    body.replaceChildren(el('p', { text: t('bldFuelBlurb') }), pumpLcd(s), statusLine(s));
   };
   m.open(dlg);
 }
@@ -203,7 +231,14 @@ function openSell(m: ModalManager, s: GameState, command: (c: Command) => void):
     },
     t('uiSell'),
   );
-  m.open(dialog(t('bldProcessor'), body, el('div', { class: 'btn-row' }, sellBtn, exitBtn(m))));
+  m.open(
+    dialog(
+      t('bldProcessor'),
+      body,
+      el('div', { class: 'btn-row' }, sellBtn, exitBtn(m)),
+      't-smelt',
+    ),
+  );
 }
 
 function openUpgrades(m: ModalManager, s: GameState, command: (c: Command) => void): void {
@@ -237,7 +272,9 @@ function openUpgrades(m: ModalManager, s: GameState, command: (c: Command) => vo
     grid.scrollTop = prevScroll; // re-render must not yank the list back to the top
   };
   render();
-  m.open(dialog(t('bldOutfitter'), body, el('div', { class: 'btn-row' }, exitBtn(m))));
+  m.open(
+    dialog(t('bldOutfitter'), body, el('div', { class: 'btn-row' }, exitBtn(m)), 't-blueprint'),
+  );
 }
 
 function openItems(m: ModalManager, s: GameState, command: (c: Command) => void): void {
@@ -287,11 +324,23 @@ function openItems(m: ModalManager, s: GameState, command: (c: Command) => void)
     list.scrollTop = prevScroll; // re-render must not yank the list back to the top
   };
   render();
-  m.open(dialog(t('bldItemShop'), body, el('div', { class: 'btn-row' }, exitBtn(m))));
+  m.open(dialog(t('bldItemShop'), body, el('div', { class: 'btn-row' }, exitBtn(m)), 't-store'));
 }
 
 function openSaveStation(m: ModalManager, onSave: () => void): void {
-  const body = el('div', { class: 'dialog-body' }, el('p', { text: t('bldSaveBlurb') }));
+  const leds = el(
+    'div',
+    { class: 'term-leds' },
+    el('span', { class: 'term-led on' }),
+    el('span', { class: 'term-led amber' }),
+    el('span', { class: 'term-led red' }),
+  );
+  const body = el(
+    'div',
+    { class: 'dialog-body' },
+    leds,
+    el('p', { class: 'term-line', text: `> ${t('bldSaveBlurb')}` }),
+  );
   const save = el(
     'button',
     {
@@ -303,7 +352,9 @@ function openSaveStation(m: ModalManager, onSave: () => void): void {
     },
     t('uiSave'),
   );
-  m.open(dialog(t('bldSaveStation'), body, el('div', { class: 'btn-row' }, save, exitBtn(m))));
+  m.open(
+    dialog(t('bldSaveStation'), body, el('div', { class: 'btn-row' }, save, exitBtn(m)), 't-term'),
+  );
 }
 
 export function openTransmission(
@@ -393,6 +444,7 @@ export function openPause(
           t('uiQuit'),
         ),
       ),
+      't-pause',
     ),
   );
 }
@@ -493,7 +545,7 @@ export function openInventory(m: ModalManager, s: GameState, command: (c: Comman
     list.scrollTop = prevScroll;
   };
   render();
-  m.open(dialog(t('invTitle'), body, el('div', { class: 'btn-row' }, exitBtn(m))));
+  m.open(dialog(t('invTitle'), body, el('div', { class: 'btn-row' }, exitBtn(m)), 't-cargo'));
 }
 
 export interface GameOverStats {

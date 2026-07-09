@@ -13,6 +13,7 @@ notes (docs/calibration.md).
 | Ambient bed | Runtime-generated filtered noise (`src/game/audio/AmbienceBus.ts`) | Same as project |
 | ZzFX synth | Adapted from Frank Force's ZzFX | MIT |
 | All text/dialog | Written for this project (`src/content/strings.ts`) | Same as project |
-| Fonts | System monospace stack (no font files shipped) | n/a |
+| `public/fonts/VT323-Regular.ttf` | VT323 by Peter Hull (The VT323 Project Authors) | SIL OFL 1.1 |
+| `public/fonts/ChakraPetch-*.ttf` | Chakra Petch by Cadson Demak (The Chakra Petch Project Authors) | SIL OFL 1.1 |
 
 Music: all-procedural and original — no audio files are shipped at all. The score is a few KB of mode/voice/pattern data realized by Web Audio at runtime.

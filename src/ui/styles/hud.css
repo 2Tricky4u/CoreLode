@@ -75,7 +75,8 @@
   min-width: 0;
 }
 .hud-depth {
-  font-size: calc(var(--px) * 16px);
+  font-family: var(--font-display);
+  font-size: calc(var(--px) * 20px);
   line-height: 1.1;
   color: var(--c-gold);
   display: block;
@@ -88,7 +89,8 @@
 }
 .hud-timer {
   display: block;
-  font-size: calc(var(--px) * 11px);
+  font-family: var(--font-display);
+  font-size: calc(var(--px) * 14px);
   color: var(--c-text);
   font-variant-numeric: tabular-nums;
   text-shadow: 1px 1px 0 #000;
@@ -125,9 +127,9 @@
   flex: 0 0 auto;
 }
 .hud-cash {
-  font-size: calc(var(--px) * 16px);
+  font-family: var(--font-display);
+  font-size: calc(var(--px) * 20px);
   line-height: 1.1;
-  font-weight: bold;
   color: var(--c-good);
   text-shadow: 2px 2px 0 #000;
 }

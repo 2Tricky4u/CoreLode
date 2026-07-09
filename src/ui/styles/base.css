@@ -13,17 +13,24 @@
   --c-gold: #fbf236;
   --c-danger: #d95763;
   --c-good: #6abe30;
+  --font-body: "Chakra Petch", "Courier New", ui-monospace, monospace;
+  --font-display: "VT323", "Courier New", monospace;
 }
 html,
 body {
   height: 100%;
   background: var(--c-bg);
   overflow: hidden;
-  font-family: "Courier New", ui-monospace, monospace;
+  font-family: var(--font-body);
   color: var(--c-text);
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
+}
+input,
+select {
+  accent-color: var(--c-accent);
+  font-family: inherit;
 }
 #stage {
   position: relative;
@@ -58,14 +65,18 @@ body {
 }
 button.btn {
   font-family: inherit;
-  font-weight: bold;
-  background: var(--c-panel2);
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  background: linear-gradient(180deg, var(--c-panel2) 0%, #33335e 100%);
   color: var(--c-text);
-  border: 2px solid var(--c-text);
+  border: 1px solid #6b6ba8;
+  border-bottom-color: #23233f;
   border-radius: 3px;
   padding: 8px 14px;
   cursor: pointer;
   font-size: 14px;
+  box-shadow: 0 1px 0 #ffffff1c inset, 0 2px 0 #00000055;
+  transition: filter 90ms ease-out, transform 60ms ease-out;
 }
 button.btn:hover {
   filter: brightness(1.25);
@@ -73,11 +84,18 @@ button.btn:hover {
 button.btn:active {
   transform: translateY(1px);
   filter: brightness(0.95);
+  box-shadow: 0 1px 0 #ffffff10 inset;
+}
+button.btn:focus-visible {
+  outline: 2px solid var(--c-gold);
+  outline-offset: 1px;
 }
 button.btn.primary {
-  background: var(--c-accent);
+  background: linear-gradient(180deg, #f08a3c 0%, var(--c-accent) 60%, #b55a1c 100%);
   color: #140c1c;
   border-color: var(--c-gold);
+  border-bottom-color: #8a4415;
+  text-shadow: 0 1px 0 #ffffff44;
 }
 button.btn.danger {
   background: #45283c;
@@ -119,11 +137,24 @@ button.btn.disabled {
 }
 .toast {
   background: var(--c-panel);
-  border: 2px solid var(--c-gold);
+  border: 1px solid var(--c-gold);
+  border-left-width: 4px;
   color: var(--c-gold);
   padding: 6px 16px;
-  font-weight: bold;
+  font-weight: 600;
+  box-shadow: 0 4px 14px #000a;
   transition: opacity 0.4s;
+  animation: toast-in 160ms ease-out;
+}
+@keyframes toast-in {
+  from {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 .toast.fade {
   opacity: 0;

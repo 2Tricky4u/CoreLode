@@ -540,9 +540,8 @@ export class GameScene extends Phaser.Scene {
   private popup(text: string, color: number): void {
     const t = this.add
       .text(this.state.pod.x, this.state.pod.y - 30, text, {
-        fontFamily: 'Courier New, monospace',
-        fontSize: '13px',
-        fontStyle: 'bold',
+        fontFamily: 'VT323, Courier New, monospace',
+        fontSize: '16px',
         color: `#${color.toString(16).padStart(6, '0')}`,
         stroke: '#140c1c',
         strokeThickness: 3,
@@ -775,9 +774,8 @@ export class GameScene extends Phaser.Scene {
     if (!g) {
       g = this.add
         .text(0, 0, '', {
-          fontFamily: 'Courier New, monospace',
-          fontSize: '13px',
-          fontStyle: 'bold',
+          fontFamily: 'VT323, Courier New, monospace',
+          fontSize: '15px',
           color: '#140c1c',
           stroke: '#ffffff',
           strokeThickness: 3,

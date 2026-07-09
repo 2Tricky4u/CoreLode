@@ -32,11 +32,13 @@
   }
 }
 .dialog-title {
+  font-family: var(--font-display);
+  font-weight: normal;
   color: var(--c-gold);
-  font-size: 16px;
-  letter-spacing: 1px;
+  font-size: 24px;
+  letter-spacing: 2px;
   margin-bottom: 8px;
-  border-bottom: 2px solid var(--c-panel2);
+  border-bottom: 1px solid var(--c-panel2);
   padding-bottom: 6px;
 }
 .dialog-body {
@@ -49,7 +51,8 @@
 .dialog-status {
   border-top: 1px dashed var(--c-panel2);
   padding-top: 6px;
-  font-size: 12px;
+  font-family: var(--font-display);
+  font-size: 16px;
   color: var(--c-gold);
 }
 .cargo-list,
@@ -91,7 +94,8 @@
   font-size: 12px;
 }
 .total {
-  font-weight: bold;
+  font-family: var(--font-display);
+  font-size: 18px;
   color: var(--c-good);
 }
 .tx-body {
@@ -180,9 +184,9 @@
   }
 }
 .go-title {
-  font-size: 34px;
-  font-weight: bold;
-  letter-spacing: 6px;
+  font-family: var(--font-display);
+  font-size: 52px;
+  letter-spacing: 8px;
   color: var(--c-danger);
   text-shadow: 0 0 18px #d95763aa, 2px 2px 0 #000;
   margin: 10px 0 2px;
@@ -238,8 +242,9 @@
   opacity: 0.85;
 }
 .go-stat-value {
+  font-family: var(--font-display);
+  font-size: 15px;
   color: var(--c-gold);
-  font-weight: bold;
 }
 .go-epitaph {
   font-size: 11px;
