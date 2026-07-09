@@ -693,36 +693,89 @@ export class GameScene extends Phaser.Scene {
 
   /**
    * Round the void like the original: dug space is a union of rounded
-   * rectangles, so ONLY outer corners of air cells are softened. The one rule:
-   * an air quadrant at a grid intersection gets the concave corner wedge iff
-   * BOTH its edge-adjacent quadrants are solid (any non-air tile — soil, turf,
-   * boulders, bedrock alike). Inner turn corners, lone pillars and straight
-   * walls stay sharp — exactly the rounded-rect-mask silhouette.
+   * rectangles, so outer corners of air cells get the full concave wedge —
+   * an air quadrant at a grid intersection is rounded iff BOTH its
+   * edge-adjacent quadrants are solid (any non-air tile). Inner (reflex)
+   * corners — a lone solid quadrant among air — get a small cornerSoft wedge
+   * in the diagonal quadrant, easing the angle without floating chips.
+   * Straight walls get sparse, deterministic soil lumps to break the lines.
    */
   private updateCorners(): void {
     const cam = this.cameras.main;
     const w = this.state.world;
-    const R = 14; // wedge frame size
+    const R = 14; // full wedge size
+    const R2 = 7; // soft inner-corner wedge size
     const x0 = Math.max(1, Math.floor(cam.scrollX / TILE_PX));
     const x1 = Math.min(WORLD_W - 1, Math.ceil((cam.scrollX + cam.width) / TILE_PX) + 1);
-    const y0 = Math.max(1, Math.floor(cam.scrollY / TILE_PX));
+    // Underground only — a reflex wedge at a surface hole must not float in the sky.
+    const y0 = Math.max(SURFACE_ROW + 1, Math.floor(cam.scrollY / TILE_PX));
     const y1 = Math.min(WORLD_H - 1, Math.ceil((cam.scrollY + cam.height) / TILE_PX) + 1);
     let n = 0;
     for (let cy = y0; cy <= y1; cy++) {
+      const band = bandAt(cy);
       for (let cx = x0; cx <= x1; cx++) {
         // Quadrants around the grid corner point (cx,cy): bit i set = solid.
         let solidMask = 0;
+        let solidCount = 0;
         for (let i = 0; i < 4; i++) {
-          if (getTile(w, cx - 1 + (i & 1), cy - 1 + (i >> 1)) !== Tile.Air) solidMask |= 1 << i;
+          if (getTile(w, cx - 1 + (i & 1), cy - 1 + (i >> 1)) !== Tile.Air) {
+            solidMask |= 1 << i;
+            solidCount++;
+          }
         }
-        if (solidMask === 0 || solidMask === 15) continue;
+        if (solidCount === 0 || solidCount === 4) continue;
+        if (solidCount === 1) {
+          // Lone solid corner (pillar/inner turn): round the square's OWN tip —
+          // a cave-colored wedge over the tile corner cuts it round in place.
+          const j = [1, 2, 4, 8].indexOf(solidMask); // the solid quadrant itself
+          const img = this.cornerAt(n++);
+          img.setFrame('cornerCut');
+          img.setPosition(cx * TILE_PX - (j & 1 ? 0 : R2), cy * TILE_PX - (j & 2 ? 0 : R2));
+          img.setFlip(!(j & 1), !(j & 2)); // mass hugs the grid point, arc into the tile
+          img.setVisible(true);
+          continue;
+        }
         for (let i = 0; i < 4; i++) {
           if (solidMask & (1 << i)) continue; // must be air
           if (!(solidMask & (1 << (i ^ 1))) || !(solidMask & (1 << (i ^ 2)))) continue;
           const img = this.cornerAt(n++);
+          img.setFrame(`cornerRound_p${band}`);
           img.setPosition(cx * TILE_PX - (i & 1 ? 0 : R), cy * TILE_PX - (i & 2 ? 0 : R));
           img.setFlip(!(i & 1), !(i & 2)); // authored hugging TL; mirror into place
-          img.setTint(BAND_TINTS[bandAt(cy)]);
+          img.setVisible(true);
+        }
+      }
+    }
+
+    // Wall roughness: sparse soil lumps along straight tunnel edges, chosen by a
+    // stable coordinate hash so they never flicker (underground only). The 15px
+    // end margins keep lumps clear of the corner wedges (14px).
+    const LUMP_LEN = [16, 10, 18];
+    const tx0 = Math.max(0, Math.floor(cam.scrollX / TILE_PX));
+    const tx1 = Math.min(WORLD_W - 1, Math.ceil((cam.scrollX + cam.width) / TILE_PX));
+    for (let ty = y0; ty <= y1; ty++) {
+      const band = bandAt(ty);
+      for (let tx = tx0; tx <= tx1; tx++) {
+        if (getTile(w, tx, ty) !== Tile.Air) continue;
+        for (let side = 0; side < 4; side++) {
+          const nx = tx + (side === 2 ? -1 : side === 3 ? 1 : 0);
+          const ny = ty + (side === 0 ? -1 : side === 1 ? 1 : 0);
+          if (getTile(w, nx, ny) === Tile.Air) continue;
+          const h = ((tx * 73856093) ^ (ty * 19349663) ^ ((side + 1) * 83492791)) >>> 0;
+          if (h % 100 >= 42) continue; // ~42% of wall faces get one lump
+          const v = h % 3;
+          const len = LUMP_LEN[v];
+          const off = 15 + ((h >> 4) % (TILE_PX - len - 30));
+          const img = this.cornerAt(n++);
+          if (side < 2) {
+            img.setFrame(`edgeLump${v}_p${band}`);
+            img.setPosition(tx * TILE_PX + off, side === 0 ? ty * TILE_PX : (ty + 1) * TILE_PX - 5);
+            img.setFlip(false, side === 1);
+          } else {
+            img.setFrame(`edgeLumpV${v}_p${band}`);
+            img.setPosition(side === 2 ? tx * TILE_PX : (tx + 1) * TILE_PX - 5, ty * TILE_PX + off);
+            img.setFlip(side === 3, false);
+          }
           img.setVisible(true);
         }
       }
@@ -733,7 +786,7 @@ export class GameScene extends Phaser.Scene {
   private cornerAt(i: number): Phaser.GameObjects.Image {
     let img = this.corners[i];
     if (!img) {
-      img = this.add.image(0, 0, 'atlas', 'cornerRound').setOrigin(0).setDepth(1);
+      img = this.add.image(0, 0, 'atlas', 'cornerRound_p0').setOrigin(0).setDepth(1);
       this.corners[i] = img;
     }
     return img;

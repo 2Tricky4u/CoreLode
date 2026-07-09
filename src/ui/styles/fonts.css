@@ -1,0 +1,23 @@
+/* Bundled fonts (OFL) — see assets/CREDITS.md.
+   Chakra Petch: industrial body sans · VT323: pixel terminal display/readouts. */
+@font-face {
+  font-family: "Chakra Petch";
+  src: url("/fonts/ChakraPetch-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Chakra Petch";
+  src: url("/fonts/ChakraPetch-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "VT323";
+  src: url("/fonts/VT323-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}

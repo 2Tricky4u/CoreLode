@@ -2,6 +2,7 @@ import { grid } from './grid.mjs';
 import { P } from './palette.mjs';
 /** FX sprites: explosion frames, additive glow discs, particles, fireball, guardian, teleport. */
 import { Sprite, texRng } from './png.mjs';
+import { soilTile } from './tex/soil.mjs';
 
 /** Soft radial glow disc (for ADD blend) — alpha falls off quadratically. */
 export function glowDisc(size, color) {
@@ -160,25 +161,86 @@ export function biteFrames() {
 }
 
 /**
- * Corner softener for dug tunnels — the "rounded-rectangle mask" piece: an R×R
- * wedge that hugs a corner point, solid soil OUTSIDE a quarter-circle centered
- * on the opposite corner. Its CONCAVE arc smooths the 90° angle exactly like a
- * square masked by a rounded rect (the original's tunnel look) — no bulging
- * discs, material only added tight against the angle. Authored hugging the
- * top-left corner (arc curving toward bottom-right); white, band-tinted and
- * mirrored into the other orientations at runtime.
+ * Corner softeners + wall roughness for dug tunnels — baked PER DEPTH BAND from
+ * the real soil textures (so a piece carries the same material as the block it
+ * extends; no flat-tint patches). Mirrored into other orientations at runtime.
+ *  - cornerRound_p0..5 (14px): the "rounded-rectangle mask" piece — an R×R
+ *    wedge hugging a corner point, solid OUTSIDE a quarter circle centered on
+ *    the opposite corner; the CONCAVE arc smooths outer void corners.
+ *  - cornerCut (7px, cave-colored, band-free): the same wedge mask laid ON a
+ *    lone solid corner (pillars, inner turns) — visually rounds the square
+ *    tile's own tip by cutting it to the cave background, nothing added around.
+ *  - edgeLump{0..2}_p{band} / edgeLumpV{0..2}_p{band}: low irregular mounds
+ *    hung on tunnel walls (H hug the top edge bulging down; V hug the left
+ *    edge bulging right), pseudo-randomly placed to break the straight lines.
  */
 export function cornerFrames() {
-  const R = 14;
-  const s = new Sprite(R, R);
-  for (let y = 0; y < R; y++)
-    for (let x = 0; x < R; x++) {
-      const jag = ((x * 31 + y * 17) % 3) * 0.3; // deterministic crumble (subtle)
-      const d = Math.hypot(R - x - 0.5, R - y - 0.5) + jag; // distance from inner centre
-      if (d > R + 0.8) s.px(x, y, P.white);
-      else if (d > R - 0.8) s.px(x, y, P.white, 110); // soft arc edge
+  const out = {};
+  // Lump silhouettes are shared across bands (same shapes, different material).
+  const LENS = [16, 10, 18];
+  const lumpDepths = LENS.map((L, v) => {
+    const rnd = texRng(0x1a4b + v);
+    const depth = [];
+    for (let x = 0; x < L; x++) {
+      const base = Math.sin((Math.PI * x) / (L - 1)) * 3.2;
+      depth.push(Math.max(0, Math.round(base + rnd() * 1.4 - 0.7)));
     }
-  return { cornerRound: s };
+    return depth;
+  });
+
+  for (let band = 0; band < 6; band++) {
+    const tex = soilTile(band, 2);
+    // Sample away from the tile's baked bottom/right edge-darkening.
+    const sm = (x, y, a = 255) => {
+      const [r, g, b] = tex.get(8 + (x % 34), 8 + (y % 34));
+      return [[r, g, b], a];
+    };
+    const wedge = (R) => {
+      const s = new Sprite(R, R);
+      for (let y = 0; y < R; y++)
+        for (let x = 0; x < R; x++) {
+          const jag = ((x * 31 + y * 17) % 3) * 0.3; // deterministic crumble
+          const d = Math.hypot(R - x - 0.5, R - y - 0.5) + jag;
+          if (d > R + 0.8) s.px(x, y, ...sm(x, y));
+          else if (d > R - 0.8) s.px(x, y, ...sm(x, y, 110)); // soft arc edge
+        }
+      return s;
+    };
+    out[`cornerRound_p${band}`] = wedge(14);
+
+    for (let v = 0; v < 3; v++) {
+      const L = LENS[v];
+      const depth = lumpDepths[v];
+      const h = new Sprite(L, 5);
+      const vs = new Sprite(5, L);
+      for (let x = 0; x < L; x++) {
+        for (let y = 0; y < depth[x]; y++) {
+          h.px(x, y, ...sm(x + 13, y));
+          vs.px(y, x, ...sm(y, x + 13)); // transposed sampling keeps the grain upright
+        }
+        if (depth[x] > 0) {
+          h.px(x, depth[x], ...sm(x + 13, depth[x], 100)); // soft underside
+          vs.px(depth[x], x, ...sm(depth[x], x + 13, 100));
+        }
+      }
+      out[`edgeLump${v}_p${band}`] = h;
+      out[`edgeLumpV${v}_p${band}`] = vs;
+    }
+  }
+
+  // cornerCut: cave-colored wedge that rounds a lone solid corner's own tip.
+  const CUT_R = 7;
+  const BGC = [20, 12, 28]; // camera background — reads as void
+  const cut = new Sprite(CUT_R, CUT_R);
+  for (let y = 0; y < CUT_R; y++)
+    for (let x = 0; x < CUT_R; x++) {
+      const jag = ((x * 31 + y * 17) % 3) * 0.3;
+      const d = Math.hypot(CUT_R - x - 0.5, CUT_R - y - 0.5) + jag;
+      if (d > CUT_R + 0.8) cut.px(x, y, BGC);
+      else if (d > CUT_R - 0.8) cut.px(x, y, BGC, 110);
+    }
+  out.cornerCut = cut;
+  return out;
 }
 
 export function miscFx() {
