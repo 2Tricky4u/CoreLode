@@ -13,6 +13,20 @@ export interface SlotMeta {
 
 const SLOT_PREFIX = 'save:';
 
+/**
+ * Race a storage promise against a timeout. IndexedDB `open` can HANG (never
+ * resolve or reject) on a corrupt profile or a stuck connection — a try/catch
+ * can't save that, so every read on the boot path is time-bounded. On timeout
+ * (or error) we return the fallback and carry on, so a wedged IDB never freezes
+ * the app; it just means this session can't persist until storage recovers.
+ */
+function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    Promise.resolve(p).catch(() => fallback),
+    new Promise<T>((res) => setTimeout(() => res(fallback), ms)),
+  ]);
+}
+
 export async function writeSave(slot: string, save: SaveFile): Promise<void> {
   // Dual-write: keep the previous copy for corruption recovery.
   const key = `${SLOT_PREFIX}${slot}`;
@@ -34,9 +48,9 @@ export async function deleteSave(slot: string): Promise<void> {
   await del(`${SLOT_PREFIX}${slot}:prev`);
 }
 
-export async function listSaves(): Promise<SlotMeta[]> {
-  // Never let a storage hiccup or one malformed slot blank the title screen.
-  try {
+export function listSaves(): Promise<SlotMeta[]> {
+  // Never let a storage hiccup, one malformed slot, or a hung IDB blank the title.
+  const inner = async (): Promise<SlotMeta[]> => {
     const all = (await keys()) as string[];
     const out: SlotMeta[] = [];
     for (const k of all) {
@@ -56,39 +70,45 @@ export async function listSaves(): Promise<SlotMeta[]> {
       }
     }
     return out.sort((a, b) => a.key.localeCompare(b.key));
-  } catch {
-    return [];
-  }
+  };
+  return withTimeout(inner(), 3000, []);
 }
 
 export async function writeSettings(values: SettingsValues): Promise<void> {
   await set('settings', values);
 }
-export async function readSettings(): Promise<SettingsValues | undefined> {
-  try {
-    return (await get('settings')) as SettingsValues | undefined;
-  } catch {
-    return undefined; // fall back to defaults rather than blocking boot
-  }
+export function readSettings(): Promise<SettingsValues | undefined> {
+  // Time-bounded: a hung IDB must not block boot (this runs before Phaser starts).
+  return withTimeout(get('settings') as Promise<SettingsValues | undefined>, 2500, undefined);
 }
 
 export interface ChallengeRecords {
   [id: string]: { bestTicks: number; completions: number };
 }
-export async function readRecords(): Promise<ChallengeRecords> {
-  try {
-    return ((await get('records')) as ChallengeRecords | undefined) ?? {};
-  } catch {
-    return {};
-  }
+export function readRecords(): Promise<ChallengeRecords> {
+  return withTimeout(
+    Promise.resolve(get('records') as Promise<ChallengeRecords | undefined>).then((r) => r ?? {}),
+    2500,
+    {},
+  );
 }
 
-/** Wipe all persisted data (saves, settings, records) — the recovery escape hatch. */
+/**
+ * Wipe all persisted data (saves, settings, records) — the recovery escape hatch.
+ * Never hangs, and hard-deletes the whole IDB database as a fallback so it works
+ * even when the keyval store itself is wedged.
+ */
 export async function clearAllData(): Promise<void> {
+  await withTimeout(
+    Promise.resolve(clear()).catch(() => undefined),
+    1500,
+    undefined,
+  );
   try {
-    await clear();
+    // Fire-and-forget hard reset — un-wedges a corrupt idb-keyval store.
+    indexedDB.deleteDatabase('keyval-store');
   } catch {
-    /* best-effort */
+    /* ignore */
   }
 }
 export async function writeRecords(r: ChallengeRecords): Promise<void> {

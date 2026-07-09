@@ -76,6 +76,10 @@ export class App {
   }
 
   async start(): Promise<void> {
+    // Boot Phaser FIRST so the canvas appears immediately — storage reads below
+    // are time-bounded but must never gate the first paint.
+    this.phaser = createPhaserGame('game');
+
     // Escape hatch: append ?reset (or ?safe) to the URL to wipe corrupt saved data on boot.
     const params = new URLSearchParams(location.search);
     if (params.has('reset') || params.has('safe')) {
@@ -85,7 +89,6 @@ export class App {
 
     this.settings = { ...defaultSettings(), ...((await storage.readSettings()) ?? {}) };
     void storage.requestPersistence();
-    this.phaser = createPhaserGame('game');
 
     // Wait for assets, but never hang forever — fall through to the title after 10s.
     await new Promise<void>((res) => {
