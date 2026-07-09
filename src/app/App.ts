@@ -270,6 +270,8 @@ export class App {
         damageFlash: Boolean(this.fx.damageFlash),
         pixelPerfect: Boolean(this.fx.pixelPerfect),
         oreGlyphs: Boolean(this.fx.oreGlyphs),
+        // Carrier-landing cinematic: fresh story runs only (not loads, not challenges).
+        intro: state.tick === 0 && state.mode.kind === 'story',
       });
 
       // HUD refresh loop (display-rate, cheap).

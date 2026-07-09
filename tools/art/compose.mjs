@@ -9,6 +9,7 @@ import { Sprite, texRng, writePng } from './png.mjs';
 import { artifactFrames } from './sprites/artifacts.mjs';
 import { bossFrames } from './sprites/boss.mjs';
 import { buildingFrame } from './sprites/buildings.mjs';
+import { carrierFrames } from './sprites/carrier.mjs';
 import { podFrames } from './sprites/pod.mjs';
 import { portraitFrames } from './sprites/portraits.mjs';
 import { gemSprite } from './tex/gems.mjs';
@@ -72,6 +73,7 @@ export function buildFrames() {
 
   // --- hero sprites & fx ---
   Object.assign(frames, podFrames());
+  Object.assign(frames, carrierFrames());
   Object.assign(frames, bossFrames());
   Object.assign(frames, explosionFrames());
   Object.assign(frames, particleFrames());

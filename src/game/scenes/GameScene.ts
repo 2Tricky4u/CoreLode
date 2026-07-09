@@ -78,6 +78,8 @@ export class GameScene extends Phaser.Scene {
   private damageFlash = true;
   private pixelPerfect = true;
   private oreGlyphs = false;
+  /** Play the carrier-landing cinematic on the first frame (fresh story runs only). */
+  private introPending = false;
   /** Viewport-culled colour-blind glyph pool for on-screen minerals. */
   private glyphs: Phaser.GameObjects.Text[] = [];
   private emberTimer = 0;
@@ -96,6 +98,7 @@ export class GameScene extends Phaser.Scene {
     damageFlash?: boolean;
     pixelPerfect?: boolean;
     oreGlyphs?: boolean;
+    intro?: boolean;
   }): void {
     this.host = data.host;
     this.audio = data.audio;
@@ -104,6 +107,7 @@ export class GameScene extends Phaser.Scene {
     this.damageFlash = data.damageFlash ?? true;
     this.pixelPerfect = data.pixelPerfect ?? true;
     this.oreGlyphs = data.oreGlyphs ?? false;
+    this.introPending = data.intro ?? false;
   }
 
   /** Push live QoL/FX changes into the running scene (called by App.applySettings). */
@@ -274,6 +278,99 @@ export class GameScene extends Phaser.Scene {
     this.setPixelPerfect(this.pixelPerfect);
 
     this.host.onEvent((e) => this.onSimEvent(e));
+
+    if (this.introPending) {
+      this.introPending = false;
+      this.playLanding();
+    }
+  }
+
+  /**
+   * Intro cinematic: the orbital carrier descends with the pod slung under its
+   * winch, sets it down at the spawn point, and climbs away. The sim stays
+   * paused ('intro') throughout, so the first-tick transmission (and every
+   * other scripted event) fires only after the carrier has left.
+   * Any key or click skips.
+   */
+  private playLanding(): void {
+    const p = this.state.pod;
+    this.host.pause('intro');
+    this.pod.sprite.setVisible(false);
+
+    const DROP = 480; // start this far above the pad (well off-screen)
+    const HANG = 52; // px from carrier centre to the slung pod's centre
+    const ship = this.add.image(0, 0, 'atlas', 'carrier');
+    const mkGlow = (x: number) =>
+      this.add
+        .image(x, 16, 'atlas', 'glow32')
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setTint(0xffa030)
+        .setAlpha(0.45)
+        .setScale(1.1);
+    const glowL = mkGlow(-24);
+    const glowR = mkGlow(20);
+    const carried = this.add.image(0, HANG, 'atlas', 'pod_idle');
+    const rig = this.add
+      .container(p.x, p.y - HANG - DROP, [glowL, glowR, ship, carried])
+      .setDepth(11);
+    if (this.fxFull) {
+      this.tweens.add({
+        targets: [glowL, glowR],
+        alpha: { from: 0.3, to: 0.6 },
+        duration: 90,
+        yoyo: true,
+        repeat: -1,
+      });
+    }
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      this.tweens.killTweensOf([rig, glowL, glowR]);
+      rig.destroy(); // children go with it
+      this.pod.sprite.setVisible(true);
+      this.host.resume('intro');
+      window.removeEventListener('keydown', skip, true);
+      window.removeEventListener('pointerdown', skip, true);
+    };
+    // Capture phase + stopPropagation: the skip press must not leak into
+    // InputManager (Esc would open the pause menu, arrows would pre-load keys).
+    const skip = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      finish();
+    };
+    window.addEventListener('keydown', skip, true);
+    window.addEventListener('pointerdown', skip, true);
+    this.events.once('shutdown', finish);
+
+    this.audio.play('thrustLoop', 0.5);
+    this.tweens.add({
+      targets: rig,
+      y: p.y - HANG,
+      duration: 1900,
+      ease: 'Sine.easeOut',
+      onComplete: () => {
+        if (done) return;
+        // Touchdown: release the pod, kick up dust, then climb away.
+        carried.destroy();
+        this.pod.sprite.setVisible(true);
+        this.debrisE.setParticleTint(BAND_TINTS[0]);
+        this.debrisE.explode(10, p.x, p.y + 22);
+        this.audio.play('landThump', 0.7);
+        if (this.screenShake) this.cameras.main.shake(120, 0.004);
+        this.tweens.add({
+          targets: rig,
+          y: p.y - HANG - DROP,
+          delay: 450,
+          duration: 1100,
+          ease: 'Cubic.easeIn',
+          onStart: () => this.audio.play('thrustLoop', 0.5),
+          onComplete: finish,
+        });
+      },
+    });
   }
 
   private buildVignette(): void {
