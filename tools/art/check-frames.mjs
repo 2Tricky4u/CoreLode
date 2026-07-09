@@ -35,7 +35,7 @@ const families = [
   'cornerCut',
   ...Array.from({ length: 6 }, (_, b) => [
     `cornerRound_p${b}`,
-    ...[0, 1, 2, 3, 4].flatMap((v) => [`edgeLump${v}_p${b}`, `edgeLumpV${v}_p${b}`]),
+    ...Array.from({ length: 11 }, (_, v) => [`edgeLump${v}_p${b}`, `edgeLumpV${v}_p${b}`]).flat(),
   ]).flat(),
   ...[1, 2].flatMap((f) => [`boss${f}_a`, `boss${f}_b`]),
   ...[0, 1, 2, 3, 4].map((i) => `boom${i}`),

@@ -177,28 +177,33 @@ export function biteFrames() {
 export function cornerFrames() {
   const out = {};
   // Lump silhouettes are shared across bands (same shapes, different material).
-  // Five asymmetric profiles (beta-shaped, skewed peaks) at a low ~2.4px height:
-  // subtler than before, but placed more densely by the scene.
-  const LENS = [12, 8, 14, 10, 16];
-  const SKEW = [
-    [1.2, 2.6],
-    [2.4, 1.2],
-    [1.4, 3.2],
-    [3.0, 1.4],
-    [2.0, 2.2],
+  // v0-4: common small asymmetric mounds (~2.4px). v5-6: rare LONG low ridges.
+  // v7-8: tiny pebbles. v9: double-hump. v10: ragged plateau. The scene picks
+  // with weights so the small ones dominate and the odd ones appear rarely.
+  const beta = (a, b) => (t) => t ** a * (1 - t) ** b;
+  const LUMP_SPECS = [
+    { L: 12, amp: 2.4, prof: beta(1.2, 2.6) },
+    { L: 8, amp: 2.4, prof: beta(2.4, 1.2) },
+    { L: 14, amp: 2.4, prof: beta(1.4, 3.2) },
+    { L: 10, amp: 2.4, prof: beta(3.0, 1.4) },
+    { L: 16, amp: 2.4, prof: beta(2.0, 2.2) },
+    { L: 26, amp: 1.8, prof: (t) => beta(1.3, 1.6)(t) * (0.7 + 0.3 * Math.sin(t * 9 + 1)) },
+    { L: 30, amp: 2.0, prof: (t) => beta(1.2, 2.1)(t) * (0.75 + 0.25 * Math.sin(t * 12)) },
+    { L: 5, amp: 2.2, prof: beta(1.5, 1.5) },
+    { L: 4, amp: 1.8, prof: beta(1.2, 1.2) },
+    { L: 18, amp: 2.2, prof: (t) => beta(2.2, 4)(t) + 0.85 * beta(5, 1.8)(t) },
+    { L: 14, amp: 2.6, prof: (t) => Math.min(1, 3.2 * t, 3.2 * (1 - t)) },
   ];
-  const lumpDepths = LENS.map((L, v) => {
+  const lumpDepths = LUMP_SPECS.map(({ L, amp, prof }, v) => {
     const rnd = texRng(0x1a4b + v * 7);
-    const [a, b] = SKEW[v];
     const raw = [];
     let peak = 0;
     for (let x = 0; x < L; x++) {
-      const t = (x + 0.5) / L;
-      const val = t ** a * (1 - t) ** b;
+      const val = Math.max(0, prof((x + 0.5) / L));
       raw.push(val);
       if (val > peak) peak = val;
     }
-    return raw.map((val) => Math.max(0, Math.round((val / peak) * 2.4 + rnd() * 1.2 - 0.6)));
+    return raw.map((val) => Math.max(0, Math.round((val / peak) * amp + rnd() * 1.2 - 0.6)));
   });
 
   for (let band = 0; band < 6; band++) {
@@ -221,8 +226,8 @@ export function cornerFrames() {
     };
     out[`cornerRound_p${band}`] = wedge(14);
 
-    for (let v = 0; v < LENS.length; v++) {
-      const L = LENS[v];
+    for (let v = 0; v < LUMP_SPECS.length; v++) {
+      const L = LUMP_SPECS[v].L;
       const depth = lumpDepths[v];
       const h = new Sprite(L, 5);
       const vs = new Sprite(5, L);

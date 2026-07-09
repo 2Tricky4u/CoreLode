@@ -749,8 +749,11 @@ export class GameScene extends Phaser.Scene {
 
     // Wall roughness: low asymmetric soil lumps along straight tunnel edges,
     // chosen by a stable coordinate hash so they never flicker (underground
-    // only). The 15px end margins keep lumps clear of the corner wedges (14px).
-    const LUMP_LEN = [12, 8, 14, 10, 16];
+    // only). Small mounds dominate; long ridges / tiny pebbles / odd shapes
+    // (v5+) appear rarely via the weighted pick table. Long ridges use tighter
+    // end margins — overlapping a corner wedge is harmless (same soil texture).
+    const LUMP_LEN = [12, 8, 14, 10, 16, 26, 30, 5, 4, 18, 14];
+    const LUMP_PICK = [0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 2, 4, 1, 3, 5, 6, 7, 8, 7, 8, 9, 10];
     const tx0 = Math.max(0, Math.floor(cam.scrollX / TILE_PX));
     const tx1 = Math.min(WORLD_W - 1, Math.ceil((cam.scrollX + cam.width) / TILE_PX));
     for (let ty = y0; ty <= y1; ty++) {
@@ -763,9 +766,10 @@ export class GameScene extends Phaser.Scene {
           if (getTile(w, nx, ny) === Tile.Air) continue;
           const h = ((tx * 73856093) ^ (ty * 19349663) ^ ((side + 1) * 83492791)) >>> 0;
           if (h % 100 >= 68) continue; // ~68% of wall faces get one lump
-          const v = h % 5;
+          const v = LUMP_PICK[h % LUMP_PICK.length];
           const len = LUMP_LEN[v];
-          const off = 15 + ((h >> 4) % (TILE_PX - len - 30));
+          const m = len >= 20 ? 6 : 15; // long ridges get tighter end margins
+          const off = m + ((h >> 4) % Math.max(1, TILE_PX - len - 2 * m));
           const img = this.cornerAt(n++);
           if (side < 2) {
             img.setFrame(`edgeLump${v}_p${band}`);
