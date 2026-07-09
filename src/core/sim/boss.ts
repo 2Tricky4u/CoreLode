@@ -5,7 +5,7 @@
  * rewards. Attack timings are data-driven CAL values (core/data/boss.ts).
  */
 import { BOSS, type BossAttackDef, type BossFormDef } from '../data/boss';
-import { TILE_PX, WORLD_H } from '../data/constants';
+import { HELL_FLOOR_ROW, TILE_PX, WORLD_H } from '../data/constants';
 import { bossDamageMult, bossFormHp } from '../data/difficulty';
 import { FORM1_DROPS, FORM2_DROPS, VICTORY_REWARDS } from '../data/minerals';
 import type { EventSink } from '../events';
