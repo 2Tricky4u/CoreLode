@@ -30,17 +30,19 @@ body {
   width: 100vw;
   height: 100vh;
 }
-#game,
-#game canvas {
+#game {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
 }
+/* Let Phaser's ScaleManager own the canvas box (FIT + CENTER_BOTH letterboxing).
+   Forcing width/height:100% here would stretch it and break the aspect ratio. */
 #game canvas {
+  display: block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
+/* Pinned at runtime (UiRoot.applyRect) to exactly the canvas rectangle, so the
+   HUD lives inside the playfield and only the letterbox bars widen. */
 #ui {
   position: absolute;
   inset: 0;
