@@ -308,6 +308,7 @@ export function openPause(
   onResume: () => void,
   onQuit: () => void,
   onSettings: () => void,
+  onHelp: () => void,
 ): void {
   const body = el('div', { class: 'dialog-body' }, el('p', { text: t('uiPaused') }));
   m.open(
@@ -328,6 +329,7 @@ export function openPause(
           },
           t('uiResume'),
         ),
+        el('button', { class: 'btn', onclick: onHelp }, 'Controls & Guide'),
         el('button', { class: 'btn', onclick: onSettings }, t('settings')),
         el(
           'button',

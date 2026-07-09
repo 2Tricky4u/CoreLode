@@ -1,6 +1,6 @@
 import type { BlueprintId } from '../data/blueprints';
 import type { BossAttackKind } from '../data/boss';
-import { SPAWN_COL } from '../data/buildings';
+import { type BuildingId, SPAWN_COL } from '../data/buildings';
 import { CHALLENGES, type ChallengeDef } from '../data/challenges';
 import { SURFACE_ROW, TILE_PX, WORLD_W } from '../data/constants';
 import type { ItemId } from '../data/items';
@@ -50,7 +50,8 @@ export interface PodState {
   itemLock: number; // ticks items are locked (boss staff ragdoll)
   guardian: boolean; // Seraph active — damage ×0.5
   lavaLatch: number; // ticks until lava can damage again
-  buildingLatch: string | null;
+  /** Building the pod is currently standing on (drives the "press E" prompt). */
+  nearBuilding: BuildingId | null;
 }
 
 export interface BossState {
@@ -228,7 +229,7 @@ export function createRun(opts: NewRunOptions = {}): GameState {
     itemLock: 0,
     guardian: false,
     lavaLatch: 0,
-    buildingLatch: null,
+    nearBuilding: null,
   };
   pod.hp = maxHull(pod);
   pod.fuel = Math.min(pod.fuel, tankCapacity(pod));

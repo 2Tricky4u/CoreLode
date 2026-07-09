@@ -34,7 +34,12 @@ export class TouchControls {
         dir('tc-right', 'right', '▶'),
       ),
     );
-    this.node = el('div', { class: `touch-controls layout-${layout}` }, pad);
+    const interact = el('button', { class: 'tc-btn tc-interact', text: 'E' });
+    interact.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      input.queueInteract();
+    });
+    this.node = el('div', { class: `touch-controls layout-${layout}` }, interact, pad);
   }
 
   setVisible(on: boolean): void {

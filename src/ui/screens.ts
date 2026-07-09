@@ -36,6 +36,7 @@ export function titleScreen(opts: {
   onLoad: () => void;
   onChallenges: () => void;
   onSettings: () => void;
+  onHelp: () => void;
 }): HTMLElement {
   return el(
     'div',
@@ -51,6 +52,7 @@ export function titleScreen(opts: {
       el('button', { class: 'btn primary', onclick: opts.onNew }, t('newGame')),
       el('button', { class: 'btn', onclick: opts.onLoad }, t('uiLoad')),
       el('button', { class: 'btn', onclick: opts.onChallenges }, t('challenges')),
+      el('button', { class: 'btn', onclick: opts.onHelp }, 'Controls & Guide'),
       el('button', { class: 'btn', onclick: opts.onSettings }, t('settings')),
     ),
     el('p', { class: 'credits', text: t('credits') }),

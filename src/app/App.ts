@@ -1,5 +1,6 @@
 import { t } from '@content/strings';
 import {
+  BUILDINGS,
   type BuildingId,
   CHALLENGES,
   type GameState,
@@ -24,6 +25,7 @@ import { Hud } from '@ui/Hud';
 import { TouchControls } from '@ui/TouchControls';
 import { UiRoot } from '@ui/UiRoot';
 import { showFatal } from '@ui/fatal';
+import { helpScreen } from '@ui/help';
 import { ModalManager, openBuilding, openGameOver, openPause, openTransmission } from '@ui/modals';
 import {
   ScreenHost,
@@ -55,10 +57,12 @@ export class App {
 
   constructor() {
     this.touch = new TouchControls(this.input, 'right');
-    this.ui.hudLayer.append(this.hud.node, this.touch.node);
+    this.ui.hudLayer.append(this.hud.node, this.hud.promptNode, this.touch.node);
     this.hud.node.style.display = 'none';
+    this.hud.setPrompt(null);
     this.touch.setVisible(false);
     this.hud.onUseItem = (id) => this.input.queueTouchItem(id);
+    this.hud.onInteract = () => this.input.queueInteract();
     this.input.attach(window);
     this.input.onPause = () => this.togglePause();
     this.audio.attachUnlock();
@@ -123,6 +127,7 @@ export class App {
         onLoad: () => void this.showSaveSlots(),
         onChallenges: () => void this.showChallenges(),
         onSettings: () => this.showSettings(() => this.showTitle()),
+        onHelp: () => this.screens.show(helpScreen(() => void this.showTitle())),
       }),
     );
   }
@@ -254,6 +259,7 @@ export class App {
     this.modals.closeAll();
     this.host = null;
     this.hud.node.style.display = 'none';
+    this.hud.setPrompt(null);
     this.touch.setVisible(false);
   }
 
@@ -262,7 +268,11 @@ export class App {
     const host = this.host;
     if (!host) return;
     switch (e.t) {
+      case 'buildingPrompt':
+        this.hud.setPrompt(e.id ? t(BUILDINGS.find((b) => b.id === e.id)?.key ?? e.id) : null);
+        break;
       case 'enterBuilding':
+        if (this.modals.isOpen) break; // already inside a menu
         if (this.fx.autosaveOnSurface) void this.saveToSlot('auto:0', false); // QoL, default OFF
         this.openBuildingModal(e.id);
         break;
@@ -324,6 +334,7 @@ export class App {
       () => {},
       () => void this.showTitle(),
       () => this.showSettings(() => this.screens.clear()),
+      () => this.screens.show(helpScreen(() => this.screens.clear())),
     );
   }
 

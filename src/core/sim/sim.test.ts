@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyCommand } from '../commands';
 import { BOSS } from '../data/boss';
+import { BUILDINGS } from '../data/buildings';
 import { TILE_PX } from '../data/constants';
 import { PHYSICS, fallDamage } from '../data/physics';
 import type { EventSink } from '../events';
@@ -10,6 +11,7 @@ import { fnv1a } from '../lib/math';
 import { Tile } from '../world/tiles';
 import { getTile, setTile } from '../world/world';
 import { gasDamageAtDepth } from './hazards';
+import { podOverlapsSolid } from './physics';
 import {
   type GameState,
   bayCapacity,
@@ -120,6 +122,76 @@ describe('drilling', () => {
     const out = step(s, { down: true }, 30);
     expect(out.some((e) => e.t === 'digStart')).toBe(false);
     expect(getTile(s.world, tx, ty)).toBe(Tile.BoulderFirst);
+  });
+});
+
+describe('buildings need an explicit interact', () => {
+  /** Stand on the fuel depot; returns every event emitted while settling. */
+  const standOnFuelDepot = (s: GameState): EventSink => {
+    const b = BUILDINGS[0]; // fuel depot, columns 3-5
+    s.pod.x = (b.colStart + 0.5) * TILE_PX;
+    s.pod.prevX = s.pod.x;
+    return step(s, {}, 15); // spawn floats a few px above the turf; let it land
+  };
+  /** A surface column with no building on it (between fuel and the processor). */
+  const EMPTY_COL = 6.5;
+
+  it('shows a prompt when standing on a building, and does NOT auto-open it', () => {
+    const s = run();
+    const out = standOnFuelDepot(s);
+    expect(out.some((e) => e.t === 'buildingPrompt' && e.id === 'fuel')).toBe(true);
+    expect(out.some((e) => e.t === 'enterBuilding')).toBe(false);
+    expect(s.pod.nearBuilding).toBe('fuel');
+    // ...and it still won't open no matter how long you stand there.
+    expect(step(s, {}, 60).some((e) => e.t === 'enterBuilding')).toBe(false);
+  });
+
+  it('opens the menu only on the interact press', () => {
+    const s = run();
+    standOnFuelDepot(s);
+    const out = step(s, { interact: true });
+    expect(out.some((e) => e.t === 'enterBuilding' && e.id === 'fuel')).toBe(true);
+  });
+
+  it('clears the prompt when walking off the building', () => {
+    const s = run();
+    standOnFuelDepot(s);
+    expect(s.pod.nearBuilding).toBe('fuel');
+    s.pod.x = EMPTY_COL * TILE_PX;
+    const out = step(s, {}, 2);
+    expect(out.some((e) => e.t === 'buildingPrompt' && e.id === null)).toBe(true);
+    expect(s.pod.nearBuilding).toBeNull();
+    // interacting in open air does nothing
+    expect(step(s, { interact: true }).some((e) => e.t === 'enterBuilding')).toBe(false);
+  });
+});
+
+describe('the pod can never rest inside unmined rock', () => {
+  it('pushes out of a tile that closes on it (quake burial)', () => {
+    const s = run();
+    step(s, {}, 5);
+    // Bury the pod: fill the tiles it occupies with solid dirt.
+    const tx = podTileX(s.pod);
+    const ty = podTileY(s.pod);
+    for (let y = ty - 1; y <= ty + 1; y++) setTile(s.world, tx, y, 3);
+    expect(podOverlapsSolid(s)).toBe(true);
+    step(s, {}, 2);
+    expect(podOverlapsSolid(s)).toBe(false);
+  });
+
+  it('never ends a tick overlapping solid while driving hard into a wall', () => {
+    const s = run();
+    step(s, {}, 5);
+    // Solid wall of dirt to the right at the pod's row.
+    const ty = podTileY(s.pod);
+    for (let x = podTileX(s.pod) + 1; x < podTileX(s.pod) + 5; x++) {
+      setTile(s.world, x, ty, 3);
+      setTile(s.world, x, ty - 1, 3);
+    }
+    for (let i = 0; i < 120; i++) {
+      step(s, { right: true, up: i % 3 === 0 });
+      expect(podOverlapsSolid(s), `overlap at tick ${i}`).toBe(false);
+    }
   });
 });
 

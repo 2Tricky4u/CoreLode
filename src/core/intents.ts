@@ -8,6 +8,8 @@ export interface IntentFrame {
   down: boolean;
   /** Edge-triggered: at most one item activation per tick. */
   useItem: ItemId | null;
+  /** Edge-triggered: open the building menu the pod is standing on. */
+  interact: boolean;
 }
 
 export const EMPTY_INTENTS: Readonly<IntentFrame> = {
@@ -16,4 +18,5 @@ export const EMPTY_INTENTS: Readonly<IntentFrame> = {
   up: false,
   down: false,
   useItem: null,
+  interact: false,
 };

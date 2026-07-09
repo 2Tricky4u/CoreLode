@@ -11,6 +11,7 @@ import { Tile } from '../world/tiles';
 import { earthquake } from '../world/world';
 import { solidAt } from '../world/world';
 import { setTile } from '../world/world';
+import { podOverlapsSolid, resolveOverlap } from './physics';
 import { type GameState, podDepthFt, podTileY } from './state';
 
 export function fireTransmission(s: GameState, id: string, out: EventSink): void {
@@ -77,10 +78,19 @@ export function stepScripted(s: GameState, out: EventSink): void {
         s.rng.int(QUAKE.maxIntervalTicks - QUAKE.minIntervalTicks);
       if (rows.length > 0) {
         s.stats.quakes++;
-        // Safety: never entomb the pod — carve the cell it occupies.
-        const tx = Math.floor(s.pod.x / TILE_PX);
-        const ty = podTileY(s.pod);
-        if (solidAt(s.world, tx, ty)) setTile(s.world, tx, ty, Tile.Air);
+        // A shifted row can land on the pod: push it out of the rock first, and
+        // only carve as a last resort if it is fully entombed.
+        resolveOverlap(s);
+        if (podOverlapsSolid(s)) {
+          const tx = Math.floor(s.pod.x / TILE_PX);
+          const ty = podTileY(s.pod);
+          for (const [ox, oy] of [
+            [0, 0],
+            [0, -1],
+          ]) {
+            if (solidAt(s.world, tx + ox, ty + oy)) setTile(s.world, tx + ox, ty + oy, Tile.Air);
+          }
+        }
         out.push({ t: 'quake', rows });
         out.push({ t: 'sfx', key: 'quakeRumble' });
       }

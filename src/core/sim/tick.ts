@@ -10,7 +10,7 @@ import { stepBoss } from './boss';
 import { stepDrilling } from './drilling';
 import { stepCharges } from './explosives';
 import { tryUseItem } from './items';
-import { stepPhysics } from './physics';
+import { POD_HH, stepPhysics } from './physics';
 import { stepScripted } from './scripted';
 import { type GameState, bayContentsCount, challengeDef, podDepthFt, podTileX } from './state';
 
@@ -43,20 +43,18 @@ export function tick(s: GameState, input: IntentFrame, out: EventSink): void {
   // 5. placed charges
   stepCharges(s, out);
 
-  // 6. surface buildings (grounded on the surface row, latched per visit)
-  const onSurface = p.mode === 'ground' && Math.abs(p.y + 21 - SURFACE_ROW * TILE_PX) < 6;
-  if (onSurface) {
-    const col = podTileX(p);
-    const b = BUILDINGS.find((bd) => col >= bd.colStart && col <= bd.colEnd) ?? null;
-    if (b && p.buildingLatch !== b.id) {
-      p.buildingLatch = b.id;
-      out.push({ t: 'enterBuilding', id: b.id });
-    } else if (!b) {
-      p.buildingLatch = null;
-    }
-  } else if (p.mode !== 'ground') {
-    p.buildingLatch = null;
+  // 6. surface buildings — standing on one only shows a prompt; the menu opens
+  //    on the explicit interact press, so walking past never hijacks the screen.
+  const onSurface = p.mode === 'ground' && Math.abs(p.y + POD_HH - SURFACE_ROW * TILE_PX) < 6;
+  const col = podTileX(p);
+  const here = onSurface
+    ? (BUILDINGS.find((bd) => col >= bd.colStart && col <= bd.colEnd)?.id ?? null)
+    : null;
+  if (here !== p.nearBuilding) {
+    p.nearBuilding = here;
+    out.push({ t: 'buildingPrompt', id: here });
   }
+  if (here && input.interact) out.push({ t: 'enterBuilding', id: here });
 
   // 7. scripted events (transmissions, eggs, quakes)
   stepScripted(s, out);

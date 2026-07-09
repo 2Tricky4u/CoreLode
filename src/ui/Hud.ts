@@ -13,10 +13,15 @@ import {
   podDepthFt,
   tankCapacity,
 } from '@core/index';
+import { INTERACT_LABEL } from '@input/InputManager';
 import { el } from './reactive';
 
 export class Hud {
   readonly node: HTMLElement;
+  /** "Press [E] to interact" — shown only while standing on a building. */
+  readonly promptNode: HTMLElement;
+  private promptText: HTMLElement;
+  onInteract: (() => void) | null = null;
   private fuelFill: HTMLElement;
   private hullFill: HTMLElement;
   private cargoFill: HTMLElement;
@@ -58,6 +63,17 @@ export class Hud {
       hotbar.append(btn);
     }
 
+    this.promptText = el('span', { class: 'prompt-text', text: '' });
+    this.promptNode = el(
+      'button',
+      {
+        class: 'interact-prompt hidden',
+        onclick: () => this.onInteract?.(),
+      },
+      el('span', { class: 'prompt-key', text: INTERACT_LABEL }),
+      this.promptText,
+    );
+
     this.node = el(
       'div',
       { class: 'hud' },
@@ -71,6 +87,16 @@ export class Hud {
       el('div', { class: 'hud-mid' }, this.depthText, this.pointsText),
       el('div', { class: 'hud-right' }, this.cashText, hotbar),
     );
+  }
+
+  /** `null` hides the prompt; a building name shows "[E] Enter <name>". */
+  setPrompt(buildingName: string | null): void {
+    if (buildingName) {
+      this.promptText.textContent = `Enter ${buildingName}`;
+      this.promptNode.classList.remove('hidden');
+    } else {
+      this.promptNode.classList.add('hidden');
+    }
   }
 
   update(s: GameState): void {

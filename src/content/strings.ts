@@ -120,6 +120,7 @@ export const STRINGS: Record<string, string> = {
   bldOutfitterBlurb: 'Six ways to make the rig less disappointing.',
   bldItemShopBlurb: 'Consumables and hull repair ($15 per point).',
   bldSaveBlurb: 'Quantum-state your progress. No refunds on regret.',
+  bldSaveStationBlurb: 'Quantum-state your progress. No refunds on regret.',
 
   // --- speakers ---
   spkEmployer: 'MR. NOMED',

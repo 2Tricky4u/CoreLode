@@ -130,3 +130,52 @@
 .hotbar-btn.empty {
   opacity: 0.35;
 }
+
+/* Interact prompt — only visible while standing on a building. */
+.interact-prompt {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--px) * 26px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--px) * 5px);
+  padding: calc(var(--px) * 4px) calc(var(--px) * 9px);
+  background: #140c1cdd;
+  border: 1px solid var(--c-panel2);
+  border-radius: 3px;
+  color: var(--c-text);
+  font-family: inherit;
+  font-size: calc(var(--px) * 9px);
+  cursor: pointer;
+  pointer-events: auto;
+  animation: prompt-in 120ms ease-out;
+}
+.interact-prompt.hidden {
+  display: none;
+}
+.interact-prompt .prompt-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: calc(var(--px) * 13px);
+  padding: 0 calc(var(--px) * 3px);
+  background: var(--c-gold);
+  color: #140c1c;
+  border-radius: 2px;
+  font-weight: bold;
+  font-size: calc(var(--px) * 9px);
+}
+.interact-prompt:hover {
+  filter: brightness(1.2);
+}
+@keyframes prompt-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 4px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}

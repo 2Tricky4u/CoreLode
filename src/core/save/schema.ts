@@ -140,7 +140,7 @@ export function deserialize(f: SaveFile): GameState {
       itemLock: 0,
       guardian: f.pod.guardian,
       lavaLatch: 0,
-      buildingLatch: null,
+      nearBuilding: null,
     },
     boss: null,
     projectiles: [],

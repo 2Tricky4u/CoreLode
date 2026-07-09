@@ -20,6 +20,8 @@ export type SimEvent =
   | { t: 'gasIgnite'; x: number; y: number }
   | { t: 'teleport'; item: ItemId }
   | { t: 'enterBuilding'; id: BuildingId }
+  /** The pod is standing on a building (id) or has left one (null) — drives the interact prompt. */
+  | { t: 'buildingPrompt'; id: BuildingId | null }
   | { t: 'transaction'; kind: string; amount: number }
   | { t: 'transmission'; id: string }
   | { t: 'bonusCash'; amount: number }

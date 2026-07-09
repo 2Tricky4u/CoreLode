@@ -47,9 +47,49 @@ const collides = (s: GameState, cx: number, cy: number): boolean => {
 export const groundedAt = (s: GameState, cx: number, cy: number): boolean =>
   collides(s, cx, cy + 1) && !collides(s, cx, cy);
 
+export const podOverlapsSolid = (s: GameState): boolean => collides(s, s.pod.x, s.pod.y);
+
+/**
+ * Push the pod out of any solid tile it is overlapping, along the shortest axis.
+ * Without this the pod can end up *inside* unmined rock — an earthquake shifts a
+ * row into it, a teleport lands in fill, or a resolution step leaves it embedded —
+ * and the sweep loops below (which only step from a known-free position) can never
+ * free it, so it stays clipped through the terrain.
+ */
+export function resolveOverlap(s: GameState): void {
+  const p = s.pod;
+  if (!collides(s, p.x, p.y)) return;
+  const MAX_PUSH = TILE_PX + POD_HH; // enough to clear any single tile
+  for (let d = 1; d <= MAX_PUSH; d++) {
+    if (!collides(s, p.x, p.y - d)) {
+      p.y -= d;
+      if (p.yVel > 0) p.yVel = 0;
+      return;
+    }
+    if (!collides(s, p.x - d, p.y)) {
+      p.x -= d;
+      p.xVel = 0;
+      return;
+    }
+    if (!collides(s, p.x + d, p.y)) {
+      p.x += d;
+      p.xVel = 0;
+      return;
+    }
+    if (!collides(s, p.x, p.y + d)) {
+      p.y += d;
+      p.yVel = 0;
+      return;
+    }
+  }
+}
+
 export function stepPhysics(s: GameState, input: IntentFrame, out: EventSink): void {
   const p = s.pod;
   if (p.mode === 'dig') return; // drilling.ts owns movement during a dig
+
+  // Never start a step embedded in rock (quake burial, teleport into fill).
+  resolveOverlap(s);
 
   const mass = podMass(p);
   const power = enginePower(p);
@@ -82,12 +122,15 @@ export function stepPhysics(s: GameState, input: IntentFrame, out: EventSink): v
   }
 
   // --- integrate X ---
+  // Sweep from the (guaranteed free) current position to the last free pixel, so
+  // the pod stops flush against unmined rock instead of ending up inside it.
+  const MAX_SWEEP = Math.ceil(PHYSICS.maxFallVel) + 2;
   let nx = p.x + p.xVel;
   if (collides(s, nx, p.y)) {
     // step back to contact
     const step = Math.sign(p.xVel);
     nx = p.x;
-    while (!collides(s, nx + step, p.y)) nx += step;
+    for (let i = 0; i < MAX_SWEEP && !collides(s, nx + step, p.y); i++) nx += step;
     p.xVel = 0;
   }
   p.x = nx;
@@ -97,7 +140,7 @@ export function stepPhysics(s: GameState, input: IntentFrame, out: EventSink): v
   if (collides(s, p.x, ny)) {
     const step = Math.sign(p.yVel) || 1;
     ny = p.y;
-    while (!collides(s, p.x, ny + step)) ny += step;
+    for (let i = 0; i < MAX_SWEEP && !collides(s, p.x, ny + step); i++) ny += step;
     if (p.yVel > 0) {
       // landing
       const dmg = fallDamage(p.yVel);

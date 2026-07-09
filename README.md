@@ -20,9 +20,11 @@ Deploy: any static host (GitHub/GitLab Pages — set `BASE_PATH=/repo-name/` whe
 ## Controls
 
 Arrows / WASD — move, fly (up), and drill (down/left/right; you can never drill upward;
-sideways only from a standstill). Items: **F** fuel cell · **R** nano-welders · **X** dynamite ·
-**C** plastic explosive · **Q** discount teleporter · **M** priority transporter. Esc/P pauses
-(not in the deep). Touch controls and gamepads are supported.
+sideways only from a standstill). **E** interacts with the building you're standing on (a
+"press [E] to interact" prompt appears). Items: **F** fuel cell · **R** nano-welders ·
+**X** dynamite · **C** plastic explosive · **Q** discount teleporter · **M** priority
+transporter. Esc/P pauses (not in the deep). Touch controls and gamepads are supported.
+A full **Controls & Guide** screen is on the title and pause menus.
 
 ## Fidelity
 
