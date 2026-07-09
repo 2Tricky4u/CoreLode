@@ -43,9 +43,9 @@ export const isGas = (t: number): boolean => t === Tile.Gas;
 /** Anything the pod cannot pass through. */
 export const isSolid = (t: number): boolean => t !== Tile.Air;
 
-/** Diggable by a standard drill (boulders/turf/barrier/bedrock are not). */
+/** Diggable by a standard drill (boulders/barrier/bedrock are not; surface turf IS). */
 export const isDrillable = (t: number): boolean =>
-  isDirt(t) || isCollectible(t) || isLava(t) || isGas(t);
+  isDirt(t) || isCollectible(t) || isLava(t) || isGas(t) || t === Tile.TurfA || t === Tile.TurfB;
 
 /** Diggable by the Fractal Drill (adds boulders). */
 export const isDrillableFractal = (t: number): boolean => isDrillable(t) || isBoulder(t);

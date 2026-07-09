@@ -64,6 +64,14 @@ describe('run start (authentic)', () => {
 });
 
 describe('drilling', () => {
+  it('can dig down through the surface turf at spawn (regression)', () => {
+    const s = run();
+    step(s, {}, 5); // settle on the turf
+    const out = step(s, { down: true }, 40);
+    expect(out.some((e) => e.t === 'digStart')).toBe(true);
+    expect(s.stats.tilesDug).toBeGreaterThan(0);
+  });
+
   it('digs down after the 5-frame hold, breaking the tile and burning fuel', () => {
     const s = run();
     step(s, {}, 5); // settle
