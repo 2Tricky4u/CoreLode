@@ -71,11 +71,19 @@ export class App {
       this.input.gameFocus = !open && !this.screens.visible;
       if (this.host) (open ? this.host.pause : this.host.resume).call(this.host, 'modal');
       if (open) this.input.clearHeld();
+      this.audio.duck(open); // music sits under shops/transmissions
     };
+
+    // Every button click clicks.
+    this.ui.root.addEventListener('click', (ev) => {
+      const el = ev.target as HTMLElement | null;
+      if (el?.closest('.btn, .hotbar-btn, .interact-prompt')) this.audio.play('uiClick', 0.5);
+    });
 
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.host?.pause('hidden');
       else this.host?.resume('hidden');
+      this.audio.setPaused(document.hidden);
     });
   }
 
@@ -117,6 +125,7 @@ export class App {
   // ---------- screens ----------
   private async showTitle(): Promise<void> {
     this.stopRun();
+    this.audio.playMusic('title');
     const slots = await storage.listSaves();
     this.input.gameFocus = false;
     this.screens.show(
@@ -195,6 +204,7 @@ export class App {
     const fx = this.fx;
     this.audio.sfxVolume = Number(fx.sfxVol);
     this.audio.musicVolume = Number(fx.musicVol);
+    this.audio.ambience.setEnabled(fx.fxDensity !== 'reduced');
     const touchMode = String(fx.touchControls);
     this.touch.setVisible(
       this.host !== null && (touchMode === 'on' || (touchMode === 'auto' && isTouchDevice())),
@@ -226,6 +236,7 @@ export class App {
       this.input.gameFocus = true;
       this.hud.node.style.display = '';
       this.applySettings();
+      this.audio.playMusic('mine');
 
       this.phaser.scene.stop('game');
       this.phaser.scene.start('game', {
@@ -256,6 +267,7 @@ export class App {
     if (this.hudTimer) cancelAnimationFrame(this.hudTimer);
     if (this.phaser?.scene?.isActive('game')) this.phaser.scene.stop('game');
     this.audio.stopLoops();
+    this.audio.stopMusic();
     this.modals.closeAll();
     this.host = null;
     this.hud.node.style.display = 'none';
@@ -318,7 +330,12 @@ export class App {
     const id = host.state.story.pendingTransmission;
     if (!id) return;
     host.state.story.pendingTransmission = null;
-    openTransmission(this.modals, id, () => this.pumpPendingTransmission());
+    openTransmission(
+      this.modals,
+      id,
+      () => this.pumpPendingTransmission(),
+      () => this.audio.play('textBlip', 0.25),
+    );
   }
 
   private togglePause(): void {
@@ -356,6 +373,8 @@ export class App {
     const host = this.host;
     if (!host) return;
     this.audio.stopLoops();
+    this.audio.playMusic('ending');
+    this.audio.ambience.silence();
     // Show the epilogue after the final transmission modal closes.
     const check = setInterval(() => {
       if (this.modals.isOpen) return;
@@ -413,7 +432,10 @@ export class App {
     if (!host) return;
     await storage.writeSave(slot, serialize(host.state, Date.now()));
     this.lastManualSlot = slot;
-    if (toast) this.ui.toast(t('uiSaved'));
+    if (toast) {
+      this.audio.play('save');
+      this.ui.toast(t('uiSaved'));
+    }
   }
 
   private async loadMostRecent(): Promise<void> {

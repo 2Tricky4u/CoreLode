@@ -59,7 +59,7 @@ export function helpScreen(onBack: () => void): HTMLElement {
         'Spend the money on a better drill, hull, engine, fuel tank, radiator and cargo hold.',
       ),
       bullet('Rarer minerals only exist deeper — but so do the things that kill you.'),
-      bullet(`Your employer keeps in touch as you descend. Listen to what the other rigs say.`),
+      bullet('Your employer keeps in touch as you descend. Listen to what the other rigs say.'),
       bullet(
         'Reach the bottom (−7,300 ft), find the way through the barrier, and end the contract.',
       ),

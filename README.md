@@ -45,6 +45,13 @@ all default **OFF**; Purist Mode force-disables them.
 - `src/game/` — thin Phaser 3 presentation (tilemap, sprites, camera, ZzFX audio).
 - `src/ui/` — DOM overlay (HUD, shops, transmissions, screens); no framework.
 - `src/content/strings.ts` — every name and line of dialog (the clean-room content pack).
+- `src/game/audio/` — the procedural audio: ~45 ZzFX one-shot patches, a synthesized
+  score (`music/`: mode tables → voice patches → tracker patterns → a lookahead
+  Web Audio transport) and a depth-reactive ambient bed. Six pieces: title, three
+  mine beds that cross-fade as you descend, a two-layer boss theme (the second
+  layer arrives with form 2), and an ending. `npm run music:preview` renders every
+  piece and layer to `.wav` plus a `report.json` (levels, clipping, layer
+  divergence) — the audio analogue of the art contact sheet.
 - `tools/art/` — the procedural art pipeline: char-grid sprites + parametric texture
   generators under a strict DB32 ruleset (`tools/art/STYLE.md`), refined through a
   render→look→critique loop (previews: `docs/art-preview.png`, `docs/art-scene.png`).

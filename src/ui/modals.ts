@@ -265,7 +265,12 @@ function openSaveStation(m: ModalManager, onSave: () => void): void {
   m.open(dialog(t('bldSaveStation'), body, el('div', { class: 'btn-row' }, save, exitBtn(m))));
 }
 
-export function openTransmission(m: ModalManager, id: string, onClose: () => void): void {
+export function openTransmission(
+  m: ModalManager,
+  id: string,
+  onClose: () => void,
+  onBlip?: () => void,
+): void {
   const def = TRANSMISSIONS.find((x) => x.id === id) ?? SKY_EGGS.find((x) => x.id === id);
   if (!def) {
     onClose();
@@ -279,11 +284,13 @@ export function openTransmission(m: ModalManager, id: string, onClose: () => voi
     el('div', { class: `tx-portrait p-${'portrait' in def ? def.portrait : 'static'}` }),
     textNode,
   );
-  // typewriter
+  // typewriter — a soft blip every few glyphs, radio-chatter style
   let i = 0;
+  let blipCount = 0;
   const iv = setInterval(() => {
     i += 2;
     textNode.textContent = text.slice(0, i);
+    if (++blipCount % 3 === 0) onBlip?.();
     if (i >= text.length) clearInterval(iv);
   }, 16);
   const ok = el(

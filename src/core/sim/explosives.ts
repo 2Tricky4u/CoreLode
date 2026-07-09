@@ -18,6 +18,8 @@ export function stepCharges(s: GameState, out: EventSink): void {
   for (const c of s.charges) {
     c.fuse--;
     if (c.fuse > 0) {
+      // Audible countdown — a lit charge you can hear ticking under you.
+      if (c.fuse % 10 === 0) out.push({ t: 'sfx', key: 'fuseTick' });
       remaining.push(c);
       continue;
     }

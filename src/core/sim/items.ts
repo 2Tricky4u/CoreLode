@@ -44,6 +44,7 @@ export function tryUseItem(s: GameState, id: ItemId, out: EventSink): void {
     case 'plastique':
       consume();
       s.charges.push({ item: id, x: p.x, y: p.y, fuse: ITEM_EFFECTS.explosionFuseFrames });
+      out.push({ t: 'sfx', key: 'fuseLight' });
       break;
     case 'discountTeleporter': {
       consume();

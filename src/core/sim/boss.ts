@@ -53,6 +53,7 @@ export function stepBoss(s: GameState, out: EventSink): void {
   if (nowInArena && !s.boss) {
     s.boss = spawnBoss(s, 1);
     out.push({ t: 'bossActivated', form: 1 });
+    out.push({ t: 'sfx', key: 'bossRoar' });
     fireTransmission(s, 'tx-boss', out);
     return;
   }
@@ -60,6 +61,7 @@ export function stepBoss(s: GameState, out: EventSink): void {
   if (!nowInArena && wasInArena && s.boss && s.outcome === 'active') {
     s.boss = null;
     out.push({ t: 'bossReset' });
+    out.push({ t: 'sfx', key: 'bossReset' });
     return;
   }
   const b = s.boss;
@@ -154,6 +156,7 @@ export function stepBoss(s: GameState, out: EventSink): void {
       if (b.phaseTicks >= BOSS.interPhaseTicks) {
         s.boss = spawnBoss(s, 2);
         out.push({ t: 'bossActivated', form: 2 });
+        out.push({ t: 'sfx', key: 'bossRoar' });
         fireTransmission(s, 'tx-form2', out);
       }
       break;
@@ -179,6 +182,7 @@ export function stepBoss(s: GameState, out: EventSink): void {
       s.outcome = 'victory';
       fireTransmission(s, 'tx-victory', out);
       out.push({ t: 'victory' });
+      out.push({ t: 'sfx', key: 'victory' });
     }
   }
 

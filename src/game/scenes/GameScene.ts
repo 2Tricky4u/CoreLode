@@ -60,6 +60,7 @@ export class GameScene extends Phaser.Scene {
   private guardianHalo: Phaser.GameObjects.Image | null = null;
   private screenShake = true;
   private emberTimer = 0;
+  private audioTimer = 0;
 
   constructor() {
     super('game');
@@ -350,7 +351,14 @@ export class GameScene extends Phaser.Scene {
           .setAlpha(0.5)
           .setDepth(10);
         break;
+      case 'bossActivated':
+        this.audio.playMusic('boss');
+        this.audio.setBossForm(e.form);
+        break;
       case 'bossReset':
+        this.audio.playMusic('mine');
+        this.boss.destroyAll();
+        break;
       case 'victory':
         this.boss.destroyAll();
         break;
@@ -470,6 +478,18 @@ export class GameScene extends Phaser.Scene {
       for (const c of cells.slice(0, 5)) {
         this.embersE.explode(1, (c.x + 0.3 + Math.random() * 0.4) * TILE_PX, c.y * TILE_PX + 3);
       }
+    }
+
+    // --- audio: score follows depth, ambient bed follows the world ---
+    this.audio.setMusicDepth(depth);
+    this.audioTimer += dtMs;
+    if (this.audioTimer > 150) {
+      this.audioTimer = 0;
+      // Reuse the ember query: how close is visible lava?
+      const near = this.tiles.lavaCellsNear(this.pod.sprite.x, this.pod.sprite.y, 260);
+      const lavaNear = Math.min(1, near.length / 4);
+      const driving = s.pod.mode === 'ground' && Math.abs(s.pod.xVel) > 0.6;
+      this.audio.ambience.update(depth, lavaNear, driving);
     }
 
     // Damage vignette decay.

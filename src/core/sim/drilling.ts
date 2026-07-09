@@ -19,6 +19,7 @@ import {
   isDrillableFractal,
   isGas,
   isLava,
+  isSolid,
 } from '../world/tiles';
 import { getTile, setTile } from '../world/world';
 import { applyGasPocket, applyLavaHit } from './hazards';
@@ -134,14 +135,26 @@ export function stepDrilling(s: GameState, input: IntentFrame, out: EventSink): 
   let targetX = tx;
   let targetY = ty;
 
+  /** A tile we're pushing into but cannot drill (boulder/barrier) — clink. */
+  let refused = 0;
+
   if (input.down && !input.up) {
     targetY = ty + 1;
-    if (canDig(s, getTile(s.world, tx, targetY))) dir = 'down';
+    const t = getTile(s.world, tx, targetY);
+    if (canDig(s, t)) dir = 'down';
+    else if (isSolid(t)) refused = t;
   } else if ((input.left || input.right) && p.mode === 'ground' && !input.up) {
     const side = input.left ? -1 : 1;
     targetX = tx + side;
     // must be pushing against the wall (standing beside it)
-    if (canDig(s, getTile(s.world, targetX, ty))) dir = input.left ? 'left' : 'right';
+    const t = getTile(s.world, targetX, ty);
+    if (canDig(s, t)) dir = input.left ? 'left' : 'right';
+    else if (isSolid(t)) refused = t;
+  }
+
+  // Throttled so leaning on a boulder isn't a machine-gun of clinks.
+  if (refused && p.mode === 'ground' && s.tick % 14 === 0) {
+    out.push({ t: 'sfx', key: 'clink' });
   }
 
   if (dir && (p.mode === 'ground' || (dir === 'down' && groundedAt(s, p.x, p.y)))) {
@@ -159,6 +172,7 @@ export function stepDrilling(s: GameState, input: IntentFrame, out: EventSink): 
       p.mode = 'dig';
       p.launchCount = 0;
       out.push({ t: 'digStart', x: targetX, y: targetY, dir });
+      out.push({ t: 'sfx', key: 'drillBite' });
     }
   } else {
     p.launchCount = 0;

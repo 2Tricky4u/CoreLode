@@ -3,6 +3,7 @@ import type { BossAttackKind } from './data/boss';
 import type { BuildingId } from './data/buildings';
 /** Typed events — the only channel from the sim to the presentation layer. */
 import type { ItemId } from './data/items';
+import type { SfxKey } from './data/sfx';
 
 export type DamageCause = 'fall' | 'lava' | 'gas' | 'blast' | 'boss' | 'teleport';
 
@@ -35,6 +36,7 @@ export type SimEvent =
   | { t: 'bossReset' }
   | { t: 'victory' }
   | { t: 'challengeResult'; win: boolean; elapsedTicks: number }
-  | { t: 'sfx'; key: string };
+  /** A typo here is a compile error — the audio analogue of check-frames.mjs. */
+  | { t: 'sfx'; key: SfxKey };
 
 export type EventSink = SimEvent[];

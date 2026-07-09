@@ -30,6 +30,7 @@ export function applyGasPocket(s: GameState, x: number, y: number, out: EventSin
   const p = s.pod;
   applyDamage(s, gasDamageAtDepth(podDepthFt(p)) * radiatorMult(p), 'gas', out);
   out.push({ t: 'gasIgnite', x, y });
+  out.push({ t: 'sfx', key: 'gasHiss' });
   if (p.blueprints.includes('siphonTank')) {
     p.fuel = Math.min(tankCapacity(p), p.fuel + 10);
   }

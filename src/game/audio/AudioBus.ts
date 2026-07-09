@@ -1,13 +1,19 @@
 /**
- * SFX routing: sim events → ZzFX synth. Music: procedural ambient loops built
- * from the same synth (droning pads by depth band) — zero shipped audio files.
+ * The whole audio surface: sim events → ZzFX one-shots, a procedural score
+ * (music/), and a continuous ambient bed (AmbienceBus). Nothing is sampled;
+ * every sound is synthesized at runtime from a few KB of parameters.
  */
 import { SFX, type SfxKey, type SimEvent } from '@core/index';
+import { AmbienceBus } from './AmbienceBus';
+import type { PieceName } from './music/patterns';
+import { MusicPlayer } from './music/player';
 import { isUnlocked, playZzfx, unlockAudio } from './zzfx';
 
 export class AudioBus {
   sfxVolume = 1;
-  musicVolume = 0.7;
+  readonly music = new MusicPlayer();
+  readonly ambience = new AmbienceBus();
+
   private drillLoop: AudioBufferSourceNode | null = null;
   private thrustLoop: AudioBufferSourceNode | null = null;
   private lastPlayed = new Map<string, number>();
@@ -15,6 +21,7 @@ export class AudioBus {
   attachUnlock(): void {
     const unlock = () => {
       unlockAudio();
+      this.music.onUnlock(); // a queued piece starts on the first gesture
       window.removeEventListener('pointerdown', unlock);
       window.removeEventListener('keydown', unlock);
     };
@@ -22,32 +29,83 @@ export class AudioBus {
     window.addEventListener('keydown', unlock);
   }
 
-  play(key: SfxKey, volume = 1): void {
+  set musicVolume(v: number) {
+    this.music.setVolume(v);
+    this.ambience.setVolume(Math.min(1, v * 1.2 + 0.15)); // bed tracks music, never fully silent
+  }
+
+  playMusic(name: PieceName): void {
+    this.music.play(name);
+  }
+  stopMusic(): void {
+    this.music.stop();
+    this.ambience.silence();
+  }
+  setMusicDepth(ft: number): void {
+    this.music.setDepth(ft);
+  }
+  setBossForm(form: 1 | 2): void {
+    this.music.setBossForm(form);
+  }
+  duck(on: boolean): void {
+    this.music.duck(on);
+  }
+  setPaused(paused: boolean): void {
+    this.music.setPaused(paused);
+  }
+
+  /** @param pitch multiplies the patch's base frequency (1 = as authored). */
+  play(key: SfxKey, volume = 1, pitch = 1): void {
     if (!isUnlocked()) return;
-    // basic voice-pool throttle: same sfx max once per 60 ms
+    // voice-pool throttle: the same sound at most once per 60 ms
     const now = performance.now();
     if (now - (this.lastPlayed.get(key) ?? 0) < 60) return;
     this.lastPlayed.set(key, now);
-    playZzfx(SFX[key], volume * this.sfxVolume);
+    const params = SFX[key];
+    if (pitch !== 1) {
+      const p = [...params];
+      p[2] = (p[2] ?? 220) * pitch;
+      playZzfx(p, volume * this.sfxVolume);
+      return;
+    }
+    playZzfx(params, volume * this.sfxVolume);
   }
 
   onEvent(e: SimEvent): void {
     switch (e.t) {
       case 'sfx':
-        this.play(e.key as SfxKey);
+        this.play(e.key);
         break;
       case 'collected':
-        this.play(e.collectibleId >= 6 ? 'collectBig' : 'collect');
+        // Rarer mineral → higher, brighter chime. Tier 0-9, artifacts fanfare.
+        if (e.collectibleId >= 10) this.play('collectBig', 1, 1.15);
+        else this.play('collect', 1, 1 + e.collectibleId * 0.055);
         break;
       case 'cargoFullLost':
         this.play('cargoFull');
         break;
       case 'landed':
-        if (e.damage > 0) this.play('hullHit');
-        else this.play('landThump', 0.5);
+        // Impact thump only; the hull damage itself is voiced by 'damage'.
+        if (e.impactVel > 2) this.play('landThump', Math.min(1, 0.35 + e.impactVel / 24));
+        break;
+      case 'damage':
+        this.play('hullHit', Math.min(1, 0.5 + e.amount / 40));
+        break;
+      case 'gasIgnite':
+        this.play('gasHiss');
         break;
       case 'podExploded':
-        this.play('explosionLarge');
+        this.play('podExplode');
+        this.ambience.silence();
+        break;
+      case 'enterBuilding':
+        this.play('doorOpen');
+        break;
+      case 'buildingPrompt':
+        if (e.id) this.play('promptBlip', 0.7);
+        break;
+      case 'challengeResult':
+        this.play(e.win ? 'challengeWin' : 'challengeFail');
         break;
       case 'transmission':
         this.play('transmission');
@@ -57,9 +115,6 @@ export class AudioBus {
         break;
       case 'fuelLow':
         this.play('fuelLow', 0.6);
-        break;
-      case 'digStart':
-        this.play('clink', 0.3);
         break;
     }
   }

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "CORELODE — a clean-room, browser-only remake of the 2004 mining classic",
+  "description": "CORELODE \u2014 a clean-room, browser-only remake of the 2004 mining classic",
   "scripts": {
     "dev": "vite",
     "build": "npm run atlas && tsc --noEmit && vite build",
@@ -15,7 +15,8 @@
     "format": "biome format --write .",
     "atlas": "node tools/gen-art.mjs && node tools/art/check-frames.mjs",
     "art:preview": "node tools/art/contact-sheet.mjs",
-    "check:layering": "node tools/check-layering.mjs"
+    "check:layering": "node tools/check-layering.mjs",
+    "music:preview": "vite-node tools/music/render.mjs"
   },
   "dependencies": {
     "idb-keyval": "^6.2.1",
