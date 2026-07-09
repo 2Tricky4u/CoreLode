@@ -206,6 +206,7 @@ export class App {
       audio: this.audio,
       screenShake: Boolean(this.fx.screenShake),
       gasHint: Boolean(this.fx.gasShimmerHint),
+      fxFull: this.fx.fxDensity !== 'reduced',
     });
     void scene;
 

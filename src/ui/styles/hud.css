@@ -36,12 +36,14 @@
 .bar-track {
   flex: 1;
   height: 10px;
-  background: #000;
+  background: repeating-linear-gradient(90deg, transparent 0 24%, #ffffff14 24% 25%), #000;
   border: 1px solid var(--c-panel2);
+  box-shadow: 0 1px 0 #ffffff12 inset, 0 -1px 0 #00000088 inset;
 }
 .bar-fill {
   height: 100%;
   transition: width 0.15s linear;
+  box-shadow: 0 2px 0 #ffffff33 inset, 0 -2px 0 #00000055 inset;
 }
 .bar-fill.fuel {
   background: var(--c-gold);
@@ -69,6 +71,7 @@
   font-size: 18px;
   color: var(--c-gold);
   display: block;
+  text-shadow: 2px 2px 0 #000, 0 0 12px #fbf23644;
 }
 .hud-points {
   font-size: 11px;

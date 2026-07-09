@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
     "format": "biome format --write .",
-    "atlas": "node tools/gen-art.mjs",
+    "atlas": "node tools/gen-art.mjs && node tools/art/check-frames.mjs",
+    "art:preview": "node tools/art/contact-sheet.mjs",
     "check:layering": "node tools/check-layering.mjs"
   },
   "dependencies": {

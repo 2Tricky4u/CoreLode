@@ -223,6 +223,7 @@ export const STRINGS: Record<string, string> = {
   setScreenShake: 'Screen shake',
   setDamageFlash: 'Damage flash',
   setPixelPerfect: 'Pixel-perfect scaling',
+  setFxDensity: 'Effects density',
   setTouchControls: 'Touch controls',
   setTouchLayout: 'Touch layout',
   setAutosave: 'Autosave on surfacing (QoL)',

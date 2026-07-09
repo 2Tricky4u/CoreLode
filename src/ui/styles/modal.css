@@ -10,15 +10,26 @@
   background: #0008;
 }
 .dialog {
-  background: var(--c-panel);
+  background: linear-gradient(180deg, var(--c-panel) 0%, #1b1930 100%);
   border: 3px solid var(--c-panel2);
   border-radius: 4px;
-  box-shadow: 0 0 0 3px #000, 0 12px 40px #000c;
+  box-shadow: 0 0 0 3px #000, 0 0 22px #5b6ee133, 0 12px 40px #000c;
   min-width: 340px;
   max-width: min(560px, 92vw);
   max-height: 86vh;
   overflow-y: auto;
   padding: 14px 18px;
+  animation: dialog-pop 90ms ease-out;
+}
+@keyframes dialog-pop {
+  from {
+    transform: scale(0.94);
+    opacity: 0.4;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 .dialog-title {
   color: var(--c-gold);
@@ -88,10 +99,29 @@
   width: 48px;
   height: 48px;
   border: 2px solid var(--c-panel2);
-  background: #000;
+  background: #000 url("/atlas/portraits.png") no-repeat;
   image-rendering: pixelated;
   float: left;
   margin: 0 10px 6px 0;
+  box-shadow: 0 0 12px #0009 inset;
+}
+.p-employer {
+  background-position: 0 0;
+}
+.p-employerTrue {
+  background-position: -48px 0;
+}
+.p-minerRig7 {
+  background-position: -96px 0;
+}
+.p-static {
+  background-position: -144px 0;
+}
+.p-dispatch {
+  background-position: -192px 0;
+}
+.p-deity {
+  background-position: -240px 0;
 }
 .danger-text {
   color: var(--c-danger);

@@ -1,12 +1,13 @@
 import { type GameState, TILE_PX } from '@core/index';
 /** Boss + projectiles + laser telegraph rendering. */
-import type Phaser from 'phaser';
+import Phaser from 'phaser';
 
 export class BossView {
   private sprite: Phaser.GameObjects.Sprite | null = null;
   private laser: Phaser.GameObjects.Graphics | null = null;
   private fireballs: Phaser.GameObjects.Sprite[] = [];
   private hpBar: Phaser.GameObjects.Graphics | null = null;
+  private furnaceGlow: Phaser.GameObjects.Image | null = null;
 
   constructor(
     private scene: Phaser.Scene,
@@ -33,14 +34,44 @@ export class BossView {
     this.sprite.setFlipX(b.facing === 1);
     this.sprite.setAlpha(b.phase === 'transition' || b.phase === 'dead' ? 0.4 : 1);
 
-    // Laser sweep visual.
+    // Laser sweep visual — wide additive bloom under a hot core line.
     this.laser!.clear();
     if (b.currentAttack === 'laserSweep' && (b.phase === 'attack' || b.phase === 'telegraph')) {
       const len = 1200;
       const a = b.laserAngle;
-      const color = b.phase === 'attack' ? 0xd95763 : 0x847e87;
-      this.laser!.lineStyle(b.phase === 'attack' ? 5 : 2, color, 0.9);
-      this.laser!.lineBetween(x, y - 90, x + Math.cos(a) * len, y - 90 + Math.sin(a) * len);
+      const ex = x + Math.cos(a) * len;
+      const ey = y - 90 + Math.sin(a) * len;
+      if (b.phase === 'attack') {
+        this.laser!.setBlendMode(Phaser.BlendModes.ADD);
+        this.laser!.lineStyle(16, 0xd95763, 0.16);
+        this.laser!.lineBetween(x, y - 90, ex, ey);
+        this.laser!.lineStyle(7, 0xd95763, 0.5);
+        this.laser!.lineBetween(x, y - 90, ex, ey);
+        this.laser!.lineStyle(2, 0xffffff, 1);
+        this.laser!.lineBetween(x, y - 90, ex, ey);
+      } else {
+        this.laser!.setBlendMode(Phaser.BlendModes.NORMAL);
+        this.laser!.lineStyle(2, 0x847e87, 0.7);
+        this.laser!.lineBetween(x, y - 90, ex, ey);
+      }
+    }
+
+    // Furnace-heart glow on form 2.
+    if (b.form === 2) {
+      if (!this.furnaceGlow) {
+        this.furnaceGlow = this.scene.add
+          .image(0, 0, 'atlas', 'glow32')
+          .setBlendMode(Phaser.BlendModes.ADD)
+          .setTint(0xffcc44)
+          .setDepth(9);
+      }
+      this.furnaceGlow
+        .setPosition(x - b.facing * 4, y - 88)
+        .setAlpha(0.35 + 0.18 * Math.sin(this.scene.time.now / 220))
+        .setScale(2.2);
+    } else if (this.furnaceGlow) {
+      this.furnaceGlow.destroy();
+      this.furnaceGlow = null;
     }
 
     // Fireballs.
@@ -76,6 +107,8 @@ export class BossView {
     this.laser = null;
     this.hpBar?.destroy();
     this.hpBar = null;
+    this.furnaceGlow?.destroy();
+    this.furnaceGlow = null;
     for (const f of this.fireballs) f.destroy();
     this.fireballs.length = 0;
   }

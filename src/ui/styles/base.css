@@ -68,6 +68,10 @@ button.btn {
 button.btn:hover {
   filter: brightness(1.25);
 }
+button.btn:active {
+  transform: translateY(1px);
+  filter: brightness(0.95);
+}
 button.btn.primary {
   background: var(--c-accent);
   color: #140c1c;

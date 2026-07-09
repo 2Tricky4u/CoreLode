@@ -1,6 +1,5 @@
 import {
   type GameState,
-  SKY_ROWS,
   SURFACE_ROW,
   TILE_PX,
   Tile,
@@ -17,7 +16,9 @@ import {
 /**
  * World rendering: two dynamic tilemap layers (base terrain + collectible
  * overlays) over the full 36×600 grid. Gas renders as that band's dirt — the
- * one deliberate lie, and it lives HERE only. Phaser culls to the camera.
+ * one deliberate lie, and it lives HERE only.
+ * v2: lava cells animate by cycling through 4 baked phase frames (classic
+ * palette-cycling look); the QoL gas shimmer uses the same mechanism.
  */
 import type Phaser from 'phaser';
 
@@ -38,6 +39,10 @@ export class TileRenderer {
   private overlay!: Phaser.Tilemaps.TilemapLayer;
   private meta!: TilesetMeta;
   private gasHint = false;
+  /** Animated cells, keyed y*W+x (values = tile coords). Rebuilt on repaint. */
+  private lavaCells = new Map<number, { x: number; y: number }>();
+  private gasCells = new Map<number, { x: number; y: number }>();
+  private phase = 0;
 
   constructor(
     private scene: Phaser.Scene,
@@ -62,12 +67,44 @@ export class TileRenderer {
     this.gasHint = on;
   }
 
+  /** Advance the lava/gas animation one phase (call ~6×/second). */
+  cycle(): void {
+    this.phase = (this.phase + 1) % 4;
+    const I = this.meta.index;
+    for (const { x, y } of this.lavaCells.values()) {
+      this.base.putTileAt(I[`lava${(this.phase + x + y) % 4}`], x, y);
+    }
+    if (this.gasHint) {
+      for (const { x, y } of this.gasCells.values()) {
+        this.overlay.putTileAt(I[`gasShimmer${(this.phase + x) % 4}`], x, y);
+      }
+    }
+  }
+
+  /** Positions of currently-known lava cells near a world point (for ember FX). */
+  lavaCellsNear(px: number, py: number, radiusPx: number): Array<{ x: number; y: number }> {
+    const out: Array<{ x: number; y: number }> = [];
+    for (const c of this.lavaCells.values()) {
+      const cx = (c.x + 0.5) * TILE_PX;
+      const cy = (c.y + 0.5) * TILE_PX;
+      if (Math.abs(cx - px) < radiusPx && Math.abs(cy - py) < radiusPx) out.push(c);
+    }
+    return out;
+  }
+
   repaintAll(): void {
+    this.lavaCells.clear();
+    this.gasCells.clear();
     for (let y = 0; y < WORLD_H; y++) this.repaintRow(y);
   }
 
   repaintRows(rows: number[]): void {
-    for (const y of rows) this.repaintRow(y);
+    for (const y of rows) {
+      // drop stale animated cells on these rows, then repaint
+      for (const [k, c] of this.lavaCells) if (c.y === y) this.lavaCells.delete(k);
+      for (const [k, c] of this.gasCells) if (c.y === y) this.gasCells.delete(k);
+      this.repaintRow(y);
+    }
   }
 
   repaintRow(y: number): void {
@@ -76,6 +113,12 @@ export class TileRenderer {
 
   paint(x: number, y: number): void {
     const t = getTile(this.state.world, x, y);
+    const key = y * WORLD_W + x;
+    if (isLava(t)) this.lavaCells.set(key, { x, y });
+    else this.lavaCells.delete(key);
+    if (isGas(t)) this.gasCells.set(key, { x, y });
+    else this.gasCells.delete(key);
+
     const ix = this.frameFor(t, x, y);
     if (ix < 0) this.base.removeTileAt(x, y);
     else this.base.putTileAt(ix, x, y);
@@ -91,7 +134,7 @@ export class TileRenderer {
     if (isMineral(t) || isArtifact(t)) return I[`dirt${1 + ((x + y) % 5)}_p${bandFor(y)}`];
     if (isGas(t)) return I[`dirt${1 + ((x * 7 + y) % 5)}_p${bandFor(y)}`]; // the lie
     if (isBoulder(t)) return I[`boulder${t - Tile.BoulderFirst}`];
-    if (isLava(t)) return I[`lava${t - Tile.LavaFirst}`];
+    if (isLava(t)) return I[`lava${(this.phase + x + y) % 4}`];
     switch (t) {
       case Tile.TurfA:
         return I.turfA;
@@ -111,12 +154,11 @@ export class TileRenderer {
     }
   }
 
-  private overlayFor(t: number, _x: number, y: number): number {
+  private overlayFor(t: number, x: number, _y: number): number {
     const I = this.meta.index;
     if (isMineral(t) || isArtifact(t)) return I[`gem${t - 6}`];
     if (t === Tile.Slate) return I.slate;
-    if (isGas(t) && this.gasHint) return I.gem12; // faint marker only with the QoL toggle
-    void y;
+    if (isGas(t) && this.gasHint) return I[`gasShimmer${(this.phase + x) % 4}`];
     return -1;
   }
 }

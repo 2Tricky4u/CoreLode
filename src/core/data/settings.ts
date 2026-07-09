@@ -61,6 +61,15 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     affectsFidelity: false,
   },
   {
+    id: 'fxDensity',
+    labelKey: 'setFxDensity',
+    category: 'video',
+    type: 'enum',
+    default: 'full',
+    options: ['full', 'reduced'],
+    affectsFidelity: false,
+  },
+  {
     id: 'touchControls',
     labelKey: 'setTouchControls',
     category: 'controls',

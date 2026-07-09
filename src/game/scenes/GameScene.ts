@@ -1,6 +1,8 @@
 import {
   ALTIMETER_ARENA_FT,
   BUILDINGS,
+  COLLECTIBLES,
+  DAY_LENGTH_TICKS,
   type GameState,
   SURFACE_ROW,
   type SimEvent,
@@ -8,11 +10,13 @@ import {
   WORLD_H,
   WORLD_W,
   podDepthFt,
+  saleValue,
 } from '@core/index';
 /**
- * Composition root of the play field: tile layers, pod, boss, buildings,
- * charges, guardian, sky gradient, depth darkness, camera, particles, shake.
- * The boss arena is just world rows — no scene seam.
+ * Composition root of the play field. v2 "juice" pass:
+ * smooth canvas-texture darkness with a flickering pod light + arena pulse,
+ * real particle emitters (debris/thrust/motes/embers), additive glows,
+ * lava palette-cycling, damage vignette, collect popups, star field + day/night.
  */
 import Phaser from 'phaser';
 import type { GameHost } from '../GameHost';
@@ -21,40 +25,95 @@ import { BossView } from '../render/BossView';
 import { PodView } from '../render/PodView';
 import { TileRenderer } from '../render/TileRenderer';
 
+/** Soil ramp base colors per band for debris tinting (mirrors tools/art palette). */
+const BAND_TINTS = [0xd9a066, 0x8f563b, 0x663931, 0x45283c, 0x45283c, 0x323c39];
+const bandAt = (rowY: number): number =>
+  Math.max(0, Math.min(5, Math.floor(((rowY - SURFACE_ROW) / (WORLD_H - SURFACE_ROW)) * 6)));
+
+const LIGHT_W = 275; // half-res light buffer, scaled ×2 over a 550×400 view
+const LIGHT_H = 200;
+
 export class GameScene extends Phaser.Scene {
   private host!: GameHost;
   private audio!: AudioBus;
   private tiles!: TileRenderer;
   private pod!: PodView;
   private boss!: BossView;
-  private darkness!: Phaser.GameObjects.Graphics;
-  private sky!: Phaser.GameObjects.Graphics;
+  private fxFull = true;
+
+  private lightImg!: Phaser.GameObjects.Image;
+  private skyImg!: Phaser.GameObjects.Image;
+  private vignette!: Phaser.GameObjects.Image;
+  private vignetteAlpha = 0;
+  private headGlow!: Phaser.GameObjects.Image;
+  private thrustGlow!: Phaser.GameObjects.Image;
+  private stars!: Phaser.GameObjects.Group;
+
+  private debrisE!: Phaser.GameObjects.Particles.ParticleEmitter;
+  private thrustE!: Phaser.GameObjects.Particles.ParticleEmitter;
+  private smokeE!: Phaser.GameObjects.Particles.ParticleEmitter;
+  private motesE!: Phaser.GameObjects.Particles.ParticleEmitter;
+  private embersE!: Phaser.GameObjects.Particles.ParticleEmitter;
+
   private chargeSprites: Phaser.GameObjects.Sprite[] = [];
   private guardianSprite: Phaser.GameObjects.Sprite | null = null;
+  private guardianHalo: Phaser.GameObjects.Image | null = null;
   private screenShake = true;
+  private emberTimer = 0;
 
   constructor() {
     super('game');
   }
 
-  init(data: { host: GameHost; audio: AudioBus; screenShake: boolean; gasHint: boolean }): void {
+  init(data: {
+    host: GameHost;
+    audio: AudioBus;
+    screenShake: boolean;
+    gasHint: boolean;
+    fxFull?: boolean;
+  }): void {
     this.host = data.host;
     this.audio = data.audio;
     this.screenShake = data.screenShake;
+    this.fxFull = data.fxFull ?? true;
   }
 
   get state(): GameState {
     return this.host.state;
   }
 
+  private canvasTex(key: string, w: number, h: number): Phaser.Textures.CanvasTexture {
+    if (this.textures.exists(key)) return this.textures.get(key) as Phaser.Textures.CanvasTexture;
+    return this.textures.createCanvas(key, w, h)!;
+  }
+
   create(data: { gasHint: boolean }): void {
     const s = this.state;
-    // Sky backdrop (fixed to camera, tinted by altitude/day in update).
-    this.sky = this.add.graphics().setDepth(-10).setScrollFactor(0);
+
+    // --- sky gradient (canvas strip, stretched full-screen, behind everything) ---
+    const skyTex = this.canvasTex('skyTex', 1, 64);
+    this.skyImg = this.add.image(0, 0, 'skyTex').setOrigin(0).setScrollFactor(0).setDepth(-12);
+    this.skyImg.setDisplaySize(this.scale.width, this.scale.height);
+    void skyTex;
+
+    // --- star field (parallax, only visible up high) ---
+    this.stars = this.add.group();
+    for (let i = 0; i < 80; i++) {
+      const star = this.add.image(
+        Math.random() * WORLD_W * TILE_PX * 2 - WORLD_W * TILE_PX * 0.5,
+        -(400 + Math.random() * 90_000),
+        'atlas',
+        'mote',
+      );
+      star.setScrollFactor(0.5).setDepth(-11).setBlendMode(Phaser.BlendModes.ADD);
+      star.setAlpha(0.4 + Math.random() * 0.6);
+      this.stars.add(star);
+    }
 
     this.tiles = new TileRenderer(this, s);
     this.tiles.create();
     this.tiles.setGasHint(data.gasHint ?? false);
+    this.time.addEvent({ delay: 166, loop: true, callback: () => this.tiles.cycle() });
 
     // Surface buildings.
     BUILDINGS.forEach((b, i) => {
@@ -67,7 +126,99 @@ export class GameScene extends Phaser.Scene {
     this.pod.create();
     this.boss = new BossView(this, s);
 
-    this.darkness = this.add.graphics().setDepth(40).setScrollFactor(0);
+    // --- glows ---
+    this.headGlow = this.add
+      .image(0, 0, 'atlas', 'glow64')
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(0xffe0a0)
+      .setAlpha(0.22)
+      .setScale(3.4)
+      .setDepth(9);
+    this.thrustGlow = this.add
+      .image(0, 0, 'atlas', 'glow32')
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(0xffa030)
+      .setAlpha(0)
+      .setScale(1.6)
+      .setDepth(11);
+
+    // --- particles ---
+    this.debrisE = this.add.particles(0, 0, 'atlas', {
+      frame: ['dust0', 'dust1', 'dust2'],
+      speed: { min: 50, max: 170 },
+      angle: { min: 200, max: 340 },
+      gravityY: 420,
+      lifespan: { min: 260, max: 520 },
+      scale: { start: 1.1, end: 0.4 },
+      alpha: { start: 1, end: 0.2 },
+      emitting: false,
+    });
+    this.debrisE.setDepth(14);
+    this.thrustE = this.add.particles(0, 0, 'atlas', {
+      frame: 'spark',
+      speedY: { min: 90, max: 160 },
+      speedX: { min: -25, max: 25 },
+      lifespan: { min: 160, max: 300 },
+      scale: { start: 1.3, end: 0.3 },
+      alpha: { start: 1, end: 0 },
+      tint: [0xffe066, 0xff9030, 0xffffff],
+      blendMode: Phaser.BlendModes.ADD,
+      emitting: false,
+    });
+    this.thrustE.setDepth(11);
+    this.smokeE = this.add.particles(0, 0, 'atlas', {
+      frame: 'smoke',
+      speedY: { min: 30, max: 70 },
+      speedX: { min: -18, max: 18 },
+      lifespan: 650,
+      scale: { start: 0.6, end: 1.6 },
+      alpha: { start: 0.4, end: 0 },
+      emitting: false,
+    });
+    this.smokeE.setDepth(10);
+    this.motesE = this.add.particles(0, 0, 'atlas', {
+      frame: 'mote',
+      speed: { min: 4, max: 14 },
+      lifespan: 4200,
+      scale: { start: 1, end: 0.5 },
+      alpha: { start: 0, end: 0.55, ease: 'Sine.InOut' },
+      blendMode: Phaser.BlendModes.ADD,
+      tint: 0xc8b090,
+      frequency: 240,
+      emitZone: {
+        type: 'random',
+        source: {
+          getRandomPoint: (p) => {
+            p.x = -140 + Math.random() * 280;
+            p.y = -100 + Math.random() * 200;
+          },
+        },
+      },
+      emitting: false,
+    });
+    this.motesE.setDepth(12);
+    this.embersE = this.add.particles(0, 0, 'atlas', {
+      frame: 'spark',
+      speedY: { min: -70, max: -30 },
+      speedX: { min: -12, max: 12 },
+      lifespan: { min: 700, max: 1200 },
+      scale: { start: 1, end: 0.2 },
+      alpha: { start: 0.9, end: 0 },
+      tint: [0xffdd44, 0xff8022],
+      blendMode: Phaser.BlendModes.ADD,
+      emitting: false,
+    });
+    this.embersE.setDepth(14);
+
+    // --- darkness/light buffer + damage vignette ---
+    this.canvasTex('lightTex', LIGHT_W, LIGHT_H);
+    this.lightImg = this.add
+      .image(0, 0, 'lightTex')
+      .setOrigin(0)
+      .setScrollFactor(0)
+      .setDepth(40)
+      .setScale(this.scale.width / LIGHT_W, this.scale.height / LIGHT_H);
+    this.buildVignette();
 
     const cam = this.cameras.main;
     cam.setBounds(0, -100_000 * 4, WORLD_W * TILE_PX, 100_000 * 4 + WORLD_H * TILE_PX);
@@ -77,11 +228,44 @@ export class GameScene extends Phaser.Scene {
     this.host.onEvent((e) => this.onSimEvent(e));
   }
 
+  private buildVignette(): void {
+    const w = 138;
+    const h = 100;
+    const tex = this.canvasTex('vignetteTex', w, h);
+    const ctx = tex.context;
+    ctx.clearRect(0, 0, w, h);
+    const g = ctx.createRadialGradient(w / 2, h / 2, h * 0.32, w / 2, h / 2, h * 0.72);
+    g.addColorStop(0, 'rgba(217,87,99,0)');
+    g.addColorStop(1, 'rgba(217,87,99,0.85)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    tex.refresh();
+    this.vignette = this.add
+      .image(0, 0, 'vignetteTex')
+      .setOrigin(0)
+      .setScrollFactor(0)
+      .setDepth(45)
+      .setAlpha(0)
+      .setScale(this.scale.width / w, this.scale.height / h);
+  }
+
   private onSimEvent(e: SimEvent): void {
     switch (e.t) {
-      case 'tileCleared':
+      case 'tileCleared': {
+        const wx = e.x * TILE_PX + 25;
+        const wy = e.y * TILE_PX + 25;
+        this.debrisE.setParticleTint(BAND_TINTS[bandAt(e.y)]);
+        this.debrisE.explode(e.cause === 'blast' ? 14 : 8, wx, wy);
         this.tiles.paint(e.x, e.y);
-        this.puff(e.x * TILE_PX + 25, e.y * TILE_PX + 25, e.cause === 'blast' ? 8 : 4);
+        break;
+      }
+      case 'collected': {
+        const def = COLLECTIBLES[e.collectibleId];
+        this.popup(`+$${saleValue(def.value, this.state.level).toLocaleString('en-US')}`, 0xfbf236);
+        break;
+      }
+      case 'cargoFullLost':
+        this.popup('LOST!', 0xd95763);
         break;
       case 'quake':
         this.tiles.repaintRows(e.rows);
@@ -92,13 +276,27 @@ export class GameScene extends Phaser.Scene {
           this.anims.create({
             key: 'boomA',
             frames: [0, 1, 2, 3, 4].map((i) => ({ key: 'atlas', frame: `boom${i}` })),
-            frameRate: 18,
+            frameRate: 20,
           });
         }
         const boom = this.add.sprite(e.x, e.y, 'atlas', 'boom0').setDepth(20);
         boom.play('boomA');
         boom.once('animationcomplete', () => boom.destroy());
-        if (this.screenShake) this.cameras.main.shake(300, e.radiusTiles > 1 ? 0.02 : 0.01);
+        const glow = this.add
+          .image(e.x, e.y, 'atlas', 'glow64')
+          .setBlendMode(Phaser.BlendModes.ADD)
+          .setTint(0xffcc55)
+          .setScale(e.radiusTiles > 1 ? 4 : 2.4)
+          .setDepth(19);
+        this.tweens.add({
+          targets: glow,
+          alpha: 0,
+          scale: glow.scale * 1.8,
+          duration: 420,
+          onComplete: () => glow.destroy(),
+        });
+        this.embersE.explode(e.radiusTiles > 1 ? 22 : 12, e.x, e.y);
+        if (this.screenShake) this.cameras.main.shake(320, e.radiusTiles > 1 ? 0.02 : 0.01);
         break;
       }
       case 'gasIgnite': {
@@ -108,30 +306,49 @@ export class GameScene extends Phaser.Scene {
         this.tweens.add({
           targets: puff,
           alpha: 0,
-          scale: 2.2,
-          duration: 600,
+          scale: 2.4,
+          duration: 650,
           onComplete: () => puff.destroy(),
         });
         break;
       }
       case 'damage':
         this.pod.flashHurt();
-        if (this.screenShake && e.amount >= 5) this.cameras.main.shake(200, 0.008);
+        this.vignetteAlpha = Math.min(0.75, this.vignetteAlpha + e.amount / 24);
+        if (this.screenShake && e.amount >= 5) this.cameras.main.shake(220, 0.009);
+        break;
+      case 'landed':
+        if (e.impactVel > 4) {
+          this.debrisE.setParticleTint(BAND_TINTS[bandAt(Math.floor(this.state.pod.y / TILE_PX))]);
+          this.debrisE.explode(
+            Math.min(16, Math.round(e.impactVel * 1.2)),
+            this.state.pod.x,
+            this.state.pod.y + 22,
+          );
+        }
         break;
       case 'teleport': {
         const beam = this.add
           .sprite(this.state.pod.x, this.state.pod.y, 'atlas', 'teleBeam')
-          .setDepth(30);
+          .setDepth(30)
+          .setBlendMode(Phaser.BlendModes.ADD);
         this.tweens.add({
           targets: beam,
           alpha: 0,
-          duration: 500,
+          scaleY: 2,
+          duration: 520,
           onComplete: () => beam.destroy(),
         });
         break;
       }
       case 'guardianSpawned':
         this.guardianSprite = this.add.sprite(0, 0, 'atlas', 'guardian').setDepth(11);
+        this.guardianHalo = this.add
+          .image(0, 0, 'atlas', 'glow32')
+          .setBlendMode(Phaser.BlendModes.ADD)
+          .setTint(0xfff0a0)
+          .setAlpha(0.5)
+          .setDepth(10);
         break;
       case 'bossReset':
       case 'victory':
@@ -143,11 +360,12 @@ export class GameScene extends Phaser.Scene {
           .setDepth(30);
         this.tweens.add({
           targets: boom,
-          scale: 3,
+          scale: 3.4,
           alpha: 0,
           duration: 900,
           onComplete: () => boom.destroy(),
         });
+        this.embersE.explode(30, this.state.pod.x, this.state.pod.y);
         this.pod.sprite.setVisible(false);
         break;
       }
@@ -155,18 +373,26 @@ export class GameScene extends Phaser.Scene {
     this.audio.onEvent(e);
   }
 
-  private puff(x: number, y: number, n: number): void {
-    for (let i = 0; i < n; i++) {
-      const d = this.add.sprite(x, y, 'atlas', `dust${i % 3}`).setDepth(15);
-      this.tweens.add({
-        targets: d,
-        x: x + (Math.random() - 0.5) * 60,
-        y: y + (Math.random() - 0.5) * 60 - 15,
-        alpha: 0,
-        duration: 380,
-        onComplete: () => d.destroy(),
-      });
-    }
+  private popup(text: string, color: number): void {
+    const t = this.add
+      .text(this.state.pod.x, this.state.pod.y - 30, text, {
+        fontFamily: 'Courier New, monospace',
+        fontSize: '13px',
+        fontStyle: 'bold',
+        color: `#${color.toString(16).padStart(6, '0')}`,
+        stroke: '#140c1c',
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5)
+      .setDepth(30);
+    this.tweens.add({
+      targets: t,
+      y: t.y - 28,
+      alpha: 0,
+      duration: 750,
+      ease: 'Cubic.Out',
+      onComplete: () => t.destroy(),
+    });
   }
 
   override update(_time: number, dtMs: number): void {
@@ -187,58 +413,137 @@ export class GameScene extends Phaser.Scene {
       this.chargeSprites[i].setVisible(Math.floor(c.fuse / 5) % 2 === 0);
     });
 
-    // Guardian hovers beside the pod.
+    // Guardian.
     if (this.guardianSprite) {
       if (!s.pod.guardian) {
         this.guardianSprite.destroy();
+        this.guardianHalo?.destroy();
         this.guardianSprite = null;
+        this.guardianHalo = null;
       } else {
-        this.guardianSprite.setPosition(
-          this.pod.sprite.x - 40,
-          this.pod.sprite.y - 30 + Math.sin(this.time.now / 300) * 4,
-        );
+        const gx = this.pod.sprite.x - 40;
+        const gy = this.pod.sprite.y - 30 + Math.sin(this.time.now / 300) * 4;
+        this.guardianSprite.setPosition(gx, gy);
+        this.guardianHalo
+          ?.setPosition(gx, gy - 14)
+          .setAlpha(0.35 + 0.2 * Math.sin(this.time.now / 200));
       }
     }
 
-    // Audio loops from state.
-    this.audio.setLoops(s.pod.mode === 'dig', s.pod.mode === 'air' && s.pod.fuel > 0);
+    // Thrust FX + audio loops.
+    const thrusting = s.pod.mode === 'air' && s.pod.fuel > 0 && this.host.paused === false;
+    const inputUp = thrusting && s.pod.yVel < 2; // heuristic: actively climbing/hovering
+    this.thrustE.setPosition(this.pod.sprite.x, this.pod.sprite.y + 24);
+    this.smokeE.setPosition(this.pod.sprite.x, this.pod.sprite.y + 26);
+    if (inputUp && !this.thrustE.emitting) {
+      this.thrustE.start();
+      if (this.fxFull) this.smokeE.start();
+    } else if (!inputUp && this.thrustE.emitting) {
+      this.thrustE.stop();
+      this.smokeE.stop();
+    }
+    this.thrustGlow.setPosition(this.pod.sprite.x, this.pod.sprite.y + 26);
+    this.thrustGlow.setAlpha(inputUp ? 0.35 + (this.fxFull ? Math.random() * 0.15 : 0) : 0);
+    this.audio.setLoops(s.pod.mode === 'dig', inputUp);
 
-    this.drawSkyAndDarkness();
+    // Pod headlight glow (brighter as it gets darker).
+    const depth = podDepthFt(s.pod);
+    const darkness = Math.max(0, Math.min(0.86, (-depth / 7400) * 0.95));
+    this.headGlow.setPosition(this.pod.sprite.x, this.pod.sprite.y);
+    this.headGlow.setAlpha(
+      0.08 + darkness * 0.3 + (this.fxFull ? Math.sin(this.time.now / 90) * 0.015 : 0),
+    );
+
+    // Ambient motes deep down (emit zone is baked into the emitter config).
+    if (this.fxFull && darkness > 0.3) {
+      if (!this.motesE.emitting) this.motesE.start();
+      this.motesE.setPosition(this.pod.sprite.x, this.pod.sprite.y);
+    } else if (this.motesE.emitting) {
+      this.motesE.stop();
+    }
+
+    // Lava embers near the camera.
+    this.emberTimer += dtMs;
+    if (this.fxFull && this.emberTimer > 420) {
+      this.emberTimer = 0;
+      const cells = this.tiles.lavaCellsNear(this.pod.sprite.x, this.pod.sprite.y, 320);
+      for (const c of cells.slice(0, 5)) {
+        this.embersE.explode(1, (c.x + 0.3 + Math.random() * 0.4) * TILE_PX, c.y * TILE_PX + 3);
+      }
+    }
+
+    // Damage vignette decay.
+    if (this.vignetteAlpha > 0) {
+      this.vignetteAlpha = Math.max(0, this.vignetteAlpha - dtMs / 700);
+      this.vignette.setAlpha(
+        this.screenShake ? this.vignetteAlpha : Math.min(this.vignetteAlpha, 0.35),
+      );
+    }
+
+    this.drawSky(depth);
+    this.drawLight(depth, darkness);
   }
 
-  private drawSkyAndDarkness(): void {
-    const cam = this.cameras.main;
-    const depth = podDepthFt(this.state.pod);
-    // Sky: only meaningful above/near the surface.
-    this.sky.clear();
-    if (depth > -300) {
+  /** Sky gradient + day/night tint + stars fading in with altitude. */
+  private drawSky(depth: number): void {
+    const vis = depth > -300;
+    this.skyImg.setVisible(vis);
+    let starAlpha = 0;
+    if (vis) {
       const alt = Math.max(0, depth);
-      const fade = Math.min(1, alt / 20_000); // toward space
-      const r = Math.floor(0x8f * (1 - fade) * 0.6 + 10);
-      const g = Math.floor(0x56 * (1 - fade) * 0.6 + 8);
-      const b = Math.floor(0x3b * (1 - fade) * 0.7 + 18);
-      this.sky.fillStyle(Phaser.Display.Color.GetColor(r, g, b), 1);
-      this.sky.fillRect(0, 0, cam.width, cam.height);
-    }
-    // Depth darkness with a light hole around the pod.
-    this.darkness.clear();
-    const inArena = depth <= ALTIMETER_ARENA_FT;
-    let dark = Math.max(0, Math.min(0.82, (-depth / 7400) * 0.9));
-    if (inArena) dark = 0.35; // hell glows
-    if (dark > 0.02) {
-      const px = this.pod.sprite.x - cam.scrollX;
-      const py = this.pod.sprite.y - cam.scrollY;
-      const step = 26;
-      for (let gy = 0; gy < cam.height; gy += step) {
-        for (let gx = 0; gx < cam.width; gx += step) {
-          const d = Math.hypot(gx + step / 2 - px, gy + step / 2 - py);
-          const a = Math.max(0, Math.min(1, (d - 120) / 260)) * dark;
-          if (a > 0.03) {
-            this.darkness.fillStyle(inArena ? 0x300a0a : 0x000000, a);
-            this.darkness.fillRect(gx, gy, step, step);
-          }
-        }
+      const space = Math.min(1, alt / 18_000); // toward space
+      // day/night from the sim clock (deterministic)
+      const day =
+        0.5 +
+        0.5 * Math.sin(((this.state.tick % DAY_LENGTH_TICKS) / DAY_LENGTH_TICKS) * Math.PI * 2);
+      const tex = this.textures.get('skyTex') as Phaser.Textures.CanvasTexture;
+      const ctx = tex.context;
+      for (let i = 0; i < 64; i++) {
+        const tRow = i / 64;
+        const r = (26 + 100 * (1 - tRow) * day) * (1 - space);
+        const g = (14 + 48 * (1 - tRow) * day) * (1 - space);
+        const b = (30 + 36 * (1 - tRow) * day) * (1 - space) + 8;
+        ctx.fillStyle = `rgb(${r | 0},${g | 0},${b | 0})`;
+        ctx.fillRect(0, i, 1, 1);
       }
+      tex.refresh();
+      starAlpha = Math.max(space, (1 - day) * 0.5);
     }
+    this.stars.setAlpha(starAlpha);
+    this.stars.setVisible(vis && starAlpha > 0.02);
+  }
+
+  /** Smooth darkness with a radial pod light; red pulse in the arena. */
+  private drawLight(depth: number, darkness: number): void {
+    const inArena = depth <= ALTIMETER_ARENA_FT;
+    const tex = this.textures.get('lightTex') as Phaser.Textures.CanvasTexture;
+    const ctx = tex.context;
+    ctx.clearRect(0, 0, LIGHT_W, LIGHT_H);
+    const dark = inArena ? 0.5 + 0.08 * Math.sin(this.time.now / 500) : darkness;
+    if (dark <= 0.02) {
+      tex.refresh();
+      this.lightImg.setVisible(false);
+      return;
+    }
+    this.lightImg.setVisible(true);
+    ctx.fillStyle = inArena ? `rgba(38,6,6,${dark})` : `rgba(2,1,6,${dark})`;
+    ctx.fillRect(0, 0, LIGHT_W, LIGHT_H);
+    // Punch the pod light out of the darkness.
+    const cam = this.cameras.main;
+    const px = ((this.pod.sprite.x - cam.scrollX) / this.scale.width) * LIGHT_W;
+    const py = ((this.pod.sprite.y - cam.scrollY) / this.scale.height) * LIGHT_H;
+    const flick = this.fxFull ? Math.sin(this.time.now / 70) * 1.2 : 0;
+    const radius = 62 + flick + (1 - dark) * 24;
+    ctx.globalCompositeOperation = 'destination-out';
+    const g = ctx.createRadialGradient(px, py, 6, px, py, radius);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.55, 'rgba(255,255,255,0.85)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(px, py, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    tex.refresh();
   }
 }

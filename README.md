@@ -43,7 +43,11 @@ all default **OFF**; Purist Mode force-disables them.
 - `src/game/` — thin Phaser 3 presentation (tilemap, sprites, camera, ZzFX audio).
 - `src/ui/` — DOM overlay (HUD, shops, transmissions, screens); no framework.
 - `src/content/strings.ts` — every name and line of dialog (the clean-room content pack).
-- `tools/gen-art.mjs` — procedural DB32 pixel-art atlas generator (no binary assets in git).
+- `tools/art/` — the procedural art pipeline: char-grid sprites + parametric texture
+  generators under a strict DB32 ruleset (`tools/art/STYLE.md`), refined through a
+  render→look→critique loop (previews: `docs/art-preview.png`, `docs/art-scene.png`).
+  Runtime "juice" (palette-cycled lava, canvas-texture lighting, particles, glows) lives
+  in `src/game/scenes/GameScene.ts`.
 
 ## License notes
 
