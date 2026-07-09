@@ -20,13 +20,17 @@ export const inArena = (s: GameState): boolean =>
   Math.floor(s.pod.y / TILE_PX) >= BOSS.arenaTopRow - 1;
 
 function spawnBoss(s: GameState, form: 1 | 2): BossState {
+  // The original's spawn y (px 29532, row ~590) anchored the sprite's TOP —
+  // its ~200px body put the feet on the arena floor. Our anchor is body-centre,
+  // so ground him: one tile above the floor top (the view plants the feet).
+  const y = HELL_FLOOR_ROW * TILE_PX - TILE_PX;
   return {
     form,
     hp: bossFormHp(form, s.level),
     x: (BOSS.spawnCol + 0.5) * TILE_PX,
-    y: (BOSS.spawnRow + 0.5) * TILE_PX,
+    y,
     prevX: (BOSS.spawnCol + 0.5) * TILE_PX,
-    prevY: (BOSS.spawnRow + 0.5) * TILE_PX,
+    prevY: y,
     facing: -1,
     phase: 'idle',
     phaseTicks: 0,

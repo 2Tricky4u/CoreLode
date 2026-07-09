@@ -34,7 +34,12 @@ export interface BossFormDef {
 }
 
 export const BOSS = {
-  /** Spawn point, verbatim: px (1200, 29532) → tile (24, ~590). */
+  /**
+   * Spawn point, verbatim: px (1200, 29532) → tile (24, ~590). The original y
+   * anchored the sprite TOP (its ~200px body reached the floor at row 595);
+   * the sim anchors body-centre and derives y from HELL_FLOOR_ROW instead, so
+   * spawnRow is kept as the recovered reference value only.
+   */
   spawnCol: 24,
   spawnRow: 590,
   /** Arena region: everything below the barrier band. */

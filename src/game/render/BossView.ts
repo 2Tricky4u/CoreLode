@@ -22,13 +22,14 @@ export class BossView {
     }
     if (!this.sprite) {
       this.sprite = this.scene.add.sprite(b.x, b.y, 'atlas', `boss${b.form}_a`);
-      this.sprite.setOrigin(0.5, 0.93);
+      this.sprite.setOrigin(0.5, 1); // feet-anchored: he stands ON the arena floor
       this.sprite.setDepth(9);
       this.laser = this.scene.add.graphics().setDepth(8);
       this.hpBar = this.scene.add.graphics().setDepth(50).setScrollFactor(0);
     }
+    // Sim anchor is one tile above the floor top; +TILE_PX puts the feet on it.
     const x = b.prevX + (b.x - b.prevX) * alpha;
-    const y = b.prevY + (b.y - b.prevY) * alpha + TILE_PX / 2;
+    const y = b.prevY + (b.y - b.prevY) * alpha + TILE_PX;
     this.sprite.setTexture('atlas', `boss${b.form}_${b.phase === 'attack' ? 'b' : 'a'}`);
     this.sprite.setPosition(x, y);
     this.sprite.setFlipX(b.facing === 1);
@@ -86,15 +87,18 @@ export class BossView {
       this.fireballs[i].setPosition(fx, fy);
     });
 
-    // HP bar (fixed to camera).
+    // HP bar (fixed to camera) — bottom of the stage per the original (24, 349),
+    // clear of the DOM HUD that owns the top edge.
     const cam = this.scene.cameras.main;
-    const w = cam.width * 0.6;
+    const barX = 24;
+    const barY = cam.height - 51;
+    const w = cam.width - 48;
     const maxHp = b.form === 1 ? 1000 * this.state.level : 2000 * this.state.level;
     this.hpBar!.clear();
-    this.hpBar!.fillStyle(0x222034, 0.8).fillRect(cam.width * 0.2, 16, w, 14);
+    this.hpBar!.fillStyle(0x222034, 0.8).fillRect(barX, barY, w, 14);
     this.hpBar!.fillStyle(b.form === 1 ? 0xd95763 : 0xdf7126, 1).fillRect(
-      cam.width * 0.2 + 2,
-      18,
+      barX + 2,
+      barY + 2,
       Math.max(0, (w - 4) * (b.hp / maxHp)),
       10,
     );
