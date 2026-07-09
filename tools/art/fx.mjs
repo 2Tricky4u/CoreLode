@@ -160,21 +160,23 @@ export function biteFrames() {
 }
 
 /**
- * Quarter-round corner softener for dug tunnels — kills the 90° grid angles.
- * Authored white hugging the top-left corner (arc opens bottom-right), with a
- * ragged drilled edge; the scene tints it per use (soil fillet in concave air
- * corners, cave-dark chamfer shaving convex soil points) and flips it into the
- * other three orientations.
+ * Corner softener for dug tunnels — the "rounded-rectangle mask" piece: an R×R
+ * wedge that hugs a corner point, solid soil OUTSIDE a quarter-circle centered
+ * on the opposite corner. Its CONCAVE arc smooths the 90° angle exactly like a
+ * square masked by a rounded rect (the original's tunnel look) — no bulging
+ * discs, material only added tight against the angle. Authored hugging the
+ * top-left corner (arc curving toward bottom-right); white, band-tinted and
+ * mirrored into the other orientations at runtime.
  */
 export function cornerFrames() {
   const R = 14;
   const s = new Sprite(R, R);
   for (let y = 0; y < R; y++)
     for (let x = 0; x < R; x++) {
-      const jag = ((x * 31 + y * 17) % 5) * 0.45; // deterministic crumble
-      const d = Math.hypot(x + 0.5, y + 0.5) + jag;
-      if (d < R - 1.2) s.px(x, y, P.white);
-      else if (d < R + 0.6) s.px(x, y, P.white, 110); // soft arc edge
+      const jag = ((x * 31 + y * 17) % 3) * 0.3; // deterministic crumble (subtle)
+      const d = Math.hypot(R - x - 0.5, R - y - 0.5) + jag; // distance from inner centre
+      if (d > R + 0.8) s.px(x, y, P.white);
+      else if (d > R - 0.8) s.px(x, y, P.white, 110); // soft arc edge
     }
   return { cornerRound: s };
 }

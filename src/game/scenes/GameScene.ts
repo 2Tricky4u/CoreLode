@@ -13,8 +13,6 @@ import {
   WORLD_W,
   getTile,
   isArtifact,
-  isDirt,
-  isGas,
   isMineral,
   podDepthFt,
   saleValue,
@@ -694,45 +692,39 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Soften the tunnel grid: at every visible grid intersection, a lone air
-   * quadrant among soil gets a rounded soil fillet (concave corner), and a lone
-   * soil quadrant among air gets its point shaved cave-dark (convex corner).
-   * Hard tiles (boulders/lava/bedrock) keep their sharp machined edges.
+   * Round the void like the original: dug space is a union of rounded
+   * rectangles, so ONLY outer corners of air cells are softened. The one rule:
+   * an air quadrant at a grid intersection gets the concave corner wedge iff
+   * BOTH its edge-adjacent quadrants are solid (any non-air tile — soil, turf,
+   * boulders, bedrock alike). Inner turn corners, lone pillars and straight
+   * walls stay sharp — exactly the rounded-rect-mask silhouette.
    */
   private updateCorners(): void {
     const cam = this.cameras.main;
     const w = this.state.world;
-    const R = 14; // cornerRound frame size
+    const R = 14; // wedge frame size
     const x0 = Math.max(1, Math.floor(cam.scrollX / TILE_PX));
     const x1 = Math.min(WORLD_W - 1, Math.ceil((cam.scrollX + cam.width) / TILE_PX) + 1);
-    const y0 = Math.max(SURFACE_ROW + 1, Math.floor(cam.scrollY / TILE_PX));
+    const y0 = Math.max(1, Math.floor(cam.scrollY / TILE_PX));
     const y1 = Math.min(WORLD_H - 1, Math.ceil((cam.scrollY + cam.height) / TILE_PX) + 1);
     let n = 0;
-    const soilish = (t: number) => isDirt(t) || isMineral(t) || isArtifact(t) || isGas(t);
     for (let cy = y0; cy <= y1; cy++) {
       for (let cx = x0; cx <= x1; cx++) {
-        // Quadrants around the grid corner point (cx,cy): TL TR BL BR.
-        let airMask = 0;
-        let airCount = 0;
-        let ok = true;
+        // Quadrants around the grid corner point (cx,cy): bit i set = solid.
+        let solidMask = 0;
         for (let i = 0; i < 4; i++) {
-          const t = getTile(w, cx - 1 + (i & 1), cy - 1 + (i >> 1));
-          if (t === Tile.Air) {
-            airMask |= 1 << i;
-            airCount++;
-          } else if (!soilish(t)) {
-            ok = false;
-            break;
-          }
+          if (getTile(w, cx - 1 + (i & 1), cy - 1 + (i >> 1)) !== Tile.Air) solidMask |= 1 << i;
         }
-        if (!ok || (airCount !== 1 && airCount !== 3)) continue;
-        // The quadrant that owns the blob: the lone air (fillet) or lone soil (chamfer).
-        const qi = [1, 2, 4, 8].indexOf(airCount === 1 ? airMask : ~airMask & 15);
-        const img = this.cornerAt(n++);
-        img.setPosition(cx * TILE_PX - (qi & 1 ? 0 : R), cy * TILE_PX - (qi & 2 ? 0 : R));
-        img.setFlip(!(qi & 1), !(qi & 2)); // authored hugging TL; mirror into place
-        img.setTint(airCount === 1 ? BAND_TINTS[bandAt(cy)] : 0x140c1c);
-        img.setVisible(true);
+        if (solidMask === 0 || solidMask === 15) continue;
+        for (let i = 0; i < 4; i++) {
+          if (solidMask & (1 << i)) continue; // must be air
+          if (!(solidMask & (1 << (i ^ 1))) || !(solidMask & (1 << (i ^ 2)))) continue;
+          const img = this.cornerAt(n++);
+          img.setPosition(cx * TILE_PX - (i & 1 ? 0 : R), cy * TILE_PX - (i & 2 ? 0 : R));
+          img.setFlip(!(i & 1), !(i & 2)); // authored hugging TL; mirror into place
+          img.setTint(BAND_TINTS[bandAt(cy)]);
+          img.setVisible(true);
+        }
       }
     }
     for (let i = n; i < this.corners.length; i++) this.corners[i].setVisible(false);
