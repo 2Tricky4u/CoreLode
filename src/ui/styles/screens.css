@@ -111,3 +111,45 @@
   color: var(--c-good);
   font-weight: bold;
 }
+
+/* Fatal-error recovery overlay — sits above everything so a crash is never a blank screen. */
+.fatal-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #140c1cee;
+  pointer-events: auto;
+  padding: 20px;
+}
+.fatal-panel {
+  background: var(--c-panel);
+  border: 3px solid var(--c-danger);
+  box-shadow: 0 0 0 3px #000, 0 0 26px #d9576344;
+  max-width: min(560px, 94vw);
+  padding: 18px 22px;
+}
+.fatal-panel h2 {
+  color: var(--c-danger);
+  margin-bottom: 8px;
+}
+.fatal-panel p {
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+.fatal-detail {
+  background: #000;
+  color: var(--c-heather, #9badb7);
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 8px 10px;
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border: 1px solid var(--c-panel2);
+  margin-bottom: 10px;
+}

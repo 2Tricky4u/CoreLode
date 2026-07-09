@@ -16,7 +16,6 @@ import { migrateAndValidate } from '@core/save/migrate';
 import { GameHost } from '@game/GameHost';
 import { AudioBus } from '@game/audio/AudioBus';
 import { createPhaserGame } from '@game/phaserGame';
-import type { GameScene } from '@game/scenes/GameScene';
 import { InputManager } from '@input/InputManager';
 import { entropySeed, isTouchDevice } from '@platform/env';
 import { copyToClipboard, downloadText, pickTextFile } from '@platform/exporter';
@@ -24,6 +23,7 @@ import * as storage from '@platform/storage';
 import { Hud } from '@ui/Hud';
 import { TouchControls } from '@ui/TouchControls';
 import { UiRoot } from '@ui/UiRoot';
+import { showFatal } from '@ui/fatal';
 import { ModalManager, openBuilding, openGameOver, openPause, openTransmission } from '@ui/modals';
 import {
   ScreenHost,
@@ -76,12 +76,31 @@ export class App {
   }
 
   async start(): Promise<void> {
+    // Escape hatch: append ?reset (or ?safe) to the URL to wipe corrupt saved data on boot.
+    const params = new URLSearchParams(location.search);
+    if (params.has('reset') || params.has('safe')) {
+      await storage.clearAllData();
+      this.ui.toast('Saved data cleared.');
+    }
+
     this.settings = { ...defaultSettings(), ...((await storage.readSettings()) ?? {}) };
     void storage.requestPersistence();
     this.phaser = createPhaserGame('game');
-    await new Promise<void>((res) => this.phaser.events.once('assets-ready', () => res()));
+
+    // Wait for assets, but never hang forever — fall through to the title after 10s.
+    await new Promise<void>((res) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        res();
+      };
+      this.phaser.events.once('assets-ready', finish);
+      setTimeout(finish, 10_000);
+    });
+
     this.ui.syncScale();
-    this.showTitle();
+    await this.showTitle();
   }
 
   private get fx(): SettingsValues {
@@ -191,35 +210,38 @@ export class App {
   }
 
   private beginRun(state: GameState): void {
-    this.stopRun();
-    this.screens.clear();
-    this.host = new GameHost(state, this.input);
-    this.host.onEvent((e) => this.onSimEvent(e));
-    this.input.gameFocus = true;
-    this.hud.node.style.display = '';
-    this.applySettings();
+    try {
+      this.stopRun();
+      this.screens.clear();
+      this.host = new GameHost(state, this.input);
+      this.host.onEvent((e) => this.onSimEvent(e));
+      this.input.gameFocus = true;
+      this.hud.node.style.display = '';
+      this.applySettings();
 
-    const scene = this.phaser.scene.getScene('game') as GameScene;
-    this.phaser.scene.stop('game');
-    this.phaser.scene.start('game', {
-      host: this.host,
-      audio: this.audio,
-      screenShake: Boolean(this.fx.screenShake),
-      gasHint: Boolean(this.fx.gasShimmerHint),
-      fxFull: this.fx.fxDensity !== 'reduced',
-    });
-    void scene;
+      this.phaser.scene.stop('game');
+      this.phaser.scene.start('game', {
+        host: this.host,
+        audio: this.audio,
+        screenShake: Boolean(this.fx.screenShake),
+        gasHint: Boolean(this.fx.gasShimmerHint),
+        fxFull: this.fx.fxDensity !== 'reduced',
+      });
 
-    // HUD refresh loop (display-rate, cheap).
-    const hudLoop = () => {
-      if (!this.host) return;
-      this.hud.update(this.host.state);
+      // HUD refresh loop (display-rate, cheap).
+      const hudLoop = () => {
+        if (!this.host) return;
+        this.hud.update(this.host.state);
+        this.hudTimer = requestAnimationFrame(hudLoop);
+      };
       this.hudTimer = requestAnimationFrame(hudLoop);
-    };
-    this.hudTimer = requestAnimationFrame(hudLoop);
 
-    // Story intro fires on tick 1; kick the transmission check shortly after start.
-    setTimeout(() => this.pumpPendingTransmission(), 100);
+      // Story intro fires on tick 1; kick the transmission check shortly after start.
+      setTimeout(() => this.pumpPendingTransmission(), 100);
+    } catch (err) {
+      // A synchronous failure starting the run: don't leave a blank screen.
+      showFatal('Could not start the run', (err as Error)?.stack ?? String(err));
+    }
   }
 
   private stopRun(): void {
