@@ -15,7 +15,7 @@ possible, and continue; otherwise stop.
 - [x] [C5] Strata names + run-summary stats + lifetime records store (+ C2's onboarding toast)
 - [x] [C6] Death-cause explanations + first-encounter hazard log
 - [x] [C7] Session-close hooks: `slotSummary`, richer slot meta, post-death autosave prompt
-- [ ] [C8] Phase 1 gate: story no-new-events guard test, full suite + build green
+- [x] [C8] Phase 1 gate: story no-new-events guard test, full suite + build green
 
 ## Phase 2 — Expedition foundation
 

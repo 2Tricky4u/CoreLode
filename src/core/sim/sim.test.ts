@@ -386,6 +386,42 @@ describe('fuel failsafe assist (rescue tow)', () => {
   });
 });
 
+describe('story-mode purity guard', () => {
+  // Remake-only systems (assists, chains, heat, relics, contracts, critters) must
+  // never leak into a default story run. EXTEND this list with every new system:
+  // the fidelity contract depends on this test staying green forever.
+  const NEW_SYSTEM_EVENTS = [
+    'rescue',
+    'chain',
+    'chainBroken',
+    'heatWarning',
+    'relicOffer',
+    'contractDone',
+    'critterSpawned',
+    'critterKilled',
+  ];
+
+  it('a default story run emits no new-system events and no new-system state', () => {
+    const s = run(1234);
+    const inputs: Array<Partial<IntentFrame>> = [
+      {},
+      { down: true },
+      { down: true },
+      { left: true },
+      { up: true },
+      { right: true },
+    ];
+    const seen = new Set<string>();
+    for (let i = 0; i < 600; i++) for (const e of step(s, inputs[i % 6])) seen.add(e.t);
+    for (const evt of NEW_SYSTEM_EVENTS) expect(seen.has(evt)).toBe(false);
+    expect(s.pod.heat).toBe(0);
+    expect(s.pod.relics).toEqual([]);
+    expect(s.pod.modules).toEqual([]);
+    expect(s.contracts).toEqual([]);
+    expect(s.stats.rescues).toBe(0);
+  });
+});
+
 describe('determinism', () => {
   const script = (s: GameState): number => {
     const inputs: Array<Partial<IntentFrame>> = [
