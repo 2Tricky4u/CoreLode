@@ -127,6 +127,14 @@ export class AudioBus {
       case 'fuelLow':
         this.play('fuelLow', 0.6);
         break;
+      case 'chain':
+        // Rising pitch per chain link — the classic combo escalation.
+        this.play('collect', 0.45, 1 + 0.05 * Math.min(e.count, 16));
+        break;
+      case 'chainBroken':
+        if (e.banked) this.play('collect', 0.5, 1.6);
+        else if (e.count >= 3) this.play('error', 0.35);
+        break;
     }
   }
 

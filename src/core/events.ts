@@ -20,6 +20,10 @@ export type SimEvent =
   | { t: 'rescue'; cost: number; cargoLost: number }
   /** Expedition heat crossed a warning threshold (70 / 90). */
   | { t: 'heatWarning'; level: 1 | 2 }
+  /** Expedition collect chain grew (emitted from ×2 up). */
+  | { t: 'chain'; collectibleId: number; count: number }
+  /** Expedition chain ended — banked into the sale-bonus vault or voided. */
+  | { t: 'chainBroken'; count: number; banked: boolean }
   | { t: 'podExploded'; cause: 'hull' | 'fuel' }
   | { t: 'explosion'; x: number; y: number; radiusTiles: number; item: ItemId }
   | { t: 'gasIgnite'; x: number; y: number }

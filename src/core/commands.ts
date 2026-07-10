@@ -73,6 +73,16 @@ export function applyCommand(s: GameState, cmd: Command, out: EventSink): void {
       p.cash += total;
       if (mass > s.stats.biggestSaleMass) s.stats.biggestSaleMass = mass;
       out.push({ t: 'transaction', kind: 'sell', amount: total });
+      // Expedition chain vault pays out on top of the sale, then resets.
+      // Story sale math above stays byte-authentic (chains never exist there).
+      if (s.mode.kind === 'expedition' && s.chain && s.chain.bankPct > 0) {
+        const bonus = Math.floor((total * s.chain.bankPct) / 100);
+        if (bonus > 0) {
+          p.cash += bonus;
+          out.push({ t: 'transaction', kind: 'chainBonus', amount: bonus });
+        }
+        s.chain.bankPct = 0;
+      }
       out.push({ t: 'sfx', key: 'sell' });
       break;
     }

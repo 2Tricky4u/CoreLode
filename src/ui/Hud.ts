@@ -56,6 +56,7 @@ export class Hud {
 
   private timerNode: HTMLElement;
   private showTimer = false;
+  private chainNode: HTMLElement;
   private stratumNode: HTMLElement;
   private lastStratum = 0;
   private stratumTimer: ReturnType<typeof setTimeout> | null = null;
@@ -108,6 +109,7 @@ export class Hud {
     }
 
     this.timerNode = el('span', { class: 'hud-timer hidden', text: '00:00.00' });
+    this.chainNode = el('span', { class: 'hud-chain hidden', text: '' });
     this.stratumNode = el('div', { class: 'stratum-banner' });
 
     this.minimapCanvas = el('canvas', { class: 'minimap-canvas' });
@@ -138,7 +140,14 @@ export class Hud {
         cargoBar,
         this.heatBar,
       ),
-      el('div', { class: 'hud-mid' }, this.depthText, this.pointsText, this.timerNode),
+      el(
+        'div',
+        { class: 'hud-mid' },
+        this.depthText,
+        this.pointsText,
+        this.timerNode,
+        this.chainNode,
+      ),
       el('div', { class: 'hud-right' }, this.cashText, hotbar),
       this.minimapNode,
       this.stratumNode,
@@ -193,6 +202,12 @@ export class Hud {
     if (exp) {
       this.heatFill.style.width = `${Math.max(0, Math.min(100, p.heat))}%`;
       this.heatFill.classList.toggle('warn', p.heat >= 70);
+    }
+    const chainVisible = exp && ((s.chain?.count ?? 0) >= 2 || (s.chain?.bankPct ?? 0) > 0);
+    this.chainNode.classList.toggle('hidden', !chainVisible);
+    if (chainVisible && s.chain) {
+      const run = s.chain.count >= 2 ? `×${s.chain.count}` : '—';
+      this.chainNode.textContent = `CHAIN ${run} · VAULT +${s.chain.bankPct}%`;
     }
     this.cargoFill.style.width = `${Math.min(100, (bayUsed(p) / bayCapacity(p)) * 100)}%`;
     this.cashText.textContent = `$${Math.floor(p.cash).toLocaleString('en-US')}`;

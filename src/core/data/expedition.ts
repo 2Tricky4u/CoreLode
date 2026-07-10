@@ -42,6 +42,18 @@ export const EXPEDITION = {
     warnResetBelow: 60,
     max: 100,
   },
+  /**
+   * Collect chains — consecutive same-mineral pickups bank a sale bonus.
+   * A chain of N (≥3) banks min(perChainCap, N−2) percent, vault capped at
+   * maxBankPct; the vault pays out at the processor and damage voids only the
+   * running chain, never the vault. Dread preserved, hoarding rewarded.
+   */
+  chain: {
+    minChain: 3,
+    perChainCap: 20,
+    maxBankPct: 50,
+    timeoutTicks: 840, // 20 s of no pickups gently banks instead of voiding
+  },
 } as const;
 
 /** Drive cores banked by a finished run (win or wreck — depth always pays). */

@@ -11,6 +11,7 @@ import { GUARDIAN_DAMAGE_FACTOR } from '../data/story';
 import type { DamageCause, EventSink } from '../events';
 import type { IntentFrame } from '../intents';
 import { clamp } from '../lib/math';
+import { chainOnDamage } from './chain';
 import { solidAt } from '../world/world';
 import { type GameState, enginePower, podMass } from './state';
 
@@ -32,6 +33,7 @@ export function applyDamage(
   s.pod.hp -= dmg;
   s.stats.damageTaken += dmg;
   s.pod.lastDamage = { cause, atTick: s.tick }; // lets the app explain a death
+  chainOnDamage(s, out); // a hit voids the running collect chain (expedition)
   out.push({ t: 'damage', amount: dmg, cause });
 }
 

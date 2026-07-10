@@ -6,6 +6,7 @@ import { EXPEDITION, coresEarned } from '../data/expedition';
 import type { EventSink } from '../events';
 import { EMPTY_INTENTS, type IntentFrame } from '../intents';
 import { fnv1a } from '../lib/math';
+import { chainOnCollect, chainOnDamage, stepChain } from './chain';
 import { type GameState, createRun, tankCapacity } from './state';
 import { tick } from './tick';
 
@@ -126,6 +127,90 @@ describe('expedition heat', () => {
     s.pod.y += 4_500 * 4;
     step(s, {}, 42);
     expect(s.pod.heat).toBe(0);
+  });
+});
+
+describe('collect chains', () => {
+  const collect = (s: GameState, ci: number): EventSink => {
+    const out: EventSink = [];
+    chainOnCollect(s, ci, out);
+    return out;
+  };
+
+  it('builds on same-mineral pickups and banks on a switch', () => {
+    const s = expRun();
+    collect(s, 0);
+    expect(collect(s, 0).some((e) => e.t === 'chain' && e.count === 2)).toBe(true);
+    collect(s, 0); // ×3
+    expect(s.stats.bestChain).toBe(3);
+    const out = collect(s, 3); // different mineral → bank the ×3 chain (+1%)
+    expect(out.some((e) => e.t === 'chainBroken' && e.banked)).toBe(true);
+    expect(s.chain?.bankPct).toBe(1); // min(20, 3−2)
+    expect(s.chain?.id).toBe(3);
+    expect(s.chain?.count).toBe(1);
+  });
+
+  it('a long chain banks big, capped per chain and in total', () => {
+    const s = expRun();
+    for (let i = 0; i < 25; i++) collect(s, 2); // ×25 chain
+    collect(s, 0); // bank: min(20, 25−2) = 20
+    expect(s.chain?.bankPct).toBe(20);
+    for (let i = 0; i < 25; i++) collect(s, 1);
+    collect(s, 0); // +20 → 40
+    for (let i = 0; i < 25; i++) collect(s, 2);
+    collect(s, 0); // +20 → capped at 50
+    expect(s.chain?.bankPct).toBe(50);
+  });
+
+  it('damage voids the running chain but keeps the vault', () => {
+    const s = expRun();
+    for (let i = 0; i < 5; i++) collect(s, 1);
+    collect(s, 0); // bank ×5 → +3%
+    for (let i = 0; i < 4; i++) collect(s, 0); // running ×5... (count 5)
+    const out: EventSink = [];
+    chainOnDamage(s, out);
+    expect(out.some((e) => e.t === 'chainBroken' && !e.banked)).toBe(true);
+    expect(s.chain?.count).toBe(0);
+    expect(s.chain?.bankPct).toBe(3); // vault survives the hit
+  });
+
+  it('an idle timeout banks instead of voiding', () => {
+    const s = expRun();
+    for (let i = 0; i < 4; i++) collect(s, 1); // ×4
+    s.tick += EXPEDITION.chain.timeoutTicks + 1;
+    const out: EventSink = [];
+    stepChain(s, out);
+    expect(out.some((e) => e.t === 'chainBroken' && e.banked)).toBe(true);
+    expect(s.chain?.bankPct).toBe(2); // min(20, 4−2)
+    expect(s.chain?.count).toBe(0);
+  });
+
+  it('pays the vault on sale, then resets it — expedition only', () => {
+    const s = expRun();
+    s.pod.bayContents[0] = 10; // 10 × Ironium ($30) = $300
+    s.chain = { id: 0, count: 0, bankPct: 50, lastCollectTick: 0 };
+    const cash = s.pod.cash;
+    const out: EventSink = [];
+    applyCommand(s, { c: 'sellAllCargo' }, out);
+    expect(s.pod.cash).toBe(cash + 300 + 150); // sale + 50% vault
+    expect(s.chain?.bankPct).toBe(0);
+    expect(out.some((e) => e.t === 'transaction' && e.kind === 'chainBonus')).toBe(true);
+  });
+
+  it('story sale math is untouched even with a forced vault present', () => {
+    const s = createRun({ seed: 3, mode: { kind: 'story', goldium: true } });
+    s.pod.bayContents[0] = 10;
+    s.chain = { id: 0, count: 0, bankPct: 50, lastCollectTick: 0 }; // hostile setup
+    const cash = s.pod.cash;
+    applyCommand(s, { c: 'sellAllCargo' }, []);
+    expect(s.pod.cash).toBe(cash + 300); // no bonus, byte-authentic
+  });
+
+  it('never creates chain state in story mode', () => {
+    const s = createRun({ seed: 3, mode: { kind: 'story', goldium: true } });
+    chainOnCollect(s, 0, []);
+    chainOnCollect(s, 0, []);
+    expect(s.chain).toBeNull();
   });
 });
 

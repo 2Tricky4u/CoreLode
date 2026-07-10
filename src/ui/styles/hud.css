@@ -105,6 +105,17 @@
 .hud-timer.hidden {
   display: none;
 }
+.hud-chain {
+  display: block;
+  font-family: var(--font-display);
+  font-size: calc(var(--px) * 9px);
+  color: var(--c-gold);
+  text-shadow: 1px 1px 0 #000;
+  letter-spacing: 0.06em;
+}
+.hud-chain.hidden {
+  display: none;
+}
 
 /* Named-stratum banner — fades in center-screen when crossing a depth band. */
 .stratum-banner {

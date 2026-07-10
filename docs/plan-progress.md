@@ -21,7 +21,7 @@ possible, and continue; otherwise stop.
 
 - [x] [C9] Expedition mode core: ModeConfig, profile store, title entry, suspend save
 - [x] [C10] Heat system (second tension axis) + HUD bar + warnings
-- [ ] [C11] Chain/combo system (sim + juice; expedition-only payout)
+- [x] [C11] Chain/combo system (sim + juice; expedition-only payout)
 - [ ] [C12] Daily seed + local daily records + CLDR1 share codes
 - [ ] [C13] Objective refactor (`objectiveMet`) + expedition contracts
 - [ ] [C14] Phase 2 gate: full regression incl. expedition determinism hash
@@ -48,3 +48,8 @@ possible, and continue; otherwise stop.
   so that half ships with C5. C2 is the persistence regression test only.
 - User directive (2026-07-10): push after commits; merge the branch into main at each
   phase gate (starting with the Phase 1 gate, C8).
+- C11 decision: the chain tracker is expedition-only in the SIM (not "runs everywhere,
+  pays only in expedition" as first sketched) — the C8 story purity guard forbids chain
+  events in story, and a story-mode chain meter would need sim events to drive it. The
+  planned `chainMeter` story toggle is therefore dropped; the meter is always-on in
+  expedition and story stays byte-pure.

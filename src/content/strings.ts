@@ -291,6 +291,7 @@ export const STRINGS: Record<string, string> = {
   uiRescue: 'EMERGENCY TOW — cargo forfeited',
   uiAutosaveTip: "Tip: 'Autosave on surfacing' can be enabled in Settings",
   uiWithinReach: 'within reach',
+  uiChainBonus: 'CHAIN VAULT',
   uiEnableAutosave: 'Enable autosave for next time',
   uiAutosaveOn: 'Autosave on surfacing enabled.',
 

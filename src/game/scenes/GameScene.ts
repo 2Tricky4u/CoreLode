@@ -482,6 +482,24 @@ export class GameScene extends Phaser.Scene {
           );
         }
         break;
+      case 'chain': {
+        // Rank colors escalate with the chain (DB32 ramp).
+        const c =
+          e.count >= 20
+            ? 0x5fcde4
+            : e.count >= 12
+              ? 0x76428a
+              : e.count >= 8
+                ? 0xd95763
+                : e.count >= 5
+                  ? 0xdf7126
+                  : 0xfbf236;
+        this.popup(`×${e.count} CHAIN`, c);
+        break;
+      }
+      case 'chainBroken':
+        if (!e.banked && e.count >= 3) this.popup('CHAIN LOST', 0xd95763);
+        break;
       case 'heatWarning':
         // Overheat feedback: ember burst, plus a warm flash at the critical tier.
         if (this.fxFull)

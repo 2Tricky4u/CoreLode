@@ -2,6 +2,7 @@ import { BLUEPRINTS } from '../data/blueprints';
 import { TILE_PX } from '../data/constants';
 import { pointsMod } from '../data/difficulty';
 import { EXPEDITION } from '../data/expedition';
+import { chainOnCollect } from './chain';
 import { COLLECTIBLES, DIRT_POINTS, POINTS_TILE_CAP, POINTS_VALUE_MULT } from '../data/minerals';
 /**
  * Drilling — original rules: hold a direction into diggable ground for >5 frames
@@ -59,6 +60,7 @@ export function collectTile(s: GameState, tile: number, out: EventSink): void {
       p.bayContents[ci]++;
       s.stats.collectedTotal++;
       out.push({ t: 'collected', collectibleId: ci });
+      chainOnCollect(s, ci, out); // expedition-only inside
     } else {
       out.push({ t: 'cargoFullLost', collectibleId: ci }); // authentic: destroyed
     }
