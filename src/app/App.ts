@@ -150,6 +150,8 @@ export class App {
     this.screens.show(
       titleScreen({
         canContinue: slots.length > 0,
+        continueMeta:
+          slots.length > 0 ? slots.reduce((a, b) => (a.updatedAt > b.updatedAt ? a : b)) : null,
         lifetime: this.lifetime,
         onNew: () => this.newStoryRun(),
         onContinue: () => void this.loadMostRecent(),
@@ -463,6 +465,15 @@ export class App {
         : last && host && last.atTick >= host.state.tick - 42
           ? last.cause
           : null;
+    // One-time offer on the death screen: turn on the autosave QoL right here.
+    const offerAutosave =
+      !this.lifetime.flags.deathPromptShown &&
+      !this.fx.autosaveOnSurface &&
+      !this.settings.puristMode;
+    if (offerAutosave) {
+      this.lifetime.flags.deathPromptShown = true;
+      this.saveLifetime();
+    }
     void storage.listSaves().then((slots) => {
       const has = slots.some((s) => s.key.startsWith('manual') || s.key.startsWith('auto'));
       openGameOver(
@@ -473,6 +484,17 @@ export class App {
         stats,
         () => void this.loadMostRecent(),
         () => void this.showTitle(),
+        offerAutosave
+          ? {
+              label: t('uiEnableAutosave'),
+              onClick: () => {
+                this.settings.autosaveOnSurface = true;
+                void storage.writeSettings(this.settings);
+                this.applySettings();
+                this.ui.toast(t('uiAutosaveOn'));
+              },
+            }
+          : null,
       );
     });
   }

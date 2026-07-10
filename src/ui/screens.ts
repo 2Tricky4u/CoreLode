@@ -31,6 +31,7 @@ export class ScreenHost {
 
 export function titleScreen(opts: {
   canContinue: boolean;
+  continueMeta?: SlotMeta | null;
   lifetime?: LifetimeRecords | null;
   onNew: () => void;
   onContinue: () => void;
@@ -57,6 +58,18 @@ export function titleScreen(opts: {
       { class: 'btn-col menu' },
       opts.canContinue
         ? el('button', { class: 'btn primary', onclick: opts.onContinue }, t('continueGame'))
+        : null,
+      opts.canContinue && opts.continueMeta
+        ? el('p', {
+            class: 'title-continue-meta',
+            text: `${Math.round(opts.continueMeta.depthFt).toLocaleString('en-US')} ft · $${opts.continueMeta.cash.toLocaleString('en-US')}${
+              opts.continueMeta.summary ? ` · cargo ${opts.continueMeta.summary.cargoPct}%` : ''
+            }${
+              opts.continueMeta.summary?.nextUpgrade
+                ? ` · ${t(`${opts.continueMeta.summary.nextUpgrade.category}${opts.continueMeta.summary.nextUpgrade.tier}`)} ${t('uiWithinReach')}`
+                : ''
+            }`,
+          })
         : null,
       el('button', { class: 'btn primary', onclick: opts.onNew }, t('newGame')),
       el('button', { class: 'btn', onclick: opts.onLoad }, t('uiLoad')),
@@ -88,12 +101,19 @@ export function saveSlotsScreen(opts: {
       );
       continue;
     }
+    const teaser = meta.summary
+      ? ` · cargo ${meta.summary.cargoPct}%${
+          meta.summary.nextUpgrade
+            ? ` · ${t(`${meta.summary.nextUpgrade.category}${meta.summary.nextUpgrade.tier}`)} ${t('uiWithinReach')}`
+            : ''
+        }`
+      : '';
     list.append(
       el(
         'div',
         { class: 'slot' },
         el('span', {
-          text: `${key} · lvl ${meta.level} · $${meta.cash.toLocaleString('en-US')} · ${Math.round(meta.depthFt)} ft · ${new Date(meta.updatedAt).toLocaleString()}`,
+          text: `${key} · lvl ${meta.level} · $${meta.cash.toLocaleString('en-US')} · ${Math.round(meta.depthFt)} ft${teaser} · ${new Date(meta.updatedAt).toLocaleString()}`,
         }),
         el(
           'span',

@@ -1,4 +1,4 @@
-import type { DamageCause, SaveFile } from '@core/index';
+import { type DamageCause, type SaveFile, type SlotSummary, slotSummary } from '@core/index';
 import type { SettingsValues } from '@core/index';
 /** IndexedDB persistence via idb-keyval. Keys: save:manual:N, save:auto:N, settings, records, lifetime. */
 import { clear, del, get, keys, set } from 'idb-keyval';
@@ -9,6 +9,7 @@ export interface SlotMeta {
   depthFt: number;
   cash: number;
   level: number;
+  summary?: SlotSummary;
 }
 
 const SLOT_PREFIX = 'save:';
@@ -58,12 +59,19 @@ export function listSaves(): Promise<SlotMeta[]> {
       try {
         const raw = (await get(k)) as SaveFile | undefined;
         if (!raw) continue;
+        let summary: SlotSummary | undefined;
+        try {
+          summary = slotSummary(raw);
+        } catch {
+          /* pre-migration or partial save — teaser is optional */
+        }
         out.push({
           key: k.slice(SLOT_PREFIX.length),
           updatedAt: raw.updatedAt ?? 0,
           depthFt: raw.story?.maxDepthFt ?? 0,
           cash: raw.pod?.cash ?? 0,
           level: raw.level ?? 1,
+          summary,
         });
       } catch {
         /* skip an unreadable slot */

@@ -583,6 +583,7 @@ export function openGameOver(
   stats: GameOverStats,
   onLoad: () => void,
   onTitle: () => void,
+  extra?: { label: string; onClick: () => void } | null,
 ): void {
   const statRow = (label: string, value: string) =>
     el(
@@ -646,6 +647,19 @@ export function openGameOver(
           },
           t('backToTitle'),
         ),
+        extra
+          ? el(
+              'button',
+              {
+                class: 'btn',
+                onclick: (ev: Event) => {
+                  extra.onClick();
+                  (ev.currentTarget as HTMLButtonElement).disabled = true;
+                },
+              },
+              extra.label,
+            )
+          : null,
       ),
     ),
   );
