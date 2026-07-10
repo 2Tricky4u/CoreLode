@@ -40,7 +40,7 @@ possible, and continue; otherwise stop.
 - [x] [C20] Juice pass: heartbeat, landing squash, chain polish, ambient fauna layer
 - [x] [C21] Battered-hull pod frames (user art landed; decal-overlay approach)
 - [x] [C22] Key remapping + modal keyboard parity + fidelity-checklist doc update
-- [ ] Phase 4 gate: full regression + manual purist-mode pass
+- [x] Phase 4 gate: full regression green (127 tests, lint, layering, build); purist-mode pass is manual QA — see fidelity checklist
 
 ## Notes / decisions log
 
@@ -57,3 +57,5 @@ possible, and continue; otherwise stop.
   latch lives in story.fired, so a force-quit mid-offer spends the milestone without a
   relic. Chain-detonate's "trigger adjacent gas pockets" was already native to blasts
   (explosives ignite gas), so the relic is a pure +1 radius.
+- ALL STEPS COMPLETE (2026-07-10). Remaining human QA: the fidelity checklist's [M] items
+  (purist-mode side-by-side, expedition feel pass) need a play session in the browser.
