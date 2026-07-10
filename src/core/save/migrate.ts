@@ -25,6 +25,13 @@ const MIGRATIONS: Record<number, Migration> = {
     chain: null,
     contracts: [],
   }),
+  // v3: minimap fog of war. Pre-fog saves are grandfathered with a fully
+  // revealed map — an existing mid-run player must not lose their bearings.
+  2: (raw) => ({
+    ...raw,
+    v: 3,
+    discoveredRle: [1, WORLD_W * WORLD_H],
+  }),
 };
 
 export class SaveError extends Error {}
@@ -55,11 +62,14 @@ function validate(f: Record<string, unknown>): void {
   req(typeof f.level === 'number' && (f.level as number) >= 1, 'level');
   req(typeof f.tick === 'number', 'tick');
   req(typeof f.rngState === 'number', 'rngState');
-  const world = f.worldRle;
-  req(Array.isArray(world) && world.length % 2 === 0, 'worldRle shape');
-  let total = 0;
-  for (let i = 1; i < (world as number[]).length; i += 2) total += (world as number[])[i];
-  req(total === WORLD_W * WORLD_H, `worldRle length ${total}`);
+  const rleCovers = (rle: unknown): boolean => {
+    if (!Array.isArray(rle) || rle.length % 2 !== 0) return false;
+    let total = 0;
+    for (let i = 1; i < rle.length; i += 2) total += rle[i];
+    return total === WORLD_W * WORLD_H;
+  };
+  req(rleCovers(f.worldRle), 'worldRle shape/length');
+  req(rleCovers(f.discoveredRle), 'discoveredRle shape/length');
   const pod = f.pod as Record<string, unknown>;
   req(typeof pod === 'object' && pod !== null, 'pod');
   for (const k of ['x', 'y', 'hp', 'fuel', 'cash', 'points'])

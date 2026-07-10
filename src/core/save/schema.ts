@@ -13,7 +13,7 @@ import type { DamageCause } from '../events';
 import { Rng } from '../lib/rng';
 import type { ChainState, ContractState, GameState, ModeConfig, RunStats } from '../sim/state';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 export interface SaveFile {
   v: number;
@@ -24,6 +24,8 @@ export interface SaveFile {
   tick: number;
   rngState: number;
   worldRle: number[]; // [tile, runLength, tile, runLength, ...]
+  /** Minimap fog of war, RLE like worldRle (runs of 0/1 pack tightly). */
+  discoveredRle: number[];
   slate: { x: number; y: number; blueprint: BlueprintId } | null;
   pod: {
     x: number;
@@ -49,7 +51,7 @@ export interface SaveFile {
   contracts: ContractState[];
 }
 
-export function rleEncode(tiles: Uint16Array): number[] {
+export function rleEncode(tiles: Uint16Array | Uint8Array): number[] {
   const out: number[] = [];
   let cur = tiles[0];
   let run = 1;
@@ -77,6 +79,16 @@ export function rleDecode(rle: number[]): Uint16Array {
   return tiles;
 }
 
+export function rleDecodeBytes(rle: number[]): Uint8Array {
+  const bytes = new Uint8Array(WORLD_W * WORLD_H);
+  let i = 0;
+  for (let k = 0; k < rle.length; k += 2) {
+    bytes.fill(rle[k], i, i + rle[k + 1]);
+    i += rle[k + 1];
+  }
+  return bytes;
+}
+
 export function serialize(s: GameState, updatedAt: number): SaveFile {
   return {
     v: SAVE_VERSION,
@@ -87,6 +99,7 @@ export function serialize(s: GameState, updatedAt: number): SaveFile {
     tick: s.tick,
     rngState: s.rng.state,
     worldRle: rleEncode(s.world.tiles),
+    discoveredRle: rleEncode(s.world.discovered),
     slate: s.world.slate,
     pod: {
       x: s.pod.x,
@@ -129,7 +142,11 @@ export function deserialize(f: SaveFile): GameState {
     mode: f.mode,
     tick: f.tick,
     rng: new Rng(f.rngState),
-    world: { tiles: rleDecode(f.worldRle), slate: f.slate },
+    world: {
+      tiles: rleDecode(f.worldRle),
+      slate: f.slate,
+      discovered: rleDecodeBytes(f.discoveredRle),
+    },
     pod: {
       x: f.pod.x,
       y: f.pod.y,

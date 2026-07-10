@@ -22,6 +22,14 @@ export const WORLDGEN = {
   cavernChance: 3,
 } as const;
 
+/** Minimap fog-of-war tuning (remake QoL — the sim only bookkeeps the grid). */
+export const DISCOVERY = {
+  /** Cells within this Chebyshev radius of the pod are revealed permanently. */
+  radiusTiles: 4,
+  /** Rows 0..N start revealed (sky + turf are in plain sight from the drop). */
+  surfaceRows: 5,
+} as const;
+
 export const QUAKE = {
   /** Row-shift chance is 1/(5−intensity); rows 11..H−15 are eligible (original). */
   minRow: 11,

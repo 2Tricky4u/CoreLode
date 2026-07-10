@@ -7,6 +7,7 @@ import { BUILDINGS } from '../data/buildings';
 import { SURFACE_ROW, TILE_PX } from '../data/constants';
 import type { EventSink } from '../events';
 import type { IntentFrame } from '../intents';
+import { markDiscovered } from '../world/world';
 import { stepBoss } from './boss';
 import { stepChain } from './chain';
 import { stepContracts } from './contracts';
@@ -26,6 +27,7 @@ import {
   maxHull,
   podDepthFt,
   podTileX,
+  podTileY,
 } from './state';
 
 export function tick(s: GameState, input: IntentFrame, out: EventSink): void {
@@ -56,6 +58,13 @@ export function tick(s: GameState, input: IntentFrame, out: EventSink): void {
   // 4. drilling (owns movement during a dig) then free movement
   stepDrilling(s, input, out);
   if (p.mode !== 'dig') stepPhysics(s, input, out);
+
+  // 4b. minimap fog-of-war bookkeeping — reveal around the pod when it enters
+  //     a new tile (and once on the very first tick of a run).
+  const tx = podTileX(p);
+  const ty = podTileY(p);
+  if (s.tick === 1 || tx !== Math.floor(p.prevX / TILE_PX) || ty !== Math.floor(p.prevY / TILE_PX))
+    markDiscovered(s.world, tx, ty);
 
   // 5. placed charges
   stepCharges(s, out);

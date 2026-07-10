@@ -3,13 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { applyCommand } from '../commands';
 import { BOSS } from '../data/boss';
 import { BUILDINGS } from '../data/buildings';
-import { TILE_PX } from '../data/constants';
+import { SURFACE_ROW, TILE_PX, WORLD_H, WORLD_W } from '../data/constants';
 import { PHYSICS, fallDamage } from '../data/physics';
 import type { EventSink } from '../events';
 import { EMPTY_INTENTS, type IntentFrame } from '../intents';
 import { fnv1a } from '../lib/math';
 import { Tile } from '../world/tiles';
-import { getTile, setTile } from '../world/world';
+import { earthquake, getTile, setTile } from '../world/world';
 import { gasDamageAtDepth } from './hazards';
 import { podOverlapsSolid } from './physics';
 import {
@@ -383,6 +383,41 @@ describe('fuel failsafe assist (rescue tow)', () => {
     const out = step(s);
     expect(out.some((e) => e.t === 'rescue')).toBe(false);
     expect(s.outcome).toBe('destroyed');
+  });
+});
+
+describe('minimap fog of war', () => {
+  it('starts with sky and surface revealed, depths fogged', () => {
+    const s = run();
+    expect(s.world.discovered[3 * WORLD_W + 10]).toBe(1); // sky
+    expect(s.world.discovered[SURFACE_ROW * WORLD_W + 10]).toBe(1); // turf
+    expect(s.world.discovered[400 * WORLD_W + 10]).toBe(0); // deep cell
+  });
+
+  it('reveals a radius around the pod and never re-fogs', () => {
+    const s = run();
+    step(s, {}, 2);
+    const tx = podTileX(s.pod);
+    const ty = podTileY(s.pod);
+    const d = (x: number, y: number) => s.world.discovered[y * WORLD_W + x];
+    expect(d(tx, ty)).toBe(1);
+    expect(d(tx, Math.min(WORLD_H - 1, ty + 4))).toBe(1); // edge of the radius
+    expect(d(tx, ty + 10)).toBe(0); // beyond it
+    // Move away — earlier cells stay revealed.
+    s.pod.y += TILE_PX * 20;
+    step(s, {}, 2);
+    expect(d(tx, ty)).toBe(1);
+  });
+
+  it('rotates with earthquake rows so cells keep tracking their tiles', () => {
+    const s = run();
+    const y = 50;
+    s.world.discovered[y * WORLD_W + 10] = 1; // lone revealed cell in the row
+    earthquake(s.world, s.rng, 4); // chance 1/(5−4) → every eligible row shifts
+    const row = s.world.discovered.subarray(y * WORLD_W + 2, (y + 1) * WORLD_W - 2);
+    expect(row.reduce((a, b) => a + b, 0)).toBe(1); // still exactly one cell
+    const at = row.indexOf(1) + 2;
+    expect(at === 9 || at === 11).toBe(true); // moved one step with the row
   });
 });
 

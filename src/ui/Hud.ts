@@ -328,19 +328,37 @@ export class Hud {
     if (mapOn && this.minimapFrame++ % 10 === 0) this.drawMinimap(s);
   }
 
-  /** Depth strip: soil bands + minerals/hazards + the pod's position. Gas draws as soil (fidelity). */
+  /**
+   * Depth strip with fog of war: full detail (soil bands + minerals/hazards)
+   * only where the pod has been; strata the pod has REACHED show as a faint
+   * featureless silhouette (the band's shape unlocks, detail still needs
+   * exploration); deeper strata stay pure fog. Gas draws as soil (fidelity).
+   */
   private drawMinimap(s: GameState): void {
     const ctx = this.minimapCtx;
     if (!ctx) return;
     ctx.fillStyle = '#0a0a12';
     ctx.fillRect(0, 0, MAP_W, MAP_H);
+    const reachedStratum = stratumIndexAt(s.story.maxDepthFt);
     for (let cy = 0; cy < MAP_H; cy++) {
       const y = Math.floor((cy / MAP_H) * WORLD_H);
       const band = Math.max(
         0,
         Math.min(5, Math.floor(((y - SURFACE_ROW) / (WORLD_H - SURFACE_ROW)) * 6)),
       );
+      const bandReached = y <= SURFACE_ROW || band <= reachedStratum;
       for (let x = 0; x < WORLD_W; x++) {
+        if (s.world.discovered[y * WORLD_W + x] !== 1) {
+          // Undiscovered: reached strata get a dim uniform silhouette, the
+          // rest stays fog (the dark background).
+          if (bandReached && y > SURFACE_ROW) {
+            ctx.globalAlpha = 0.18;
+            ctx.fillStyle = MAP_BANDS[band];
+            ctx.fillRect(x, cy, 1, 1);
+            ctx.globalAlpha = 1;
+          }
+          continue;
+        }
         const t = getTile(s.world, x, y);
         if (t === Tile.Air) continue; // leave tunnels as the dark background
         let color: string;
