@@ -10,9 +10,11 @@ import type { IntentFrame } from '../intents';
 import { stepBoss } from './boss';
 import { stepDrilling } from './drilling';
 import { stepChain } from './chain';
+import { stepContracts } from './contracts';
 import { stepCharges } from './explosives';
 import { stepHeat } from './heat';
 import { rescueTow, tryUseItem } from './items';
+import { objectiveMet } from './objectives';
 import { POD_HH, stepPhysics } from './physics';
 import { stepScripted } from './scripted';
 import {
@@ -94,8 +96,9 @@ export function tick(s: GameState, input: IntentFrame, out: EventSink): void {
     if (p.fuel > 0 && p.fuel < 2) out.push({ t: 'fuelLow' });
   }
 
-  // 10. challenge objectives / timer
+  // 10. challenge objectives / timer, expedition contracts
   stepChallenge(s, out);
+  stepContracts(s, out);
 }
 
 /** A dry tank is fatal — unless the run was created with the fuel-failsafe assist. */
@@ -118,37 +121,7 @@ function stepChallenge(s: GameState, out: EventSink): void {
     return;
   }
 
-  const o = ch.objective;
-  let win = false;
-  switch (o.kind) {
-    case 'earnCash':
-      win = s.pod.cash >= o.amount;
-      break;
-    case 'reachDepthFt':
-      win = s.story.maxDepthFt <= o.ft;
-      break;
-    case 'collectMineral':
-      win =
-        bayContentsCount(s.pod, o.collectibleId) + (s.stats.soldCount[o.collectibleId] ?? 0) >=
-        o.count;
-      break;
-    case 'destroyStones':
-      win = s.stats.stonesDestroyed >= o.count;
-      break;
-    case 'collectNoDamage':
-      win = s.stats.damageTaken === 0 && s.stats.collectedTotal >= o.count;
-      break;
-    case 'haulMassInOneTrip':
-      win = s.stats.biggestSaleMass >= o.mass;
-      break;
-    case 'reachExit':
-      win = s.stats.exitReached;
-      break;
-    case 'sellMineral':
-      win = s.stats.soldCount[o.collectibleId] > 0;
-      break;
-  }
-  if (win) {
+  if (objectiveMet(s, ch.objective)) {
     s.outcome = 'challengeWon';
     out.push({ t: 'challengeResult', win: true, elapsedTicks: s.tick });
   }

@@ -24,6 +24,8 @@ export type SimEvent =
   | { t: 'chain'; collectibleId: number; count: number }
   /** Expedition chain ended — banked into the sale-bonus vault or voided. */
   | { t: 'chainBroken'; count: number; banked: boolean }
+  /** An expedition contract completed and paid out. */
+  | { t: 'contractDone'; index: number; rewardCash: number }
   | { t: 'podExploded'; cause: 'hull' | 'fuel' }
   | { t: 'explosion'; x: number; y: number; radiusTiles: number; item: ItemId }
   | { t: 'gasIgnite'; x: number; y: number }

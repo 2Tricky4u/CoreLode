@@ -292,6 +292,7 @@ export const STRINGS: Record<string, string> = {
   uiAutosaveTip: "Tip: 'Autosave on surfacing' can be enabled in Settings",
   uiWithinReach: 'within reach',
   uiChainBonus: 'CHAIN VAULT',
+  uiContractDone: 'CONTRACT COMPLETE',
   uiEnableAutosave: 'Enable autosave for next time',
   uiAutosaveOn: 'Autosave on surfacing enabled.',
 

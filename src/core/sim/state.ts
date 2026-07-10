@@ -12,6 +12,7 @@ import { UPGRADES, type UpgradeCategory } from '../data/upgrades';
 import type { DamageCause } from '../events';
 import { Rng, hash32 } from '../lib/rng';
 import { applyMaze } from '../world/mazes';
+import { generateContracts } from './contracts';
 import { type WorldState, createWorld } from '../world/world';
 
 export type PodMode = 'air' | 'ground' | 'dig';
@@ -313,7 +314,7 @@ export function createRun(opts: NewRunOptions = {}): GameState {
       rescues: 0,
     },
     chain: null,
-    contracts: [],
+    contracts: mode.kind === 'expedition' ? generateContracts(seed) : [],
     outcome: 'active',
     challengeEndTick: ch ? ch.timeLimitTicks : 0,
     heatWarnLevel: 0,

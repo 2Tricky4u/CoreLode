@@ -4,6 +4,7 @@ export { applyCommand, type Command } from './commands';
 export {
   createRun,
   podDepthFt,
+  type ContractState,
   podTileX,
   podTileY,
   maxHull,
@@ -47,7 +48,7 @@ export {
   type LoadoutId,
   type ModuleId,
 } from './data/expedition';
-export { CHALLENGES } from './data/challenges';
+export { CHALLENGES, type Objective } from './data/challenges';
 export { BLUEPRINTS, type BlueprintId } from './data/blueprints';
 export {
   SETTING_DEFS,

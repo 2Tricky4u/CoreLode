@@ -490,6 +490,9 @@ export class App {
         if (e.kind === 'chainBonus')
           this.ui.toast(`${t('uiChainBonus')} +$${e.amount.toLocaleString('en-US')}`);
         break;
+      case 'contractDone':
+        this.ui.toast(`${t('uiContractDone')} +$${e.rewardCash.toLocaleString('en-US')}`, 3200);
+        break;
       case 'damage':
         // First-ever encounter with each hazard gets a one-line log entry (lifetime-once).
         if (!this.lifetime.hazardsSeen.includes(e.cause)) {

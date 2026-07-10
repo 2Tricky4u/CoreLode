@@ -4,9 +4,11 @@ import {
   ALTIMETER_ARENA_FT,
   ALTIMETER_ARENA_TEXT,
   ALTIMETER_GLITCH_FT,
+  COLLECTIBLES,
   type GameState,
   ITEMS,
   type ItemId,
+  type Objective,
   STRATA_KEYS,
   SURFACE_ROW,
   Tile,
@@ -35,6 +37,28 @@ const MAP_H = 200;
 /** Soil tint per depth band (mirrors GameScene BAND_TINTS). */
 const MAP_BANDS = ['#d9a066', '#8f563b', '#663931', '#45283c', '#45283c', '#323c39'];
 
+/** Human label for a contract/challenge objective. */
+const objectiveLabel = (o: Objective): string => {
+  switch (o.kind) {
+    case 'reachDepthFt':
+      return `Reach ${o.ft.toLocaleString('en-US')} ft`;
+    case 'collectMineral':
+      return `Collect ${o.count} ${t(COLLECTIBLES[o.collectibleId].key)}`;
+    case 'haulMassInOneTrip':
+      return `Haul ${o.mass} mass in one sale`;
+    case 'earnCash':
+      return `Earn $${o.amount.toLocaleString('en-US')}`;
+    case 'destroyStones':
+      return `Destroy ${o.count} boulders`;
+    case 'collectNoDamage':
+      return `Collect ${o.count} without a scratch`;
+    case 'reachExit':
+      return 'Reach the exit beacon';
+    case 'sellMineral':
+      return `Sell ${t(COLLECTIBLES[o.collectibleId].key)}`;
+  }
+};
+
 export class Hud {
   readonly node: HTMLElement;
   /** "Press [E] to interact" — shown only while standing on a building. */
@@ -57,6 +81,8 @@ export class Hud {
   private timerNode: HTMLElement;
   private showTimer = false;
   private chainNode: HTMLElement;
+  private contractsNode: HTMLElement;
+  private contractsKey = '';
   private stratumNode: HTMLElement;
   private lastStratum = 0;
   private stratumTimer: ReturnType<typeof setTimeout> | null = null;
@@ -110,6 +136,7 @@ export class Hud {
 
     this.timerNode = el('span', { class: 'hud-timer hidden', text: '00:00.00' });
     this.chainNode = el('span', { class: 'hud-chain hidden', text: '' });
+    this.contractsNode = el('div', { class: 'hud-contracts hidden' });
     this.stratumNode = el('div', { class: 'stratum-banner' });
 
     this.minimapCanvas = el('canvas', { class: 'minimap-canvas' });
@@ -150,6 +177,7 @@ export class Hud {
       ),
       el('div', { class: 'hud-right' }, this.cashText, hotbar),
       this.minimapNode,
+      this.contractsNode,
       this.stratumNode,
     );
   }
@@ -202,6 +230,22 @@ export class Hud {
     if (exp) {
       this.heatFill.style.width = `${Math.max(0, Math.min(100, p.heat))}%`;
       this.heatFill.classList.toggle('warn', p.heat >= 70);
+    }
+    this.contractsNode.classList.toggle('hidden', !exp || s.contracts.length === 0);
+    if (exp && s.contracts.length > 0) {
+      // Cheap dirty-check: rebuild the list only when done-flags change.
+      const key = s.contracts.map((c) => (c.done ? '1' : '0')).join('');
+      if (key !== this.contractsKey) {
+        this.contractsKey = key;
+        this.contractsNode.replaceChildren(
+          ...s.contracts.map((c) =>
+            el('div', {
+              class: `hud-contract${c.done ? ' done' : ''}`,
+              text: `${c.done ? '☑' : '☐'} ${objectiveLabel(c.objective)} · $${c.rewardCash.toLocaleString('en-US')}`,
+            }),
+          ),
+        );
+      }
     }
     const chainVisible = exp && ((s.chain?.count ?? 0) >= 2 || (s.chain?.bankPct ?? 0) > 0);
     this.chainNode.classList.toggle('hidden', !chainVisible);

@@ -7,6 +7,7 @@ import type { EventSink } from '../events';
 import { EMPTY_INTENTS, type IntentFrame } from '../intents';
 import { fnv1a } from '../lib/math';
 import { chainOnCollect, chainOnDamage, stepChain } from './chain';
+import { generateContracts } from './contracts';
 import { type GameState, createRun, tankCapacity } from './state';
 import { tick } from './tick';
 
@@ -211,6 +212,45 @@ describe('collect chains', () => {
     chainOnCollect(s, 0, []);
     chainOnCollect(s, 0, []);
     expect(s.chain).toBeNull();
+  });
+});
+
+describe('contracts', () => {
+  it('generates three deterministic seeded contracts per expedition', () => {
+    const a = generateContracts(1234);
+    const b = generateContracts(1234);
+    const c = generateContracts(9999);
+    expect(a).toEqual(b);
+    expect(a).not.toEqual(c);
+    expect(a).toHaveLength(3);
+    expect(a.map((x) => x.objective.kind)).toEqual([
+      'reachDepthFt',
+      'collectMineral',
+      'haulMassInOneTrip',
+    ]);
+  });
+
+  it('expedition runs start with contracts; story runs have none', () => {
+    expect(expRun(1234).contracts).toHaveLength(3);
+    expect(createRun({ seed: 1234, mode: { kind: 'story', goldium: true } }).contracts).toEqual(
+      [],
+    );
+  });
+
+  it('pays out once when the objective is met', () => {
+    const s = expRun();
+    step(s, {}, 3);
+    const depthGoal = s.contracts[0];
+    expect(depthGoal.objective.kind).toBe('reachDepthFt');
+    const ft = depthGoal.objective.kind === 'reachDepthFt' ? depthGoal.objective.ft : 0;
+    const cash = s.pod.cash;
+    s.story.maxDepthFt = ft - 1;
+    const out = step(s);
+    expect(out.some((e) => e.t === 'contractDone' && e.index === 0)).toBe(true);
+    expect(depthGoal.done).toBe(true);
+    expect(s.pod.cash).toBe(cash + depthGoal.rewardCash);
+    // …and never again on later ticks
+    expect(step(s, {}, 5).some((e) => e.t === 'contractDone')).toBe(false);
   });
 });
 

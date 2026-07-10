@@ -135,6 +135,9 @@ export class AudioBus {
         if (e.banked) this.play('collect', 0.5, 1.6);
         else if (e.count >= 3) this.play('error', 0.35);
         break;
+      case 'contractDone':
+        this.play('challengeWin', 0.55);
+        break;
     }
   }
 
