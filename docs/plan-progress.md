@@ -59,3 +59,4 @@ possible, and continue; otherwise stop.
   (explosives ignite gas), so the relic is a pure +1 radius.
 - ALL STEPS COMPLETE (2026-07-10). Remaining human QA: the fidelity checklist's [M] items
   (purist-mode side-by-side, expedition feel pass) need a play session in the browser.
+- 2026-07-10: GitHub issue #1 (minimap fog of war) implemented in b51f85c and closed.
