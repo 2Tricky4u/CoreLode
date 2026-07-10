@@ -70,6 +70,14 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     affectsFidelity: false,
   },
   {
+    id: 'ambientLife',
+    labelKey: 'setAmbientLife',
+    category: 'video',
+    type: 'bool',
+    default: true,
+    affectsFidelity: false,
+  },
+  {
     id: 'controlScheme',
     labelKey: 'setControlScheme',
     category: 'controls',

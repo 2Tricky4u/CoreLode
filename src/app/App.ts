@@ -264,6 +264,7 @@ export class App {
       damageFlash: Boolean(fx.damageFlash),
       pixelPerfect: Boolean(fx.pixelPerfect),
       oreGlyphs: Boolean(fx.oreGlyphs),
+      ambientLife: Boolean(fx.ambientLife),
     });
   }
 
@@ -484,6 +485,7 @@ export class App {
         damageFlash: Boolean(this.fx.damageFlash),
         pixelPerfect: Boolean(this.fx.pixelPerfect),
         oreGlyphs: Boolean(this.fx.oreGlyphs),
+        ambientLife: Boolean(this.fx.ambientLife),
         // Carrier-landing cinematic: fresh story runs only (not loads, not challenges).
         intro: state.tick === 0 && state.mode.kind === 'story',
       });

@@ -29,6 +29,7 @@ import type { GameHost } from '../GameHost';
 import type { AudioBus } from '../audio/AudioBus';
 import { BossView } from '../render/BossView';
 import { CritterView } from '../render/CritterView';
+import { FaunaLayer } from '../render/FaunaLayer';
 import { PodView } from '../render/PodView';
 import { TileRenderer } from '../render/TileRenderer';
 
@@ -51,6 +52,7 @@ export interface FxOptions {
   damageFlash: boolean;
   pixelPerfect: boolean;
   oreGlyphs: boolean;
+  ambientLife: boolean;
 }
 
 export class GameScene extends Phaser.Scene {
@@ -60,6 +62,8 @@ export class GameScene extends Phaser.Scene {
   private pod!: PodView;
   private boss!: BossView;
   private critterView!: CritterView;
+  private fauna!: FaunaLayer;
+  private ambientLife = true;
   private fxFull = true;
 
   private lightImg!: Phaser.GameObjects.Image;
@@ -109,6 +113,7 @@ export class GameScene extends Phaser.Scene {
     damageFlash?: boolean;
     pixelPerfect?: boolean;
     oreGlyphs?: boolean;
+    ambientLife?: boolean;
     intro?: boolean;
   }): void {
     this.host = data.host;
@@ -118,6 +123,7 @@ export class GameScene extends Phaser.Scene {
     this.damageFlash = data.damageFlash ?? true;
     this.pixelPerfect = data.pixelPerfect ?? true;
     this.oreGlyphs = data.oreGlyphs ?? false;
+    this.ambientLife = data.ambientLife ?? true;
     this.introPending = data.intro ?? false;
   }
 
@@ -128,6 +134,8 @@ export class GameScene extends Phaser.Scene {
     this.damageFlash = opts.damageFlash;
     this.oreGlyphs = opts.oreGlyphs;
     this.gasHintOpt = opts.gasHint;
+    this.ambientLife = opts.ambientLife;
+    if (this.fauna) this.fauna.enabled = opts.ambientLife && opts.fxFull;
     this.tiles?.setGasHint(opts.gasHint);
     this.setPixelPerfect(opts.pixelPerfect);
     if (!opts.oreGlyphs) for (const g of this.glyphs) g.setVisible(false);
@@ -191,6 +199,8 @@ export class GameScene extends Phaser.Scene {
     this.pod.create();
     this.boss = new BossView(this, s);
     this.critterView = new CritterView(this, s);
+    this.fauna = new FaunaLayer(this, s);
+    this.fauna.enabled = this.ambientLife && this.fxFull;
 
     // Hole-bite overlay for the tile currently being drilled (above terrain, below the pod).
     this.crackSprite = this.add.sprite(0, 0, 'atlas', 'bite_down0').setDepth(6).setVisible(false);
@@ -488,7 +498,11 @@ export class GameScene extends Phaser.Scene {
             this.state.pod.x,
             this.state.pod.y + 22,
           );
+          // Impact squash — feel proportional to the hit (PodView restores itself).
+          this.pod.squash(Math.min(1, e.impactVel / 16));
         }
+        if (e.damage > 0 && this.screenShake)
+          this.cameras.main.shake(90, 0.002 + e.damage * 0.0006);
         break;
       case 'chain': {
         // Rank colors escalate with the chain (DB32 ramp).
@@ -503,6 +517,7 @@ export class GameScene extends Phaser.Scene {
                   ? 0xdf7126
                   : 0xfbf236;
         this.popup(`×${e.count} CHAIN`, c);
+        if (e.count >= 8 && this.screenShake) this.cameras.main.shake(110, 0.003);
         break;
       }
       case 'chainBroken':
@@ -602,6 +617,7 @@ export class GameScene extends Phaser.Scene {
     this.pod.update(alpha);
     this.boss.update(alpha);
     this.critterView.update();
+    this.fauna.update();
     // Seismic Scanner relic: the gas shimmer turns on for the rest of the run.
     this.tiles.setGasHint(
       this.gasHintOpt ||
@@ -715,6 +731,8 @@ export class GameScene extends Phaser.Scene {
 
     // --- audio: score follows depth, ambient bed follows the world ---
     this.audio.setMusicDepth(depth);
+    // Low-fuel heartbeat under 2 L (the sim's fuelLow threshold), racing toward 0.
+    this.audio.setFuelPulse(s.outcome === 'active' && s.pod.fuel < 2 ? 1 - s.pod.fuel / 2 : null);
     this.audioTimer += dtMs;
     if (this.audioTimer > 150) {
       this.audioTimer = 0;

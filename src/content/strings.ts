@@ -252,6 +252,7 @@ export const STRINGS: Record<string, string> = {
   setDamageFlash: 'Damage flash',
   setPixelPerfect: 'Pixel-perfect scaling',
   setFxDensity: 'Effects density',
+  setAmbientLife: 'Ambient cavern life (cosmetic)',
   setControlScheme: 'Key scheme (classic / vim trainer)',
   setTouchControls: 'Touch controls',
   setTouchLayout: 'Touch layout',

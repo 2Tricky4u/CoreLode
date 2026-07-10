@@ -17,6 +17,7 @@ export class AudioBus {
   private drillLoop: AudioBufferSourceNode | null = null;
   private thrustLoop: AudioBufferSourceNode | null = null;
   private lastPlayed = new Map<string, number>();
+  private nextPulseAt = 0;
 
   attachUnlock(): void {
     const unlock = () => {
@@ -69,6 +70,20 @@ export class AudioBus {
       return;
     }
     playZzfx(params, volume * this.sfxVolume);
+  }
+
+  /**
+   * Low-fuel heartbeat: call each frame with severity 0..1 (null = calm, no pulse).
+   * Pull-based — the thump simply stops being scheduled when fuel recovers,
+   * the run ends, or the scene stops updating.
+   */
+  setFuelPulse(severity: number | null): void {
+    if (severity == null || !isUnlocked()) return;
+    const now = performance.now();
+    if (now < this.nextPulseAt) return;
+    const s = Math.min(1, Math.max(0, severity));
+    this.nextPulseAt = now + (1_200 - 750 * s); // races as the tank empties
+    this.play('heartbeat', 0.45 + 0.4 * s, 1 + 0.15 * s);
   }
 
   /** Live drill-loop pitch (1 = as authored) — ramped with dig progress by the scene. */

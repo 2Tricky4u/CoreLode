@@ -5,6 +5,7 @@ import type Phaser from 'phaser';
 export class PodView {
   sprite!: Phaser.GameObjects.Sprite;
   private animTick = 0;
+  private squashT = 0;
 
   constructor(
     private scene: Phaser.Scene,
@@ -37,6 +38,20 @@ export class PodView {
       frame = `pod_fly${ph}`;
     }
     this.sprite.setFrame(frame);
+
+    // Landing squash: brief vertical compression that eases back out.
+    if (this.squashT > 0) {
+      this.squashT = Math.max(0, this.squashT - 0.06);
+      const k = this.squashT * 0.22;
+      this.sprite.setScale(1 + k, 1 - k);
+    } else if (this.sprite.scaleX !== 1) {
+      this.sprite.setScale(1, 1);
+    }
+  }
+
+  /** Kick the landing squash (0..1 impact strength). */
+  squash(strength: number): void {
+    this.squashT = Math.min(1, Math.max(this.squashT, strength));
   }
 
   flashHurt(): void {
