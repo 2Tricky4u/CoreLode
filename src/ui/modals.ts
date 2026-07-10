@@ -564,9 +564,21 @@ const runTime = (ticks: number): string => {
   return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 };
 
+/** Post-mortem tip per final damage cause — the death should teach, not just taunt. */
+const TIP_KEYS: Record<string, string> = {
+  fall: 'tipFall',
+  lava: 'tipLava',
+  gas: 'tipGas',
+  blast: 'tipBlast',
+  boss: 'tipBoss',
+  teleport: 'tipTeleport',
+  fuel: 'tipFuel',
+};
+
 export function openGameOver(
   m: ModalManager,
   cause: 'hull' | 'fuel',
+  detail: string | null,
   canLoad: boolean,
   stats: GameOverStats,
   onLoad: () => void,
@@ -599,6 +611,7 @@ export function openGameOver(
       stats.bestChain >= 2 ? statRow(t('goChain'), `×${stats.bestChain}`) : null,
       stats.rescues > 0 ? statRow(t('goRescues'), String(stats.rescues)) : null,
     ),
+    detail && TIP_KEYS[detail] ? el('p', { class: 'go-tip', text: t(TIP_KEYS[detail]) }) : null,
     el('p', { class: 'go-epitaph', text: t('goEpitaph') }),
   );
   m.open(

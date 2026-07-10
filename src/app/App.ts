@@ -349,6 +349,15 @@ export class App {
       case 'rescue':
         this.ui.toast(`${t('uiRescue')} (-$${e.cost.toLocaleString('en-US')})`);
         break;
+      case 'damage':
+        // First-ever encounter with each hazard gets a one-line log entry (lifetime-once).
+        if (!this.lifetime.hazardsSeen.includes(e.cause)) {
+          this.lifetime.hazardsSeen.push(e.cause);
+          this.saveLifetime();
+          const key = `hazard${e.cause.charAt(0).toUpperCase()}${e.cause.slice(1)}`;
+          this.ui.toast(t(key), 3800);
+        }
+        break;
       case 'bonusCash':
         this.ui.toast(`+$${e.amount.toLocaleString('en-US')}`);
         break;
@@ -446,11 +455,20 @@ export class App {
       lt.totalTilesDug += st.stats.tilesDug;
       this.saveLifetime();
     }
+    // Refine a hull death to the hazard that landed the killing blow (last second only).
+    const last = host?.state.pod.lastDamage ?? null;
+    const detail =
+      cause === 'fuel'
+        ? 'fuel'
+        : last && host && last.atTick >= host.state.tick - 42
+          ? last.cause
+          : null;
     void storage.listSaves().then((slots) => {
       const has = slots.some((s) => s.key.startsWith('manual') || s.key.startsWith('auto'));
       openGameOver(
         this.modals,
         cause,
+        detail,
         has,
         stats,
         () => void this.loadMostRecent(),

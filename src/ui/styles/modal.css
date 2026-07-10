@@ -246,6 +246,13 @@
   font-size: 15px;
   color: var(--c-gold);
 }
+.go-tip {
+  font-size: 11px;
+  color: var(--c-gold);
+  opacity: 0.85;
+  margin-top: 6px;
+  max-width: 380px;
+}
 .go-epitaph {
   font-size: 11px;
   opacity: 0.6;

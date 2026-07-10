@@ -31,6 +31,7 @@ export function applyDamage(
   if (dmg <= 0) return;
   s.pod.hp -= dmg;
   s.stats.damageTaken += dmg;
+  s.pod.lastDamage = { cause, atTick: s.tick }; // lets the app explain a death
   out.push({ t: 'damage', amount: dmg, cause });
 }
 
