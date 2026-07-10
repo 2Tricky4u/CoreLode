@@ -290,6 +290,20 @@ export const STRINGS: Record<string, string> = {
   uiWithinReach: 'within reach',
   uiEnableAutosave: 'Enable autosave for next time',
   uiAutosaveOn: 'Autosave on surfacing enabled.',
+
+  // --- Expedition mode ---
+  expedition: 'Expedition',
+  expTitle: 'EXPEDITION',
+  expBlurb:
+    'One pod, one life, a fresh seam. Depth pays in drive cores — win or wreck, the Company collects the telemetry.',
+  expCores: 'Drive cores',
+  expBestDepth: 'Deepest expedition',
+  expRuns: 'Expeditions',
+  expWins: 'Cores reached',
+  expStart: 'Begin expedition',
+  expResume: 'Resume expedition',
+  expCoresEarned: 'Telemetry banked',
+  expSuspended: 'Expedition suspended — resume from the Expedition menu.',
   goTime: 'TIME ON THE CLOCK',
   goRate: 'EARNING RATE',
   goChain: 'BEST CHAIN',

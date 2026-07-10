@@ -6,6 +6,7 @@ import {
   type GameState,
   type SettingsValues,
   type SimEvent,
+  coresEarned,
   createRun,
   defaultSettings,
   deserialize,
@@ -39,6 +40,7 @@ import {
   ScreenHost,
   challengeScreen,
   endingScreen,
+  expeditionScreen,
   saveSlotsScreen,
   settingsScreen,
   titleScreen,
@@ -155,6 +157,7 @@ export class App {
         lifetime: this.lifetime,
         onNew: () => this.newStoryRun(),
         onContinue: () => void this.loadMostRecent(),
+        onExpedition: () => void this.showExpedition(),
         onLoad: () => void this.showSaveSlots(),
         onChallenges: () => void this.showChallenges(),
         onSettings: () => this.showSettings(() => this.showTitle()),
@@ -272,6 +275,60 @@ export class App {
     this.beginRun(createRun({ mode: { kind: 'challenge', challengeId: id, goldium: true } }));
   }
 
+  // ---------- expedition (roguelike) ----------
+  private async showExpedition(): Promise<void> {
+    const profile = await storage.readExpeditionProfile();
+    const suspend = await storage.readSave('exp:0');
+    this.screens.show(
+      expeditionScreen({
+        profile,
+        hasSuspend: Boolean(suspend),
+        onStart: () => this.newExpeditionRun(),
+        onResume: () => void this.resumeExpedition(),
+        onBack: () => void this.showTitle(),
+      }),
+    );
+  }
+
+  private newExpeditionRun(): void {
+    this.beginRun(
+      createRun({
+        seed: entropySeed(),
+        mode: {
+          kind: 'expedition',
+          goldium: true,
+          expedition: { loadoutId: 'standard', modules: [] },
+        },
+      }),
+    );
+  }
+
+  /** Single life: the suspend slot is consumed on resume (re-written at each building). */
+  private async resumeExpedition(): Promise<void> {
+    await this.loadSlot('exp:0');
+    await storage.deleteSave('exp:0');
+  }
+
+  private suspendExpedition(): void {
+    const host = this.host;
+    if (!host || host.state.mode.kind !== 'expedition') return;
+    void storage.writeSave('exp:0', serialize(host.state, Date.now()));
+  }
+
+  /** Bank cores, update the profile, and burn the suspend slot at run end. */
+  private async settleExpedition(s: GameState, victory: boolean): Promise<number> {
+    const contractsDone = s.contracts.filter((c) => c.done).length;
+    const cores = coresEarned({ maxDepthFt: s.story.maxDepthFt, contractsDone, victory });
+    const profile = await storage.readExpeditionProfile();
+    profile.cores += cores;
+    profile.runs++;
+    if (victory) profile.wins++;
+    profile.bestDepthFt = Math.min(profile.bestDepthFt, s.story.maxDepthFt);
+    await storage.writeExpeditionProfile(profile);
+    await storage.deleteSave('exp:0');
+    return cores;
+  }
+
   private beginRun(state: GameState): void {
     try {
       this.stopRun();
@@ -339,7 +396,16 @@ export class App {
         break;
       case 'enterBuilding':
         if (this.modals.isOpen) break; // already inside a menu
-        if (this.fx.autosaveOnSurface) void this.saveToSlot('auto:0', false); // QoL, default OFF
+        if (host.state.mode.kind === 'expedition') {
+          // Single life: expeditions suspend (crash-safe) instead of saving slots.
+          this.suspendExpedition();
+          if (e.id === 'saveStation') {
+            this.ui.toast(t('expSuspended'));
+            break;
+          }
+        } else if (this.fx.autosaveOnSurface) {
+          void this.saveToSlot('auto:0', false); // QoL, default OFF
+        }
         this.openBuildingModal(e.id);
         break;
       case 'transmission':
@@ -456,6 +522,10 @@ export class App {
       lt.bestChain = Math.max(lt.bestChain, st.stats.bestChain);
       lt.totalTilesDug += st.stats.tilesDug;
       this.saveLifetime();
+      if (st.mode.kind === 'expedition')
+        void this.settleExpedition(st, false).then((cores) => {
+          if (cores > 0) this.ui.toast(`${t('expCoresEarned')}: +${cores} cores`, 3600);
+        });
     }
     // Refine a hull death to the hazard that landed the killing blow (last second only).
     const last = host?.state.pod.lastDamage ?? null;
@@ -511,31 +581,40 @@ export class App {
     this.audio.stopLoops();
     this.audio.playMusic('ending');
     this.audio.ambience.silence();
+    const isStory = host.state.mode.kind === 'story';
+    const coresPromise: Promise<number | undefined> =
+      host.state.mode.kind === 'expedition'
+        ? this.settleExpedition(host.state, true)
+        : Promise.resolve(undefined);
     // Show the epilogue after the final transmission modal closes.
     const check = setInterval(() => {
       if (this.modals.isOpen) return;
       clearInterval(check);
       const s = host.state;
-      this.screens.show(
-        endingScreen({
-          state: s,
-          onNgPlus: () => {
-            const next = createRun({
-              seed: entropySeed(),
-              level: s.level + 1,
-              mode: s.mode,
-              carry: {
-                cash: s.pod.cash,
-                upgrades: s.pod.upgrades,
-                blueprints: s.pod.blueprints,
-                inventory: s.pod.inventory,
-                points: s.pod.points,
-              },
-            });
-            this.beginRun(next);
-          },
-          onTitle: () => void this.showTitle(),
-        }),
+      void coresPromise.then((coresBanked) =>
+        this.screens.show(
+          endingScreen({
+            state: s,
+            ngPlus: isStory,
+            coresBanked,
+            onNgPlus: () => {
+              const next = createRun({
+                seed: entropySeed(),
+                level: s.level + 1,
+                mode: s.mode,
+                carry: {
+                  cash: s.pod.cash,
+                  upgrades: s.pod.upgrades,
+                  blueprints: s.pod.blueprints,
+                  inventory: s.pod.inventory,
+                  points: s.pod.points,
+                },
+              });
+              this.beginRun(next);
+            },
+            onTitle: () => void this.showTitle(),
+          }),
+        ),
       );
     }, 300);
   }

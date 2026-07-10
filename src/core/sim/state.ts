@@ -3,6 +3,7 @@ import type { BossAttackKind } from '../data/boss';
 import { type BuildingId, SPAWN_COL } from '../data/buildings';
 import { CHALLENGES, type ChallengeDef, type Objective } from '../data/challenges';
 import { SURFACE_ROW, TILE_PX, WORLD_W } from '../data/constants';
+import type { ExpeditionConfig } from '../data/expedition';
 import type { ItemId } from '../data/items';
 import { COLLECTIBLES } from '../data/minerals';
 /** Game state shapes + run construction. Pure data — serializable as-is. */
@@ -106,9 +107,11 @@ export interface StoryState {
 }
 
 export interface ModeConfig {
-  kind: 'story' | 'challenge';
+  kind: 'story' | 'challenge' | 'expedition';
   challengeId?: string;
   goldium: boolean; // Goldium features on (blueprints buried, challenges menu)
+  /** Expedition run parameters (loadout, modules, optional daily key). */
+  expedition?: ExpeditionConfig;
   /**
    * Assist options frozen into the run at creation (never read live from settings —
    * keeps replays deterministic and "was this run assisted?" answerable from the save).
@@ -223,7 +226,9 @@ export interface NewRunOptions {
 }
 
 export function createRun(opts: NewRunOptions = {}): GameState {
-  const mode: ModeConfig = opts.mode ?? { kind: 'story', goldium: true };
+  const mode: ModeConfig = { ...(opts.mode ?? { kind: 'story', goldium: true }) };
+  // Expedition invariant: the fuel failsafe is part of its balance, always on.
+  if (mode.kind === 'expedition') mode.assists = { fuelFailsafe: true };
   const ch = mode.kind === 'challenge' ? CHALLENGES.find((c) => c.id === mode.challengeId) : null;
   // Seed must come from the caller (app layer owns entropy); fixed fallback keeps core pure.
   const seed = ch ? ch.seed : (opts.seed ?? hash32(0x600d, 0xc0de));
@@ -274,7 +279,8 @@ export function createRun(opts: NewRunOptions = {}): GameState {
   };
   pod.hp = maxHull(pod);
   pod.fuel = Math.min(pod.fuel, tankCapacity(pod));
-  if (ch) pod.fuel = tankCapacity(pod); // challenges start fueled
+  // Challenges and expeditions start fueled — no scripted refuel errand there.
+  if (ch || mode.kind === 'expedition') pod.fuel = tankCapacity(pod);
   pod.prevX = pod.x;
   pod.prevY = pod.y;
 

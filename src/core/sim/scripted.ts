@@ -35,31 +35,37 @@ export function stepScripted(s: GameState, out: EventSink): void {
 
   if (s.mode.kind === 'challenge') return; // no story in challenges
 
-  // Intro transmission (the 'start' sentinel) — first tick of a fresh run.
-  fireTransmission(s, 'tx-start', out);
+  // Story beats fire in story mode only: replaying them every expedition run
+  // would get stale, their cash bonuses would warp the roguelike economy, and
+  // the intro's "go refuel" errand would be a lie (expeditions start fueled).
+  // Quakes below stay live in expedition — they are terrain, not narrative.
+  if (s.mode.kind === 'story') {
+    // Intro transmission (the 'start' sentinel) — first tick of a fresh run.
+    fireTransmission(s, 'tx-start', out);
 
-  // Depth transmissions — watermark crossing fires each exactly once.
-  for (const t of TRANSMISSIONS) {
-    if (typeof t.trigger !== 'number') continue;
-    if (s.story.maxDepthFt <= t.trigger) fireTransmission(s, t.id, out);
-  }
+    // Depth transmissions — watermark crossing fires each exactly once.
+    for (const t of TRANSMISSIONS) {
+      if (typeof t.trigger !== 'number') continue;
+      if (s.story.maxDepthFt <= t.trigger) fireTransmission(s, t.id, out);
+    }
 
-  // Sky easter eggs.
-  for (const egg of SKY_EGGS) {
-    if (s.story.fired.includes(egg.id)) continue;
-    if (s.story.maxAltFt >= egg.altitudeFt) {
-      s.story.fired.push(egg.id);
-      if (egg.bonus > 0) {
-        s.pod.cash += egg.bonus;
-        out.push({ t: 'bonusCash', amount: egg.bonus });
+    // Sky easter eggs.
+    for (const egg of SKY_EGGS) {
+      if (s.story.fired.includes(egg.id)) continue;
+      if (s.story.maxAltFt >= egg.altitudeFt) {
+        s.story.fired.push(egg.id);
+        if (egg.bonus > 0) {
+          s.pod.cash += egg.bonus;
+          out.push({ t: 'bonusCash', amount: egg.bonus });
+        }
+        if (egg.spawnsGuardian && !s.pod.guardian) {
+          s.pod.guardian = true;
+          out.push({ t: 'guardianSpawned' });
+          out.push({ t: 'sfx', key: 'seraph' });
+        }
+        s.story.pendingTransmission = egg.id;
+        out.push({ t: 'transmission', id: egg.id });
       }
-      if (egg.spawnsGuardian && !s.pod.guardian) {
-        s.pod.guardian = true;
-        out.push({ t: 'guardianSpawned' });
-        out.push({ t: 'sfx', key: 'seraph' });
-      }
-      s.story.pendingTransmission = egg.id;
-      out.push({ t: 'transmission', id: egg.id });
     }
   }
 

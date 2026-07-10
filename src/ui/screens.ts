@@ -8,7 +8,12 @@ import {
   type SettingsValues,
   saleValue,
 } from '@core/index';
-import type { ChallengeRecords, LifetimeRecords, SlotMeta } from '@platform/storage';
+import type {
+  ChallengeRecords,
+  ExpeditionProfile,
+  LifetimeRecords,
+  SlotMeta,
+} from '@platform/storage';
 import { el } from './reactive';
 
 export class ScreenHost {
@@ -35,6 +40,7 @@ export function titleScreen(opts: {
   lifetime?: LifetimeRecords | null;
   onNew: () => void;
   onContinue: () => void;
+  onExpedition: () => void;
   onLoad: () => void;
   onChallenges: () => void;
   onSettings: () => void;
@@ -72,6 +78,7 @@ export function titleScreen(opts: {
           })
         : null,
       el('button', { class: 'btn primary', onclick: opts.onNew }, t('newGame')),
+      el('button', { class: 'btn', onclick: opts.onExpedition }, t('expedition')),
       el('button', { class: 'btn', onclick: opts.onLoad }, t('uiLoad')),
       el('button', { class: 'btn', onclick: opts.onChallenges }, t('challenges')),
       el('button', { class: 'btn', onclick: opts.onHelp }, 'Controls & Guide'),
@@ -233,8 +240,46 @@ export function challengeScreen(opts: {
   );
 }
 
+export function expeditionScreen(opts: {
+  profile: ExpeditionProfile;
+  hasSuspend: boolean;
+  onStart: () => void;
+  onResume: () => void;
+  onBack: () => void;
+}): HTMLElement {
+  const p = opts.profile;
+  const stat = (label: string, value: string) =>
+    el('div', { class: 'stat-row' }, el('span', { text: label }), el('span', { text: value }));
+  return el(
+    'div',
+    { class: 'panel expedition' },
+    el('h2', { text: t('expTitle') }),
+    el('p', { class: 'epilogue', text: t('expBlurb') }),
+    stat(t('expCores'), String(p.cores)),
+    stat(t('expBestDepth'), `${Math.round(p.bestDepthFt).toLocaleString('en-US')} ft`),
+    stat(t('expRuns'), String(p.runs)),
+    stat(t('expWins'), String(p.wins)),
+    el(
+      'div',
+      { class: 'btn-row' },
+      opts.hasSuspend
+        ? el('button', { class: 'btn primary', onclick: opts.onResume }, t('expResume'))
+        : null,
+      el(
+        'button',
+        { class: opts.hasSuspend ? 'btn' : 'btn primary', onclick: opts.onStart },
+        t('expStart'),
+      ),
+      el('button', { class: 'btn', onclick: opts.onBack }, t('backToTitle')),
+    ),
+  );
+}
+
 export function endingScreen(opts: {
   state: GameState;
+  /** Story runs offer NG+; expedition runs bank cores instead. */
+  ngPlus: boolean;
+  coresBanked?: number;
   onNgPlus: () => void;
   onTitle: () => void;
 }): HTMLElement {
@@ -265,13 +310,20 @@ export function endingScreen(opts: {
     ),
     s.stats.bestChain >= 2 ? stat('Best chain', `×${s.stats.bestChain}`) : null,
     s.stats.rescues > 0 ? stat('Emergency tows', String(s.stats.rescues)) : null,
-    stat('Tour (NG+ level)', String(s.level)),
-    el('p', { class: 'ngplus', text: t('ngPlusPrompt') }),
+    opts.coresBanked != null ? stat(t('expCoresEarned'), `+${opts.coresBanked} cores`) : null,
+    opts.ngPlus ? stat('Tour (NG+ level)', String(s.level)) : null,
+    opts.ngPlus ? el('p', { class: 'ngplus', text: t('ngPlusPrompt') }) : null,
     el(
       'div',
       { class: 'btn-row' },
-      el('button', { class: 'btn primary', onclick: opts.onNgPlus }, 'Sign again (NG+)'),
-      el('button', { class: 'btn', onclick: opts.onTitle }, t('backToTitle')),
+      opts.ngPlus
+        ? el('button', { class: 'btn primary', onclick: opts.onNgPlus }, 'Sign again (NG+)')
+        : null,
+      el(
+        'button',
+        { class: opts.ngPlus ? 'btn' : 'btn primary', onclick: opts.onTitle },
+        t('backToTitle'),
+      ),
     ),
   );
 }

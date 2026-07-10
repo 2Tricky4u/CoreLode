@@ -1,4 +1,11 @@
-import { type DamageCause, type SaveFile, type SlotSummary, slotSummary } from '@core/index';
+import {
+  type DamageCause,
+  type LoadoutId,
+  type ModuleId,
+  type SaveFile,
+  type SlotSummary,
+  slotSummary,
+} from '@core/index';
 import type { SettingsValues } from '@core/index';
 /** IndexedDB persistence via idb-keyval. Keys: save:manual:N, save:auto:N, settings, records, lifetime. */
 import { clear, del, get, keys, set } from 'idb-keyval';
@@ -145,6 +152,38 @@ export const defaultLifetime = (): LifetimeRecords => ({
   hazardsSeen: [],
   flags: { savedOnce: false, autosavePromptShown: false, deathPromptShown: false },
 });
+
+/** Expedition meta-progression: drive cores, unlock ledger, and profile bests. */
+export interface ExpeditionProfile {
+  cores: number;
+  unlocked: { loadouts: LoadoutId[]; modules: ModuleId[] };
+  bestDepthFt: number;
+  runs: number;
+  wins: number;
+}
+
+export const defaultExpeditionProfile = (): ExpeditionProfile => ({
+  cores: 0,
+  unlocked: { loadouts: ['standard'], modules: [] },
+  bestDepthFt: 0,
+  runs: 0,
+  wins: 0,
+});
+
+export function readExpeditionProfile(): Promise<ExpeditionProfile> {
+  return withTimeout(
+    Promise.resolve(get('expedition') as Promise<ExpeditionProfile | undefined>).then((r) => ({
+      ...defaultExpeditionProfile(),
+      ...(r ?? {}),
+      unlocked: { ...defaultExpeditionProfile().unlocked, ...(r?.unlocked ?? {}) },
+    })),
+    2500,
+    defaultExpeditionProfile(),
+  );
+}
+export async function writeExpeditionProfile(p: ExpeditionProfile): Promise<void> {
+  await set('expedition', p);
+}
 
 export function readLifetime(): Promise<LifetimeRecords> {
   return withTimeout(

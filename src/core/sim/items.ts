@@ -1,5 +1,6 @@
 import { ASSIST } from '../data/assists';
 import { BOSS } from '../data/boss';
+import { EXPEDITION } from '../data/expedition';
 import { SPAWN_COL } from '../data/buildings';
 import { PX_PER_FT, SURFACE_ROW, TILE_PX } from '../data/constants';
 /**
@@ -82,11 +83,13 @@ export function tryUseItem(s: GameState, id: ItemId, out: EventSink): void {
  */
 export function rescueTow(s: GameState, out: EventSink): void {
   const p = s.pod;
-  const cost = Math.floor(p.cash * ASSIST.rescueCostPct);
+  const exp = s.mode.kind === 'expedition';
+  const cost = Math.floor(p.cash * (exp ? EXPEDITION.rescue.costPct : ASSIST.rescueCostPct));
   const cargoLost = bayUsed(p);
   p.cash -= cost;
   p.bayContents.fill(0);
   p.fuel = Math.min(tankCapacity(p), ASSIST.rescueFuelLiters);
+  if (exp) p.heat = Math.min(100, p.heat + EXPEDITION.rescue.heatPenalty); // tow runs hot
   teleportPod(s, (SPAWN_COL + 0.5) * TILE_PX, SURFACE_ROW * TILE_PX - 21);
   p.mode = 'ground';
   s.stats.rescues++;
