@@ -250,6 +250,7 @@ export class App {
     // HUD-side QoL (independent of the Phaser scene).
     this.hud.setSpeedrunTimer(Boolean(fx.speedrunTimer));
     this.hud.setMinimap(Boolean(fx.minimap));
+    this.hud.setObjectivesPanel(Boolean(fx.objectivesPanel));
     this.hud.refreshHotkeys(); // hotbar labels follow the key scheme
 
     // Push live FX into the running play field (if any).

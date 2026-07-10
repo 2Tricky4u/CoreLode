@@ -10,6 +10,7 @@ import {
   type ItemId,
   type Objective,
   STRATA_KEYS,
+  TRANSMISSIONS,
   SURFACE_ROW,
   Tile,
   WORLD_H,
@@ -84,6 +85,9 @@ export class Hud {
   private chainNode: HTMLElement;
   private contractsNode: HTMLElement;
   private contractsKey = '';
+  private objectiveNode: HTMLElement;
+  private objectiveKey = '';
+  private showObjectives = false;
   private stratumNode: HTMLElement;
   private lastStratum = 0;
   private stratumTimer: ReturnType<typeof setTimeout> | null = null;
@@ -138,6 +142,7 @@ export class Hud {
     this.timerNode = el('span', { class: 'hud-timer hidden', text: '00:00.00' });
     this.chainNode = el('span', { class: 'hud-chain hidden', text: '' });
     this.contractsNode = el('div', { class: 'hud-contracts hidden' });
+    this.objectiveNode = el('div', { class: 'hud-contracts hidden' });
     this.stratumNode = el('div', { class: 'stratum-banner' });
 
     this.minimapCanvas = el('canvas', { class: 'minimap-canvas' });
@@ -179,8 +184,14 @@ export class Hud {
       el('div', { class: 'hud-right' }, this.cashText, hotbar),
       this.minimapNode,
       this.contractsNode,
+      this.objectiveNode,
       this.stratumNode,
     );
+  }
+
+  /** Story-mode informational objectives (QoL, default off; purist-forced-off). */
+  setObjectivesPanel(on: boolean): void {
+    this.showObjectives = on;
   }
 
   /** Fade the band name in center-screen when the pod crosses into a new stratum. */
@@ -232,6 +243,29 @@ export class Hud {
       this.heatFill.style.width = `${Math.max(0, Math.min(100, p.heat))}%`;
       this.heatFill.classList.toggle('warn', p.heat >= 70);
     }
+    // Story objectives hint (informational only — derived from the story ledger).
+    const showObj = this.showObjectives && s.mode.kind === 'story';
+    this.objectiveNode.classList.toggle('hidden', !showObj);
+    if (showObj) {
+      const key = `${s.story.fired.length}:${s.world.slate ? 1 : 0}`;
+      if (key !== this.objectiveKey) {
+        this.objectiveKey = key;
+        const next = TRANSMISSIONS.filter(
+          (tx) => typeof tx.trigger === 'number' && !s.story.fired.includes(tx.id),
+        ).sort((a, b) => (b.trigger as number) - (a.trigger as number))[0];
+        const lines: string[] = [
+          next
+            ? `${t('objNext')} ${(next.trigger as number).toLocaleString('en-US')} ft`
+            : t('objBottom'),
+        ];
+        if (s.world.slate && !p.blueprints.includes(s.world.slate.blueprint))
+          lines.push(t('objRumor'));
+        this.objectiveNode.replaceChildren(
+          ...lines.map((text) => el('div', { class: 'hud-contract', text })),
+        );
+      }
+    }
+
     this.contractsNode.classList.toggle('hidden', !exp || s.contracts.length === 0);
     if (exp && s.contracts.length > 0) {
       // Cheap dirty-check: rebuild the list only when done-flags change.

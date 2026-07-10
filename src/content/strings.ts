@@ -259,6 +259,7 @@ export const STRINGS: Record<string, string> = {
   setGasShimmer: 'Gas shimmer hint (QoL)',
   setSeededRuns: 'Seeded runs (QoL)',
   setFuelFailsafe: 'Fuel failsafe tow (assist, applies to new runs)',
+  setObjectivesPanel: 'Objectives hint panel (QoL)',
 
   // --- named strata (presentation flavor; bands match the minimap tints) ---
   stratum0: 'TOPSOIL',
@@ -295,6 +296,9 @@ export const STRINGS: Record<string, string> = {
   uiWithinReach: 'within reach',
   uiChainBonus: 'CHAIN VAULT',
   uiContractDone: 'CONTRACT COMPLETE',
+  objNext: 'Next: descend to',
+  objBottom: 'The signals have stopped. Only the bottom is left.',
+  objRumor: 'Rumor: something old sleeps below −4,000 ft.',
   uiEnableAutosave: 'Enable autosave for next time',
   uiAutosaveOn: 'Autosave on surfacing enabled.',
 

@@ -154,6 +154,14 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     affectsFidelity: true,
   },
   {
+    id: 'objectivesPanel',
+    labelKey: 'setObjectivesPanel',
+    category: 'fidelity',
+    type: 'bool',
+    default: false,
+    affectsFidelity: true,
+  },
+  {
     id: 'puristMode',
     labelKey: 'setPuristMode',
     category: 'fidelity',
