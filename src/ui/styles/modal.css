@@ -246,6 +246,25 @@
   font-size: 15px;
   color: var(--c-gold);
 }
+.dev-body {
+  max-width: 460px;
+}
+.dev-info {
+  font-family: var(--font-display);
+  font-size: 11px;
+  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
+}
+.dev-section {
+  margin-top: 8px;
+}
+.dev-h {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  opacity: 0.65;
+  margin-bottom: 3px;
+}
+
 .relic-body {
   display: flex;
   flex-direction: column;

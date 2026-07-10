@@ -155,6 +155,11 @@ export class GameScene extends Phaser.Scene {
     return this.host.state;
   }
 
+  /** Dev tool: full terrain repaint after out-of-band world edits (teleports). */
+  repaintWorld(): void {
+    this.tiles.repaintAll();
+  }
+
   private canvasTex(key: string, w: number, h: number): Phaser.Textures.CanvasTexture {
     if (this.textures.exists(key)) return this.textures.get(key) as Phaser.Textures.CanvasTexture;
     return this.textures.createCanvas(key, w, h)!;

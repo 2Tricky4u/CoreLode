@@ -1,16 +1,26 @@
 import { t } from '@content/strings';
 import {
+  BLUEPRINTS,
   BUILDINGS,
   type BuildingId,
   CHALLENGES,
   type GameState,
+  ITEMS,
   LOADOUTS,
   type LoadoutId,
   MODULES,
   MODULE_SLOTS,
   type ModuleId,
+  RELICS,
+  SURFACE_ROW,
   type SettingsValues,
   type SimEvent,
+  TILE_PX,
+  Tile,
+  UPGRADES,
+  UPGRADE_CATEGORIES,
+  WORLD_H,
+  WORLD_W,
   coresEarned,
   createRun,
   dailyKey,
@@ -20,7 +30,14 @@ import {
   deserialize,
   effectiveSettings,
   encodeDailyResult,
+  getTile,
+  maxHull,
+  podDepthFt,
+  podTileX,
+  podTileY,
   serialize,
+  setTile,
+  tankCapacity,
 } from '@core/index';
 import { decodeSave, encodeSave } from '@core/save/codec';
 import { migrateAndValidate } from '@core/save/migrate';
@@ -36,6 +53,7 @@ import * as storage from '@platform/storage';
 import { Hud } from '@ui/Hud';
 import { TouchControls } from '@ui/TouchControls';
 import { UiRoot } from '@ui/UiRoot';
+import { openDevPanel } from '@ui/devPanel';
 import { showFatal } from '@ui/fatal';
 import { helpScreen } from '@ui/help';
 import {
@@ -76,6 +94,12 @@ export class App {
   private lifetime: storage.LifetimeRecords = storage.defaultLifetime();
   private binds: storage.StoredBinds = {};
   private lastManualSlot = 'manual:0';
+  /** Hidden dev mode: type DEV_SEQUENCE on the title screen to toggle. */
+  private static readonly DEV_SEQUENCE = 'digdeep'; // ← change this to your own secret
+  private devMode = false;
+  private devGod = false;
+  private devXray = false;
+  private devBuffer = '';
   private hudTimer = 0;
 
   private saveLifetime(): void {
@@ -116,6 +140,30 @@ export class App {
       if (document.hidden) this.host?.pause('hidden');
       else this.host?.resume('hidden');
       this.audio.setPaused(document.hidden);
+    });
+
+    // Hidden dev-mode unlock: type the secret sequence while on the menus
+    // (no run active); once on, ` (backquote) opens the dev panel in a run.
+    window.addEventListener('keydown', (e) => {
+      if (this.devMode && e.code === 'Backquote') {
+        if (this.host && !this.modals.isOpen) this.showDevPanel();
+        return;
+      }
+      if (!this.screens.visible || this.host) return;
+      const ch = e.key.length === 1 ? e.key.toLowerCase() : '';
+      if (!ch) return;
+      this.devBuffer = (this.devBuffer + ch).slice(-App.DEV_SEQUENCE.length);
+      if (this.devBuffer !== App.DEV_SEQUENCE) return;
+      this.devBuffer = '';
+      this.devMode = !this.devMode;
+      if (!this.devMode) {
+        // No run is active here (the sequence only registers on the menus),
+        // so clearing the flags is enough — the next run starts clean.
+        this.devGod = false;
+        this.devXray = false;
+        this.applySettings();
+      }
+      this.ui.toast(this.devMode ? 'DEV MODE ON — press ` during a run' : 'Dev mode off', 3500);
     });
   }
 
@@ -279,7 +327,7 @@ export class App {
 
     // HUD-side QoL (independent of the Phaser scene).
     this.hud.setSpeedrunTimer(Boolean(fx.speedrunTimer));
-    this.hud.setMinimap(Boolean(fx.minimap));
+    this.hud.setMinimap(Boolean(fx.minimap) || this.devXray);
     this.hud.setObjectivesPanel(Boolean(fx.objectivesPanel));
     this.hud.refreshHotkeys(); // hotbar labels follow the key scheme
 
@@ -289,11 +337,11 @@ export class App {
       : null;
     scene?.applyFx({
       screenShake: Boolean(fx.screenShake),
-      gasHint: Boolean(fx.gasShimmerHint),
+      gasHint: Boolean(fx.gasShimmerHint) || this.devXray,
       fxFull: fx.fxDensity !== 'reduced',
       damageFlash: Boolean(fx.damageFlash),
       pixelPerfect: Boolean(fx.pixelPerfect),
-      oreGlyphs: Boolean(fx.oreGlyphs),
+      oreGlyphs: Boolean(fx.oreGlyphs) || this.devXray,
       ambientLife: Boolean(fx.ambientLife),
     });
   }
@@ -496,6 +544,12 @@ export class App {
       this.screens.clear();
       this.host = new GameHost(state, this.input);
       this.host.onEvent((e) => this.onSimEvent(e));
+      // Dev god mode tops up before every tick — race-free against big hits.
+      this.host.beforeTick = () => {
+        if (!this.devGod) return;
+        state.pod.hp = maxHull(state.pod);
+        state.pod.fuel = tankCapacity(state.pod);
+      };
       if (state.tick === 0) {
         this.lifetime.totalRuns++;
         this.saveLifetime();
@@ -672,6 +726,119 @@ export class App {
       () => this.showSettings(() => this.screens.clear()),
       () => this.screens.show(helpScreen(() => this.screens.clear())),
     );
+  }
+
+  // ---------- hidden dev panel ----------
+  private showDevPanel(): void {
+    const host = this.host;
+    if (!host) return;
+    const s = host.state;
+    const scene = this.phaser?.scene?.isActive('game')
+      ? (this.phaser.scene.getScene('game') as GameScene | null)
+      : null;
+    openDevPanel(this.modals, {
+      info: () => {
+        const p = s.pod;
+        return (
+          `seed ${s.seed} · ${s.mode.kind} · ${Math.round(podDepthFt(p))} ft · ` +
+          `tile ${podTileX(p)},${podTileY(p)} · hp ${p.hp}/${maxHull(p)} · ` +
+          `fuel ${p.fuel.toFixed(1)}/${tankCapacity(p)} · heat ${Math.round(p.heat)} · ×${host.timeScale}`
+        );
+      },
+      give: (kind) => {
+        const p = s.pod;
+        switch (kind) {
+          case 'cash':
+            p.cash += 100_000;
+            break;
+          case 'points':
+            p.points += 100_000;
+            break;
+          case 'refit':
+            p.hp = maxHull(p);
+            p.fuel = tankCapacity(p);
+            p.heat = 0;
+            break;
+          case 'upgrades':
+            for (const c of UPGRADE_CATEGORIES) p.upgrades[c] = UPGRADES[c].length - 1;
+            p.hp = maxHull(p);
+            break;
+          case 'blueprints':
+            for (const b of BLUEPRINTS) if (!p.blueprints.includes(b.id)) p.blueprints.push(b.id);
+            break;
+          case 'items':
+            for (const it of ITEMS) p.inventory[it.id] = (p.inventory[it.id] ?? 0) + 10;
+            break;
+        }
+      },
+      toggleGod: () => {
+        this.devGod = !this.devGod;
+        return this.devGod;
+      },
+      isGod: () => this.devGod,
+      cycleSpeed: () => {
+        const seq = [1, 2, 4, 0.25];
+        host.timeScale = seq[(seq.indexOf(host.timeScale) + 1) % seq.length] ?? 1;
+        return host.timeScale;
+      },
+      teleportDepth: (ft) => {
+        const p = s.pod;
+        const ty = Math.max(1, Math.min(WORLD_H - 6, Math.round(SURFACE_ROW - 1 - ft / 12.5)));
+        const tx = Math.max(2, Math.min(WORLD_W - 3, podTileX(p)));
+        if (ty > SURFACE_ROW && getTile(s.world, tx, ty) !== Tile.Air)
+          setTile(s.world, tx, ty, Tile.Air); // carve a pocket rather than embed the pod
+        p.x = (tx + 0.5) * TILE_PX;
+        p.y = ty * TILE_PX + TILE_PX / 2;
+        p.prevX = p.x;
+        p.prevY = p.y;
+        p.xVel = 0;
+        p.yVel = 0;
+        p.mode = 'air';
+        p.drilling = null;
+        scene?.repaintWorld();
+      },
+      revealMap: () => s.world.discovered.fill(1),
+      toggleXray: () => {
+        this.devXray = !this.devXray;
+        this.applySettings();
+        return this.devXray;
+      },
+      isXray: () => this.devXray,
+      quakeNow: () => {
+        // Arm the scheduler: force the depth gate and fire on the next tick.
+        s.story.maxDepthFt = Math.min(s.story.maxDepthFt, -1_001);
+        s.story.nextQuakeTick = s.tick + 1;
+      },
+      setHeat: (v) => {
+        s.pod.heat = v;
+      },
+      grantAllRelics: () => {
+        for (const r of RELICS) if (!s.pod.relics.includes(r.id)) s.pod.relics.push(r.id);
+      },
+      clearRelics: () => {
+        s.pod.relics.length = 0;
+      },
+      completeContracts: () => {
+        for (const c of s.contracts) {
+          if (c.done) continue;
+          c.done = true;
+          s.pod.cash += c.rewardCash;
+        }
+      },
+      spawnCritter: () => {
+        if (s.mode.kind === 'expedition')
+          s.critters.push({ x: s.pod.x + 3 * TILE_PX, y: s.pod.y, moveCooldown: 21 });
+      },
+      weakenBoss: () => {
+        if (s.boss) s.boss.hp = 1;
+      },
+      addCores: (n) => {
+        void storage.readExpeditionProfile().then((prof) => {
+          prof.cores += n;
+          return storage.writeExpeditionProfile(prof);
+        });
+      },
+    });
   }
 
   private onGameOver(cause: 'hull' | 'fuel'): void {

@@ -24,6 +24,10 @@ export class GameHost {
   private events: SimEvent[] = [];
   /** Render interpolation factor 0..1 within the current tick. */
   alpha = 0;
+  /** Dev-mode sim speed multiplier (1 = realtime). */
+  timeScale = 1;
+  /** Dev-mode hook run before every tick (e.g. god-mode top-ups) — race-free. */
+  beforeTick: (() => void) | null = null;
 
   constructor(
     state: GameState,
@@ -58,10 +62,11 @@ export class GameHost {
 
   update(dtMs: number): void {
     if (this.paused || this.state.outcome !== 'active') return;
-    this.acc += Math.min(dtMs, 250); // clamp: no spiral of death after tab-away
+    this.acc += Math.min(dtMs, 250) * this.timeScale; // clamp: no spiral of death after tab-away
     while (this.acc >= DT_MS) {
       const frame = this.input.gameFocus ? this.input.sample() : EMPTY_INTENTS;
       this.events.length = 0;
+      this.beforeTick?.();
       tick(this.state, frame, this.events);
       this.dispatch();
       this.acc -= DT_MS;
