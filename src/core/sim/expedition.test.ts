@@ -4,13 +4,18 @@ import { applyCommand } from '../commands';
 import { TILE_PX } from '../data/constants';
 import { EXPEDITION, coresEarned } from '../data/expedition';
 import type { ModuleId } from '../data/expedition';
+import { RELICS } from '../data/relics';
 import type { EventSink } from '../events';
 import { EMPTY_INTENTS, type IntentFrame } from '../intents';
 import { fnv1a } from '../lib/math';
+import { Tile } from '../world/tiles';
 import { chainOnCollect, chainOnDamage, stepChain } from './chain';
 import { generateContracts } from './contracts';
+import { collectTile } from './drilling';
+import { applyGasPocket } from './hazards';
 import {
   type GameState,
+  bayCapacity,
   createRun,
   digFuelMult,
   fallDamageMult,
@@ -312,6 +317,81 @@ describe('contracts', () => {
     expect(s.pod.cash).toBe(cash + depthGoal.rewardCash);
     // …and never again on later ticks
     expect(step(s, {}, 5).some((e) => e.t === 'contractDone')).toBe(false);
+  });
+});
+
+describe('relics', () => {
+  it('offers three distinct choices at the first depth milestone, latched once', () => {
+    const s = expRun(31);
+    step(s, {}, 3);
+    s.story.maxDepthFt = -1_001;
+    const out = step(s);
+    const offer = out.find((e) => e.t === 'relicOffer');
+    expect(offer?.t === 'relicOffer' && offer.choices.length).toBe(3);
+    expect(offer?.t === 'relicOffer' && new Set(offer.choices).size).toBe(3);
+    expect(s.pendingRelicChoices).toHaveLength(3);
+    // Same seed + same script → same offer (deterministic).
+    const s2 = expRun(31);
+    step(s2, {}, 3);
+    s2.story.maxDepthFt = -1_001;
+    const out2 = step(s2);
+    const offer2 = out2.find((e) => e.t === 'relicOffer');
+    expect(offer2?.t === 'relicOffer' && offer2.choices).toEqual(
+      offer?.t === 'relicOffer' ? offer.choices : [],
+    );
+    // No re-offer while one is pending or after the latch.
+    expect(step(s, {}, 5).some((e) => e.t === 'relicOffer')).toBe(false);
+  });
+
+  it('chooseRelic only accepts an offered relic', () => {
+    const s = expRun(31);
+    step(s, {}, 3);
+    s.story.maxDepthFt = -1_001;
+    step(s);
+    const offered = s.pendingRelicChoices ?? [];
+    const notOffered = RELICS.map((r) => r.id).find((r) => !offered.includes(r));
+    if (notOffered) {
+      applyCommand(s, { c: 'chooseRelic', id: notOffered }, []);
+      expect(s.pod.relics).toEqual([]);
+    }
+    applyCommand(s, { c: 'chooseRelic', id: offered[0] }, []);
+    expect(s.pod.relics).toEqual([offered[0]]);
+    expect(s.pendingRelicChoices).toBeNull();
+  });
+
+  it('gasPhase nullifies pockets; heatSink halves gain; scavenger converts overflow', () => {
+    const s = expRun();
+    step(s, {}, 3);
+    s.pod.relics.push('gasPhase');
+    const hp = s.pod.hp;
+    const out: EventSink = [];
+    applyGasPocket(s, 5, 200, out);
+    expect(s.pod.hp).toBe(hp);
+    expect(out.some((e) => e.t === 'damage')).toBe(false);
+
+    expect(heatGainMult({ ...s.pod, relics: ['heatSink'], modules: [] })).toBe(0.5);
+    expect(heatGainMult({ ...s.pod, relics: ['heatSink'], modules: ['thermalFins'] })).toBe(0.375);
+
+    const sc = expRun();
+    step(sc, {}, 3);
+    sc.pod.relics.push('scavenger');
+    sc.pod.bayContents.fill(0);
+    sc.pod.bayContents[0] = bayCapacity(sc.pod); // hold full
+    const pts = sc.pod.points;
+    const out2: EventSink = [];
+    collectTile(sc, Tile.MineralFirst, out2); // Ferrite tile
+    expect(out2.some((e) => e.t === 'cargoFullLost')).toBe(false);
+    expect(sc.pod.points).toBeGreaterThan(pts); // double points, none lost
+  });
+
+  it('chainDetonate widens the blast by one tile', () => {
+    const s = expRun();
+    step(s, {}, 3);
+    s.pod.relics.push('chainDetonate');
+    s.charges.push({ item: 'dynamite', x: s.pod.x, y: s.pod.y + 200, fuse: 1 });
+    const out = step(s);
+    const boom = out.find((e) => e.t === 'explosion');
+    expect(boom?.t === 'explosion' && boom.radiusTiles).toBe(2); // dynamite 1 + relic 1
   });
 });
 

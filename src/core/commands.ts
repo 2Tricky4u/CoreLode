@@ -17,6 +17,7 @@ import type { EventSink } from './events';
 import { type GameState, bayUsed, maxHull, podMass, tankCapacity } from './sim/state';
 
 export type Command =
+  | { c: 'chooseRelic'; id: string }
   | { c: 'buyUpgrade'; category: UpgradeCategory }
   | { c: 'buyItem'; item: ItemId; qty: number }
   | { c: 'sellAllCargo' }
@@ -27,6 +28,14 @@ export type Command =
 export function applyCommand(s: GameState, cmd: Command, out: EventSink): void {
   const p = s.pod;
   switch (cmd.c) {
+    case 'chooseRelic': {
+      // Only a currently-offered relic may be taken (deterministic command stream).
+      if (!s.pendingRelicChoices?.includes(cmd.id)) return;
+      s.pod.relics.push(cmd.id);
+      s.pendingRelicChoices = null;
+      out.push({ t: 'sfx', key: 'schematic' });
+      break;
+    }
     case 'buyUpgrade': {
       const tiers = UPGRADES[cmd.category];
       const next = p.upgrades[cmd.category] + 1;

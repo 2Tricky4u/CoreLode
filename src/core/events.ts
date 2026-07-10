@@ -26,6 +26,8 @@ export type SimEvent =
   | { t: 'chainBroken'; count: number; banked: boolean }
   /** An expedition contract completed and paid out. */
   | { t: 'contractDone'; index: number; rewardCash: number }
+  /** Depth milestone reached — pick one of these relics (chooseRelic command). */
+  | { t: 'relicOffer'; choices: string[] }
   | { t: 'podExploded'; cause: 'hull' | 'fuel' }
   | { t: 'explosion'; x: number; y: number; radiusTiles: number; item: ItemId }
   | { t: 'gasIgnite'; x: number; y: number }

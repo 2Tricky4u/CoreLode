@@ -43,6 +43,7 @@ import {
   openGameOver,
   openInventory,
   openPause,
+  openRelicChoice,
   openTransmission,
 } from '@ui/modals';
 import {
@@ -551,6 +552,13 @@ export class App {
         break;
       case 'contractDone':
         this.ui.toast(`${t('uiContractDone')} +$${e.rewardCash.toLocaleString('en-US')}`, 3200);
+        break;
+      case 'relicOffer':
+        openRelicChoice(this.modals, e.choices, (id) => {
+          host.command({ c: 'chooseRelic', id });
+          const cap = id.charAt(0).toUpperCase() + id.slice(1);
+          this.ui.toast(`${t('rlChosen')}: ${t(`rl${cap}`)}`, 3200);
+        });
         break;
       case 'damage':
         // First-ever encounter with each hazard gets a one-line log entry (lifetime-once).

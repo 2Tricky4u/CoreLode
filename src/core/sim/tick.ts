@@ -16,6 +16,7 @@ import { stepHeat } from './heat';
 import { rescueTow, tryUseItem } from './items';
 import { objectiveMet } from './objectives';
 import { POD_HH, stepPhysics } from './physics';
+import { stepRelics } from './relics';
 import { stepScripted } from './scripted';
 import {
   type GameState,
@@ -77,6 +78,9 @@ export function tick(s: GameState, input: IntentFrame, out: EventSink): void {
 
   // 7. scripted events (transmissions, eggs, quakes)
   stepScripted(s, out);
+
+  // 7b. expedition relic offers at depth milestones (early-returns otherwise)
+  stepRelics(s, out);
 
   // 8. boss (arena only)
   stepBoss(s, out);

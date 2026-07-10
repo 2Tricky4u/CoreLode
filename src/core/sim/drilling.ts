@@ -16,10 +16,12 @@ import type { IntentFrame } from '../intents';
 import {
   Tile,
   collectibleIndex,
+  isArtifact,
   isDrillable,
   isDrillableFractal,
   isGas,
   isLava,
+  isMineral,
   isSolid,
 } from '../world/tiles';
 import { getTile, setTile } from '../world/world';
@@ -63,6 +65,10 @@ export function collectTile(s: GameState, tile: number, out: EventSink): void {
       s.stats.collectedTotal++;
       out.push({ t: 'collected', collectibleId: ci });
       chainOnCollect(s, ci, out); // expedition-only inside
+    } else if (s.pod.relics.includes('scavenger')) {
+      // Scavenger relic: overflow ore is vaporized for double points, not lost.
+      p.points += pts;
+      out.push({ t: 'points', amount: pts });
     } else {
       out.push({ t: 'cargoFullLost', collectibleId: ci }); // authentic: destroyed
     }
@@ -80,6 +86,20 @@ function breakTile(s: GameState, tx: number, ty: number, out: EventSink): void {
       s.pod.heat + EXPEDITION.heat.perTileDug * heatGainMult(s.pod),
     );
   out.push({ t: 'tileCleared', x: tx, y: ty, tile, cause: 'drill' });
+
+  // Ore Magnet relic: minerals adjacent to a drilled tile pop out and collect.
+  if (s.pod.relics.includes('oreMagnet')) {
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        const near = getTile(s.world, tx + dx, ty + dy);
+        if (!isMineral(near) && !isArtifact(near)) continue;
+        setTile(s.world, tx + dx, ty + dy, Tile.Air);
+        out.push({ t: 'tileCleared', x: tx + dx, y: ty + dy, tile: near, cause: 'drill' });
+        collectTile(s, near, out);
+      }
+    }
+  }
 
   if (tile === Tile.Slate) {
     if (s.mode.kind === 'challenge') {

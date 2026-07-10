@@ -246,6 +246,25 @@
   font-size: 15px;
   color: var(--c-gold);
 }
+.relic-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 420px;
+}
+.relic-blurb {
+  font-size: 12px;
+  opacity: 0.75;
+}
+.relic-choice {
+  text-align: left;
+  white-space: normal;
+}
+.relic-desc {
+  font-size: 11px;
+  opacity: 0.75;
+}
+
 .go-tip {
   font-size: 11px;
   color: var(--c-gold);

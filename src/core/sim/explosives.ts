@@ -23,11 +23,15 @@ export function stepCharges(s: GameState, out: EventSink): void {
       remaining.push(c);
       continue;
     }
+    // Chain Detonator relic: every blast reaches one tile further.
+    const relicBonus = s.pod.relics.includes('chainDetonate') ? 1 : 0;
     detonate(
       s,
       c.x,
       c.y,
-      c.item === 'plastique' ? ITEM_EFFECTS.plastiqueRadiusTiles : ITEM_EFFECTS.dynamiteRadiusTiles,
+      (c.item === 'plastique'
+        ? ITEM_EFFECTS.plastiqueRadiusTiles
+        : ITEM_EFFECTS.dynamiteRadiusTiles) + relicBonus,
       c.item,
       out,
     );

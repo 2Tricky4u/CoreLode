@@ -29,7 +29,7 @@ possible, and continue; otherwise stop.
 ## Phase 3 — Expedition content
 
 - [x] [C15] Loadouts + re-slottable modules (cores economy)
-- [ ] [C16] Relic pool + depth-milestone offers + `chooseRelic` command + modal
+- [x] [C16] Relic pool + depth-milestone offers + `chooseRelic` command + modal
 - [ ] [C17] Story objectives panel (informational, QoL toggle)
 - [ ] [C18] Magmite critters (expedition sim) + CritterView
 - [ ] [C19] Seismic scanner relic (presentation reuse of gas hint)
@@ -53,3 +53,7 @@ possible, and continue; otherwise stop.
   events in story, and a story-mode chain meter would need sim events to drive it. The
   planned `chainMeter` story toggle is therefore dropped; the meter is always-on in
   expedition and story stays byte-pure.
+- C16 decision: pendingRelicChoices is transient (not in the save schema) — the milestone
+  latch lives in story.fired, so a force-quit mid-offer spends the milestone without a
+  relic. Chain-detonate's "trigger adjacent gas pockets" was already native to blasts
+  (explosives ignite gas), so the relic is a pure +1 radius.

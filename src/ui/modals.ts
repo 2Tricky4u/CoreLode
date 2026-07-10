@@ -666,6 +666,35 @@ export function openGameOver(
   );
 }
 
+/** Expedition relic offer — a forced three-way pick (no cancel, ESC does nothing). */
+export function openRelicChoice(
+  m: ModalManager,
+  choices: string[],
+  onPick: (id: string) => void,
+): void {
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  const body = el(
+    'div',
+    { class: 'dialog-body relic-body' },
+    el('p', { class: 'relic-blurb', text: t('rlBlurb') }),
+    ...choices.map((id) =>
+      el(
+        'button',
+        {
+          class: 'btn relic-choice',
+          onclick: () => {
+            m.closeAll();
+            onPick(id);
+          },
+        },
+        el('strong', { text: t(`rl${cap(id)}`) }),
+        el('span', { class: 'relic-desc', text: ` — ${t(`rl${cap(id)}Blurb`)}` }),
+      ),
+    ),
+  );
+  m.open(dialog(t('rlTitle'), body, el('div'), 't-blueprint'));
+}
+
 /** Building lookup for titles. */
 export const buildingName = (id: BuildingId): string =>
   t(BUILDINGS.find((b) => b.id === id)?.key ?? id);

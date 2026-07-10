@@ -42,6 +42,7 @@ export { ITEMS, ITEM_BY_ID, type ItemId } from './data/items';
 export { BUILDINGS, type BuildingId } from './data/buildings';
 export { TRANSMISSIONS, SKY_EGGS } from './data/story';
 export { STRATA_KEYS, stratumIndexAt } from './data/strata';
+export { RELICS, type RelicDef, type RelicId } from './data/relics';
 export {
   EXPEDITION,
   LOADOUTS,

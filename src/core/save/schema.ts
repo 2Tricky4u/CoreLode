@@ -175,6 +175,7 @@ export function deserialize(f: SaveFile): GameState {
     outcome: 'active',
     challengeEndTick: 0,
     heatWarnLevel: 0, // transient latch — a re-warning after load is harmless
+    pendingRelicChoices: null, // transient — the milestone latch lives in story.fired
     victoryRewarded: false,
   };
 }

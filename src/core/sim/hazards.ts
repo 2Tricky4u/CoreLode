@@ -31,6 +31,11 @@ export function gasDamageAtDepth(depthFt: number): number {
 
 export function applyGasPocket(s: GameState, x: number, y: number, out: EventSink): void {
   const p = s.pod;
+  if (p.relics.includes('gasPhase')) {
+    // Gas Phase relic: the pocket vents harmlessly around a phased hull.
+    out.push({ t: 'sfx', key: 'gasHiss' });
+    return;
+  }
   applyDamage(s, gasDamageAtDepth(podDepthFt(p)) * radiatorMult(p), 'gas', out);
   out.push({ t: 'gasIgnite', x, y });
   out.push({ t: 'sfx', key: 'gasHiss' });

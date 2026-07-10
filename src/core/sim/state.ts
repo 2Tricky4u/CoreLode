@@ -171,6 +171,8 @@ export interface GameState {
   challengeEndTick: number; // 0 unless challenge mode
   /** Latched heat-warning tier (0/1/2) — transient, resets on load. */
   heatWarnLevel: number;
+  /** Relic ids offered and awaiting a chooseRelic command — transient. */
+  pendingRelicChoices: string[] | null;
   /** Set once when the run ends victorious — drops granted flag. */
   victoryRewarded: boolean;
 }
@@ -199,9 +201,10 @@ export const drillSpeed = (p: PodState): number =>
     : UPGRADES.drill[p.upgrades.drill].stat * (DRILL_SPEED_TUNE[p.upgrades.drill] ?? 1);
 export const hasFractalDrill = (p: PodState): boolean => p.blueprints.includes('fractalDrill');
 
-/** Expedition module multipliers (all 1 outside expedition — modules stay empty). */
+/** Expedition module/relic multipliers (all 1 outside expedition — both stay empty). */
 export const heatGainMult = (p: PodState): number =>
-  hasModule(p, 'thermalFins') ? MODULE_EFFECTS.thermalFinsHeatMult : 1;
+  (hasModule(p, 'thermalFins') ? MODULE_EFFECTS.thermalFinsHeatMult : 1) *
+  (p.relics.includes('heatSink') ? 0.5 : 1);
 export const fallDamageMult = (p: PodState): number =>
   hasModule(p, 'shockAbsorbers') ? MODULE_EFFECTS.shockAbsorbersFallMult : 1;
 export const digFuelMult = (p: PodState): number =>
@@ -337,6 +340,7 @@ export function createRun(opts: NewRunOptions = {}): GameState {
     outcome: 'active',
     challengeEndTick: ch ? ch.timeLimitTicks : 0,
     heatWarnLevel: 0,
+    pendingRelicChoices: null,
     victoryRewarded: false,
   };
 }
