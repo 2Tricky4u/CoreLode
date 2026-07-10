@@ -1,6 +1,7 @@
 import { BLUEPRINTS } from '../data/blueprints';
 import { TILE_PX } from '../data/constants';
 import { pointsMod } from '../data/difficulty';
+import { EXPEDITION } from '../data/expedition';
 import { COLLECTIBLES, DIRT_POINTS, POINTS_TILE_CAP, POINTS_VALUE_MULT } from '../data/minerals';
 /**
  * Drilling — original rules: hold a direction into diggable ground for >5 frames
@@ -69,6 +70,8 @@ function breakTile(s: GameState, tx: number, ty: number, out: EventSink): void {
   const tile = getTile(s.world, tx, ty);
   setTile(s.world, tx, ty, Tile.Air);
   s.stats.tilesDug++;
+  if (s.mode.kind === 'expedition')
+    s.pod.heat = Math.min(EXPEDITION.heat.max, s.pod.heat + EXPEDITION.heat.perTileDug);
   out.push({ t: 'tileCleared', x: tx, y: ty, tile, cause: 'drill' });
 
   if (tile === Tile.Slate) {

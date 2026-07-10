@@ -59,6 +59,12 @@
 .bar-fill.cargo {
   background: var(--c-accent);
 }
+.bar-fill.heat {
+  background: linear-gradient(90deg, #df7126, #d95763);
+}
+.hud-bar.hidden {
+  display: none;
+}
 .bar-fill.warn {
   background: var(--c-danger);
   animation: blink 0.6s steps(2) infinite;

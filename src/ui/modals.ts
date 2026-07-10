@@ -573,6 +573,7 @@ const TIP_KEYS: Record<string, string> = {
   boss: 'tipBoss',
   teleport: 'tipTeleport',
   fuel: 'tipFuel',
+  heat: 'tipHeat',
 };
 
 export function openGameOver(

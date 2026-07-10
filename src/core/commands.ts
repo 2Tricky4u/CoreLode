@@ -88,6 +88,7 @@ export function applyCommand(s: GameState, cmd: Command, out: EventSink): void {
       const cost = Math.ceil(affordable * FUEL_PRICE_PER_L);
       p.cash -= cost;
       p.fuel = Math.min(cap, p.fuel + affordable);
+      if (s.mode.kind === 'expedition') p.heat = 0; // coolant comes with the fuel line
       out.push({ t: 'transaction', kind: 'fuel', amount: -cost });
       out.push({ t: 'sfx', key: 'refuel' });
       break;

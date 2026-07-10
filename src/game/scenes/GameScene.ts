@@ -482,6 +482,13 @@ export class GameScene extends Phaser.Scene {
           );
         }
         break;
+      case 'heatWarning':
+        // Overheat feedback: ember burst, plus a warm flash at the critical tier.
+        if (this.fxFull)
+          this.embersE.explode(e.level === 2 ? 18 : 8, this.state.pod.x, this.state.pod.y);
+        if (e.level === 2 && this.damageFlash)
+          this.vignetteAlpha = Math.max(this.vignetteAlpha, 0.5);
+        break;
       case 'teleport':
       case 'rescue': {
         const beam = this.add

@@ -185,6 +185,7 @@ export const STRINGS: Record<string, string> = {
   tipBoss: 'Tip: only explosives wound what lives down there. Stock up before descending.',
   tipTeleport: 'Tip: the discount teleporter drops you from a random height. You get what you pay for.',
   tipFuel: 'Tip: the deepest loot tempts, but the tank decides. Turn back at half — or carry reserves.',
+  tipHeat: 'Tip: depth cooks the pod. Surface to vent, refuel to flush coolant, or buy radiators.',
   // First-encounter hazard log (one toast per cause, ever).
   hazardFall: 'LOG — Hard landing: falls above a gentle drop damage the hull.',
   hazardLava: 'LOG — Magma contact: radiators reduce the damage. It will still hurt.',
@@ -192,6 +193,7 @@ export const STRINGS: Record<string, string> = {
   hazardBlast: 'LOG — Blast damage: your own charges do not discriminate.',
   hazardBoss: 'LOG — Something struck the pod. It did not feel geological.',
   hazardTeleport: 'LOG — Rough rematerialization. Discount hardware, discount landing.',
+  hazardHeat: 'LOG — Overheat: the hull is cooking. Vent shallow or flush coolant at the pump.',
   goDepth: 'DEEPEST DESCENT',
   goDug: 'BLOCKS DUG',
   goCash: 'CASH ON HAND',
@@ -269,6 +271,7 @@ export const STRINGS: Record<string, string> = {
   hudFuel: 'FUEL',
   hudHull: 'HULL',
   hudCargo: 'CARGO',
+  hudHeat: 'HEAT',
   hudCash: '$',
   hudDepth: 'ft.',
   uiBuy: 'Buy',

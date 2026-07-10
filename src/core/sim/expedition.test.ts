@@ -1,5 +1,6 @@
-/** Expedition mode: run setup, cores math, rescue tuning, determinism. */
+/** Expedition mode: run setup, cores math, rescue tuning, heat, determinism. */
 import { describe, expect, it } from 'vitest';
+import { applyCommand } from '../commands';
 import { TILE_PX } from '../data/constants';
 import { EXPEDITION, coresEarned } from '../data/expedition';
 import type { EventSink } from '../events';
@@ -64,6 +65,67 @@ describe('expedition rescue tuning', () => {
     expect(r?.t === 'rescue' && r.cost).toBe(200); // 20%, not the story 15%
     expect(s.pod.heat).toBe(EXPEDITION.rescue.heatPenalty);
     expect(s.outcome).toBe('active');
+  });
+});
+
+describe('expedition heat', () => {
+  it('builds below the gate and vents at the surface', () => {
+    const s = expRun();
+    step(s, {}, 3);
+    const surfaceY = s.pod.y;
+    s.pod.y += 4_500 * 4; // −4500 ft → ≈1 heat/s with the stock radiator
+    step(s, {}, 42);
+    expect(s.pod.heat).toBeGreaterThan(0.5);
+    const peak = s.pod.heat;
+    s.pod.y = surfaceY;
+    step(s, {}, 42);
+    expect(s.pod.heat).toBeLessThan(peak); // −25/s at the surface
+  });
+
+  it('cooks the hull at max heat, tagged with the heat cause', () => {
+    const s = expRun();
+    step(s, {}, 3);
+    s.pod.y += 4_500 * 4;
+    s.pod.heat = 100;
+    const out = step(s, {}, 43);
+    expect(out.filter((e) => e.t === 'damage' && e.cause === 'heat').length).toBeGreaterThanOrEqual(
+      1,
+    );
+  });
+
+  it('warns at 70 and 90, latched until cooled', () => {
+    const s = expRun();
+    step(s, {}, 3);
+    s.pod.heat = 71;
+    let out = step(s);
+    expect(out.some((e) => e.t === 'heatWarning' && e.level === 1)).toBe(true);
+    out = step(s); // still hot — but latched, no repeat
+    expect(out.some((e) => e.t === 'heatWarning')).toBe(false);
+    s.pod.heat = 95;
+    out = step(s);
+    expect(out.some((e) => e.t === 'heatWarning' && e.level === 2)).toBe(true);
+    s.pod.heat = 10;
+    step(s); // resets the latch
+    s.pod.heat = 75;
+    out = step(s);
+    expect(out.some((e) => e.t === 'heatWarning' && e.level === 1)).toBe(true);
+  });
+
+  it('digging adds heat; refueling flushes it', () => {
+    const s = expRun();
+    step(s, {}, 3);
+    s.pod.heat = 50;
+    s.pod.fuel = 1;
+    applyCommand(s, { c: 'refuel', liters: 5 }, []);
+    expect(s.pod.heat).toBe(0);
+  });
+
+  it('never touches a story run (heat stays frozen at 0)', () => {
+    const s = createRun({ seed: 5, mode: { kind: 'story', goldium: true } });
+    step(s, {}, 3);
+    s.pod.y += 4_500 * 4;
+    step(s, {}, 42);
+    expect(s.pod.heat).toBe(0);
   });
 });
 

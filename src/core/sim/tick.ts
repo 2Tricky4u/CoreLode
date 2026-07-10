@@ -10,6 +10,7 @@ import type { IntentFrame } from '../intents';
 import { stepBoss } from './boss';
 import { stepDrilling } from './drilling';
 import { stepCharges } from './explosives';
+import { stepHeat } from './heat';
 import { rescueTow, tryUseItem } from './items';
 import { POD_HH, stepPhysics } from './physics';
 import { stepScripted } from './scripted';
@@ -53,6 +54,9 @@ export function tick(s: GameState, input: IntentFrame, out: EventSink): void {
 
   // 5. placed charges
   stepCharges(s, out);
+
+  // 5b. expedition heat (early-returns outside expedition mode)
+  stepHeat(s, out);
 
   // 6. surface buildings — standing on one only shows a prompt; the menu opens
   //    on the explicit interact press, so walking past never hijacks the screen.

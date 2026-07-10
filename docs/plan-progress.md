@@ -20,7 +20,7 @@ possible, and continue; otherwise stop.
 ## Phase 2 — Expedition foundation
 
 - [x] [C9] Expedition mode core: ModeConfig, profile store, title entry, suspend save
-- [ ] [C10] Heat system (second tension axis) + HUD bar + warnings
+- [x] [C10] Heat system (second tension axis) + HUD bar + warnings
 - [ ] [C11] Chain/combo system (sim + juice; expedition-only payout)
 - [ ] [C12] Daily seed + local daily records + CLDR1 share codes
 - [ ] [C13] Objective refactor (`objectiveMet`) + expedition contracts

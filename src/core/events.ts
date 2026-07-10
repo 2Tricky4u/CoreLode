@@ -5,7 +5,7 @@ import type { BuildingId } from './data/buildings';
 import type { ItemId } from './data/items';
 import type { SfxKey } from './data/sfx';
 
-export type DamageCause = 'fall' | 'lava' | 'gas' | 'blast' | 'boss' | 'teleport';
+export type DamageCause = 'fall' | 'lava' | 'gas' | 'blast' | 'boss' | 'teleport' | 'heat';
 
 export type SimEvent =
   | { t: 'tileCleared'; x: number; y: number; tile: number; cause: 'drill' | 'blast' }
@@ -18,6 +18,8 @@ export type SimEvent =
   | { t: 'fuelLow' }
   /** Fuel-failsafe assist fired: towed to the surface, cargo forfeited. */
   | { t: 'rescue'; cost: number; cargoLost: number }
+  /** Expedition heat crossed a warning threshold (70 / 90). */
+  | { t: 'heatWarning'; level: 1 | 2 }
   | { t: 'podExploded'; cause: 'hull' | 'fuel' }
   | { t: 'explosion'; x: number; y: number; radiusTiles: number; item: ItemId }
   | { t: 'gasIgnite'; x: number; y: number }

@@ -168,6 +168,8 @@ export interface GameState {
   contracts: ContractState[];
   outcome: Outcome;
   challengeEndTick: number; // 0 unless challenge mode
+  /** Latched heat-warning tier (0/1/2) — transient, resets on load. */
+  heatWarnLevel: number;
   /** Set once when the run ends victorious — drops granted flag. */
   victoryRewarded: boolean;
 }
@@ -314,6 +316,7 @@ export function createRun(opts: NewRunOptions = {}): GameState {
     contracts: [],
     outcome: 'active',
     challengeEndTick: ch ? ch.timeLimitTicks : 0,
+    heatWarnLevel: 0,
     victoryRewarded: false,
   };
 }

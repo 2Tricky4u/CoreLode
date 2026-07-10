@@ -44,6 +44,8 @@ export class Hud {
   private fuelFill: HTMLElement;
   private hullFill: HTMLElement;
   private cargoFill: HTMLElement;
+  private heatFill: HTMLElement;
+  private heatBar!: HTMLElement;
   private cashText: HTMLElement;
   private depthText: HTMLElement;
   private pointsText: HTMLElement;
@@ -67,6 +69,7 @@ export class Hud {
     this.fuelFill = el('div', { class: 'bar-fill fuel' });
     this.hullFill = el('div', { class: 'bar-fill hull' });
     this.cargoFill = el('div', { class: 'bar-fill cargo' });
+    this.heatFill = el('div', { class: 'bar-fill heat' });
     this.cashText = el('span', { class: 'hud-cash', text: '$0' });
     this.depthText = el('span', { class: 'hud-depth', text: '0 ft.' });
     this.pointsText = el('span', { class: 'hud-points', text: '' });
@@ -83,6 +86,10 @@ export class Hud {
     cargoBar.classList.add('hud-bar-cargo');
     cargoBar.title = `${t('invTitle')} [I]`;
     cargoBar.addEventListener('click', () => this.onInventory?.());
+
+    // Expedition-only pressure gauge — hidden in story/challenge runs.
+    this.heatBar = bar(t('hudHeat'), this.heatFill);
+    this.heatBar.classList.add('hidden');
 
     const hotbar = el('div', { class: 'hotbar' });
     for (const item of ITEMS.filter((i) => i.shopVisible)) {
@@ -129,6 +136,7 @@ export class Hud {
         bar(t('hudFuel'), this.fuelFill),
         bar(t('hudHull'), this.hullFill),
         cargoBar,
+        this.heatBar,
       ),
       el('div', { class: 'hud-mid' }, this.depthText, this.pointsText, this.timerNode),
       el('div', { class: 'hud-right' }, this.cashText, hotbar),
@@ -180,6 +188,12 @@ export class Hud {
     this.fuelFill.classList.toggle('warn', p.fuel / tankCapacity(p) < 0.25);
     this.hullFill.style.width = `${Math.max(0, Math.min(100, (p.hp / maxHull(p)) * 100))}%`;
     this.hullFill.classList.toggle('warn', p.hp / maxHull(p) < 0.3);
+    const exp = s.mode.kind === 'expedition';
+    this.heatBar.classList.toggle('hidden', !exp);
+    if (exp) {
+      this.heatFill.style.width = `${Math.max(0, Math.min(100, p.heat))}%`;
+      this.heatFill.classList.toggle('warn', p.heat >= 70);
+    }
     this.cargoFill.style.width = `${Math.min(100, (bayUsed(p) / bayCapacity(p)) * 100)}%`;
     this.cashText.textContent = `$${Math.floor(p.cash).toLocaleString('en-US')}`;
     this.pointsText.textContent = `${t('uiScore')} ${p.points.toLocaleString('en-US')}`;

@@ -174,6 +174,7 @@ export function deserialize(f: SaveFile): GameState {
     contracts: f.contracts,
     outcome: 'active',
     challengeEndTick: 0,
+    heatWarnLevel: 0, // transient latch — a re-warning after load is harmless
     victoryRewarded: false,
   };
 }

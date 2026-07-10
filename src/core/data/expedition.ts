@@ -23,6 +23,25 @@ export const EXPEDITION = {
   /** Rescue tow is always on in expedition, but costs more and runs the pod hot. */
   rescue: { costPct: 0.2, heatPenalty: 40 },
   cores: { depthPerCore: 500, perContract: 3, victoryBonus: 15 },
+  /**
+   * Heat — the second pressure axis. Builds below gainStartFt (≈1°/s at
+   * −4500 ft with a stock radiator; the radiator multiplier scales it, giving
+   * that upgrade line a second purpose), vents when shallow, dumps on refuel.
+   */
+  heat: {
+    gainStartFt: -1_500,
+    gainScaleFt: 3_000,
+    perTileDug: 0.3,
+    perLavaHit: 20,
+    coolShallowPerSec: 4,
+    coolSurfacePerSec: 25,
+    /** At max heat the hull cooks: 2 HP/s (1 HP every 21 ticks). */
+    overheatDamagePerSec: 2,
+    warn1: 70,
+    warn2: 90,
+    warnResetBelow: 60,
+    max: 100,
+  },
 } as const;
 
 /** Drive cores banked by a finished run (win or wreck — depth always pays). */
