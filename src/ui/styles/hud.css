@@ -100,6 +100,25 @@
   display: none;
 }
 
+/* Named-stratum banner — fades in center-screen when crossing a depth band. */
+.stratum-banner {
+  position: absolute;
+  top: 22%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: calc(var(--px) * 18px);
+  letter-spacing: 0.18em;
+  color: var(--c-text);
+  text-shadow: 2px 2px 0 #000, 0 0 14px #fff2;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+.stratum-banner.show {
+  opacity: 0.92;
+}
+
 /* Depth minimap — pinned to the right edge, below the HUD row. */
 .hud-minimap {
   position: absolute;

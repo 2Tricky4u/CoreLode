@@ -8,7 +8,7 @@ import {
   type SettingsValues,
   saleValue,
 } from '@core/index';
-import type { ChallengeRecords, SlotMeta } from '@platform/storage';
+import type { ChallengeRecords, LifetimeRecords, SlotMeta } from '@platform/storage';
 import { el } from './reactive';
 
 export class ScreenHost {
@@ -31,6 +31,7 @@ export class ScreenHost {
 
 export function titleScreen(opts: {
   canContinue: boolean;
+  lifetime?: LifetimeRecords | null;
   onNew: () => void;
   onContinue: () => void;
   onLoad: () => void;
@@ -38,6 +39,14 @@ export function titleScreen(opts: {
   onSettings: () => void;
   onHelp: () => void;
 }): HTMLElement {
+  const lt = opts.lifetime;
+  const bests =
+    lt && lt.totalRuns > 0 && lt.deepestFt < 0
+      ? el('p', {
+          class: 'title-bests',
+          text: `${t('titleBests')}: ${Math.round(lt.deepestFt).toLocaleString('en-US')} ft · ${t('titleRichest')}: $${Math.floor(lt.mostCash).toLocaleString('en-US')}`,
+        })
+      : null;
   return el(
     'div',
     { class: 'title-screen' },
@@ -55,6 +64,7 @@ export function titleScreen(opts: {
       el('button', { class: 'btn', onclick: opts.onHelp }, 'Controls & Guide'),
       el('button', { class: 'btn', onclick: opts.onSettings }, t('settings')),
     ),
+    bests,
     el('p', { class: 'credits', text: t('credits') }),
   );
 }
@@ -228,6 +238,13 @@ export function endingScreen(opts: {
     stat('Tiles dug', String(s.stats.tilesDug)),
     stat('Damage taken', String(s.stats.damageTaken)),
     stat('Quakes survived', String(s.stats.quakes)),
+    stat('Deepest descent', `${Math.round(s.story.maxDepthFt).toLocaleString('en-US')} ft`),
+    stat(
+      'Time on the clock',
+      `${Math.floor(s.stats.ticks / 42 / 60)}:${String(Math.floor(s.stats.ticks / 42) % 60).padStart(2, '0')}`,
+    ),
+    s.stats.bestChain >= 2 ? stat('Best chain', `×${s.stats.bestChain}`) : null,
+    s.stats.rescues > 0 ? stat('Emergency tows', String(s.stats.rescues)) : null,
     stat('Tour (NG+ level)', String(s.level)),
     el('p', { class: 'ngplus', text: t('ngPlusPrompt') }),
     el(

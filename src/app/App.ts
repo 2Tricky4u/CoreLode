@@ -60,8 +60,13 @@ export class App {
   private touch: TouchControls;
   private host: GameHost | null = null;
   private settings: SettingsValues = defaultSettings();
+  private lifetime: storage.LifetimeRecords = storage.defaultLifetime();
   private lastManualSlot = 'manual:0';
   private hudTimer = 0;
+
+  private saveLifetime(): void {
+    void storage.writeLifetime(this.lifetime);
+  }
 
   constructor() {
     this.touch = new TouchControls(this.input, 'right');
@@ -113,6 +118,7 @@ export class App {
     }
 
     this.settings = { ...defaultSettings(), ...((await storage.readSettings()) ?? {}) };
+    this.lifetime = await storage.readLifetime();
     void storage.requestPersistence();
 
     // Wait for assets, but never hang forever — fall through to the title after 10s.
@@ -144,6 +150,7 @@ export class App {
     this.screens.show(
       titleScreen({
         canContinue: slots.length > 0,
+        lifetime: this.lifetime,
         onNew: () => this.newStoryRun(),
         onContinue: () => void this.loadMostRecent(),
         onLoad: () => void this.showSaveSlots(),
@@ -269,6 +276,10 @@ export class App {
       this.screens.clear();
       this.host = new GameHost(state, this.input);
       this.host.onEvent((e) => this.onSimEvent(e));
+      if (state.tick === 0) {
+        this.lifetime.totalRuns++;
+        this.saveLifetime();
+      }
       this.input.gameFocus = true;
       this.hud.node.style.display = '';
       this.applySettings();
@@ -421,7 +432,20 @@ export class App {
       cash: host?.state.pod.cash ?? 0,
       points: host?.state.pod.points ?? 0,
       tilesDug: host?.state.stats.tilesDug ?? 0,
+      ticks: host?.state.stats.ticks ?? 0,
+      bestChain: host?.state.stats.bestChain ?? 0,
+      rescues: host?.state.stats.rescues ?? 0,
     };
+    const st = host?.state;
+    if (st) {
+      const lt = this.lifetime;
+      lt.totalDeaths++;
+      lt.deepestFt = Math.min(lt.deepestFt, st.story.maxDepthFt);
+      lt.mostCash = Math.max(lt.mostCash, st.pod.cash);
+      lt.bestChain = Math.max(lt.bestChain, st.stats.bestChain);
+      lt.totalTilesDug += st.stats.tilesDug;
+      this.saveLifetime();
+    }
     void storage.listSaves().then((slots) => {
       const has = slots.some((s) => s.key.startsWith('manual') || s.key.startsWith('auto'));
       openGameOver(
@@ -438,6 +462,12 @@ export class App {
   private onVictory(): void {
     const host = this.host;
     if (!host) return;
+    const lt = this.lifetime;
+    lt.deepestFt = Math.min(lt.deepestFt, host.state.story.maxDepthFt);
+    lt.mostCash = Math.max(lt.mostCash, host.state.pod.cash);
+    lt.bestChain = Math.max(lt.bestChain, host.state.stats.bestChain);
+    lt.totalTilesDug += host.state.stats.tilesDug;
+    this.saveLifetime();
     this.audio.stopLoops();
     this.audio.playMusic('ending');
     this.audio.ambience.silence();
@@ -501,6 +531,19 @@ export class App {
     if (toast) {
       this.audio.play('save');
       this.ui.toast(t('uiSaved'));
+      // One-time onboarding: after the first manual save ever, point at the autosave QoL.
+      if (!this.lifetime.flags.savedOnce) {
+        this.lifetime.flags.savedOnce = true;
+        if (
+          !this.lifetime.flags.autosavePromptShown &&
+          !this.fx.autosaveOnSurface &&
+          !this.settings.puristMode
+        ) {
+          this.lifetime.flags.autosavePromptShown = true;
+          this.ui.toast(t('uiAutosaveTip'), 4200);
+        }
+        this.saveLifetime();
+      }
     }
   }
 

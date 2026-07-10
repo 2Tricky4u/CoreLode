@@ -1,6 +1,6 @@
-import type { SaveFile } from '@core/index';
+import type { DamageCause, SaveFile } from '@core/index';
 import type { SettingsValues } from '@core/index';
-/** IndexedDB persistence via idb-keyval. Keys: save:manual:N, save:auto:N, settings, records. */
+/** IndexedDB persistence via idb-keyval. Keys: save:manual:N, save:auto:N, settings, records, lifetime. */
 import { clear, del, get, keys, set } from 'idb-keyval';
 
 export interface SlotMeta {
@@ -113,6 +113,44 @@ export async function clearAllData(): Promise<void> {
 }
 export async function writeRecords(r: ChallengeRecords): Promise<void> {
   await set('records', r);
+}
+
+/** Lifetime profile: cross-run bests, counters, and one-time onboarding flags. */
+export interface LifetimeRecords {
+  deepestFt: number; // most-negative depth ever reached
+  mostCash: number;
+  bestChain: number;
+  totalRuns: number;
+  totalDeaths: number;
+  totalTilesDug: number;
+  hazardsSeen: DamageCause[];
+  flags: { savedOnce: boolean; autosavePromptShown: boolean; deathPromptShown: boolean };
+}
+
+export const defaultLifetime = (): LifetimeRecords => ({
+  deepestFt: 0,
+  mostCash: 0,
+  bestChain: 0,
+  totalRuns: 0,
+  totalDeaths: 0,
+  totalTilesDug: 0,
+  hazardsSeen: [],
+  flags: { savedOnce: false, autosavePromptShown: false, deathPromptShown: false },
+});
+
+export function readLifetime(): Promise<LifetimeRecords> {
+  return withTimeout(
+    Promise.resolve(get('lifetime') as Promise<LifetimeRecords | undefined>).then((r) => ({
+      ...defaultLifetime(),
+      ...(r ?? {}),
+      flags: { ...defaultLifetime().flags, ...(r?.flags ?? {}) },
+    })),
+    2500,
+    defaultLifetime(),
+  );
+}
+export async function writeLifetime(r: LifetimeRecords): Promise<void> {
+  await set('lifetime', r);
 }
 
 export async function requestPersistence(): Promise<void> {

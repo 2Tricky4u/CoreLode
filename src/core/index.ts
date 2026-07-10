@@ -39,6 +39,7 @@ export {
 export { ITEMS, ITEM_BY_ID, type ItemId } from './data/items';
 export { BUILDINGS, type BuildingId } from './data/buildings';
 export { TRANSMISSIONS, SKY_EGGS } from './data/story';
+export { STRATA_KEYS, stratumIndexAt } from './data/strata';
 export { CHALLENGES } from './data/challenges';
 export { BLUEPRINTS, type BlueprintId } from './data/blueprints';
 export {

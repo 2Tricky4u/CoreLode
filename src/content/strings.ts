@@ -240,6 +240,14 @@ export const STRINGS: Record<string, string> = {
   setGasShimmer: 'Gas shimmer hint (QoL)',
   setSeededRuns: 'Seeded runs (QoL)',
   setFuelFailsafe: 'Fuel failsafe tow (assist, applies to new runs)',
+
+  // --- named strata (presentation flavor; bands match the minimap tints) ---
+  stratum0: 'TOPSOIL',
+  stratum1: 'THE RUST SEAMS',
+  stratum2: 'OLD WORKINGS',
+  stratum3: 'THE GAS SHALES',
+  stratum4: 'SCORCHED MARROW',
+  stratum5: 'THE SILENCE',
   setPuristMode: 'PURIST MODE (forces all QoL off)',
 
   // --- HUD / UI ---
@@ -263,6 +271,13 @@ export const STRINGS: Record<string, string> = {
   uiConfirm: 'OK',
   uiCargoFull: 'CARGO HOLD FULL!',
   uiRescue: 'EMERGENCY TOW — cargo forfeited',
+  uiAutosaveTip: "Tip: 'Autosave on surfacing' can be enabled in Settings",
+  goTime: 'TIME ON THE CLOCK',
+  goRate: 'EARNING RATE',
+  goChain: 'BEST CHAIN',
+  goRescues: 'EMERGENCY TOWS',
+  titleBests: 'Deepest descent',
+  titleRichest: 'Richest run',
   uiJettisonHint: 'Click cargo to jettison',
   uiPaused: 'PAUSED',
   uiResume: 'Resume',

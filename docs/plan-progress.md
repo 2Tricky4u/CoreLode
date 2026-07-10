@@ -12,7 +12,7 @@ possible, and continue; otherwise stop.
 - [x] [C2] Dug-tunnel round-trip regression test (onboarding toast moved to C5 — needs lifetime store)
 - [x] [C3] Fuel failsafe assist (rescue tow), setting + `rescue` event + tests
 - [x] [C4] Implement declared blueprint effects: phoenixHull regen, slipstream free recall
-- [ ] [C5] Strata names + run-summary stats + lifetime records store
+- [x] [C5] Strata names + run-summary stats + lifetime records store (+ C2's onboarding toast)
 - [ ] [C6] Death-cause explanations + first-encounter hazard log
 - [ ] [C7] Session-close hooks: `slotSummary`, richer slot meta, post-death autosave prompt
 - [ ] [C8] Phase 1 gate: story no-new-events guard test, full suite + build green

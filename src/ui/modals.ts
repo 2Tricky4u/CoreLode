@@ -553,7 +553,16 @@ export interface GameOverStats {
   cash: number;
   points: number;
   tilesDug: number;
+  ticks: number;
+  bestChain: number;
+  rescues: number;
 }
+
+/** mm:ss from sim ticks (42 Hz). */
+const runTime = (ticks: number): string => {
+  const sec = Math.floor(ticks / 42);
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+};
 
 export function openGameOver(
   m: ModalManager,
@@ -582,6 +591,13 @@ export function openGameOver(
       statRow(t('goDug'), stats.tilesDug.toLocaleString('en-US')),
       statRow(t('goCash'), `$${Math.floor(stats.cash).toLocaleString('en-US')}`),
       statRow(t('goScore'), stats.points.toLocaleString('en-US')),
+      statRow(t('goTime'), runTime(stats.ticks)),
+      statRow(
+        t('goRate'),
+        `$${Math.floor(stats.cash / Math.max(1 / 60, stats.ticks / 42 / 60)).toLocaleString('en-US')}/min`,
+      ),
+      stats.bestChain >= 2 ? statRow(t('goChain'), `×${stats.bestChain}`) : null,
+      stats.rescues > 0 ? statRow(t('goRescues'), String(stats.rescues)) : null,
     ),
     el('p', { class: 'go-epitaph', text: t('goEpitaph') }),
   );

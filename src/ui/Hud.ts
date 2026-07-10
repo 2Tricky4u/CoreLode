@@ -7,6 +7,7 @@ import {
   type GameState,
   ITEMS,
   type ItemId,
+  STRATA_KEYS,
   SURFACE_ROW,
   Tile,
   WORLD_H,
@@ -22,6 +23,7 @@ import {
   podDepthFt,
   podTileX,
   podTileY,
+  stratumIndexAt,
   tankCapacity,
 } from '@core/index';
 import { INTERACT_LABEL, itemKeyLabel } from '@input/InputManager';
@@ -52,6 +54,9 @@ export class Hud {
 
   private timerNode: HTMLElement;
   private showTimer = false;
+  private stratumNode: HTMLElement;
+  private lastStratum = 0;
+  private stratumTimer: ReturnType<typeof setTimeout> | null = null;
   private minimapNode: HTMLElement;
   private minimapCanvas: HTMLCanvasElement;
   private minimapCtx: CanvasRenderingContext2D | null;
@@ -96,6 +101,7 @@ export class Hud {
     }
 
     this.timerNode = el('span', { class: 'hud-timer hidden', text: '00:00.00' });
+    this.stratumNode = el('div', { class: 'stratum-banner' });
 
     this.minimapCanvas = el('canvas', { class: 'minimap-canvas' });
     this.minimapCanvas.width = MAP_W;
@@ -127,7 +133,16 @@ export class Hud {
       el('div', { class: 'hud-mid' }, this.depthText, this.pointsText, this.timerNode),
       el('div', { class: 'hud-right' }, this.cashText, hotbar),
       this.minimapNode,
+      this.stratumNode,
     );
+  }
+
+  /** Fade the band name in center-screen when the pod crosses into a new stratum. */
+  private announceStratum(idx: number): void {
+    this.stratumNode.textContent = t(STRATA_KEYS[idx]);
+    this.stratumNode.classList.add('show');
+    if (this.stratumTimer) clearTimeout(this.stratumTimer);
+    this.stratumTimer = setTimeout(() => this.stratumNode.classList.remove('show'), 2600);
   }
 
   setSpeedrunTimer(on: boolean): void {
@@ -184,6 +199,12 @@ export class Hud {
       const free = id === 'priorityTransporter' && p.blueprints.includes('slipstreamEngine');
       btn.querySelector('.hotbar-count')!.textContent = free ? '∞' : String(count);
       btn.classList.toggle('empty', !free && count === 0);
+    }
+
+    const stratum = stratumIndexAt(depth);
+    if (stratum !== this.lastStratum) {
+      this.lastStratum = stratum;
+      if (stratum > 0) this.announceStratum(stratum); // resurfacing to Topsoil stays quiet
     }
 
     if (this.showTimer) this.timerNode.textContent = formatTime(s.tick);

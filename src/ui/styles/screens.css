@@ -47,6 +47,13 @@
   opacity: 0.5;
   max-width: 420px;
 }
+.title-bests {
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: var(--c-gold);
+  opacity: 0.75;
+  text-shadow: 1px 1px 0 #000;
+}
 .panel {
   background: linear-gradient(180deg, #272441 0%, var(--c-panel) 26%, #1d1b30 100%);
   border: 1px solid var(--c-panel2);
