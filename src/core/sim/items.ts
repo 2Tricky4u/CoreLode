@@ -18,14 +18,16 @@ export function tryUseItem(s: GameState, id: ItemId, out: EventSink): void {
   const def = ITEM_BY_ID[id];
   if (!def) return;
   if (p.itemCooldown > 0 || p.itemLock > 0) return;
-  if ((p.inventory[id] ?? 0) <= 0) return;
+  // Slipstream Engine schematic: surface recall is free — no transporter needed.
+  const freeRecall = id === 'priorityTransporter' && p.blueprints.includes('slipstreamEngine');
+  if (!freeRecall && (p.inventory[id] ?? 0) <= 0) return;
   if (def.groundOnly && p.mode !== 'ground') {
     out.push({ t: 'sfx', key: 'error' });
     return;
   }
 
   const consume = () => {
-    p.inventory[id] = (p.inventory[id] ?? 1) - 1;
+    if (!freeRecall) p.inventory[id] = (p.inventory[id] ?? 1) - 1;
     p.itemCooldown = PHYSICS.itemCooldownFrames;
     s.stats.itemsUsed++;
   };

@@ -11,7 +11,7 @@ possible, and continue; otherwise stop.
 - [x] [C1] Save schema v2 + migration + frozen v1 fixture (`tests/fixtures/saves/v1.json`)
 - [x] [C2] Dug-tunnel round-trip regression test (onboarding toast moved to C5 — needs lifetime store)
 - [x] [C3] Fuel failsafe assist (rescue tow), setting + `rescue` event + tests
-- [ ] [C4] Implement declared blueprint effects: phoenixHull regen, slipstream free recall
+- [x] [C4] Implement declared blueprint effects: phoenixHull regen, slipstream free recall
 - [ ] [C5] Strata names + run-summary stats + lifetime records store
 - [ ] [C6] Death-cause explanations + first-encounter hazard log
 - [ ] [C7] Session-close hooks: `slotSummary`, richer slot meta, post-death autosave prompt
@@ -46,3 +46,5 @@ possible, and continue; otherwise stop.
 
 - C2: the autosave-onboarding toast depends on the lifetime-records store that C5 introduces,
   so that half ships with C5. C2 is the persistence regression test only.
+- User directive (2026-07-10): push after commits; merge the branch into main at each
+  phase gate (starting with the Phase 1 gate, C8).

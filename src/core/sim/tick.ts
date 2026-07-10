@@ -2,6 +2,7 @@
  * The fixed 42 Hz tick pipeline — the entire system order lives here.
  * The host must not call tick() while paused (modals/menus own that gate).
  */
+import { BLUEPRINT_EFFECTS } from '../data/blueprints';
 import { BUILDINGS } from '../data/buildings';
 import { SURFACE_ROW, TILE_PX } from '../data/constants';
 import type { EventSink } from '../events';
@@ -12,7 +13,14 @@ import { stepCharges } from './explosives';
 import { rescueTow, tryUseItem } from './items';
 import { POD_HH, stepPhysics } from './physics';
 import { stepScripted } from './scripted';
-import { type GameState, bayContentsCount, challengeDef, podDepthFt, podTileX } from './state';
+import {
+  type GameState,
+  bayContentsCount,
+  challengeDef,
+  maxHull,
+  podDepthFt,
+  podTileX,
+} from './state';
 
 export function tick(s: GameState, input: IntentFrame, out: EventSink): void {
   if (s.outcome !== 'active') return;
@@ -32,6 +40,9 @@ export function tick(s: GameState, input: IntentFrame, out: EventSink): void {
   if (p.itemCooldown > 0) p.itemCooldown--;
   if (p.itemLock > 0) p.itemLock--;
   if (p.lavaLatch > 0) p.lavaLatch--;
+  // Phoenix Hull schematic: slow self-repair (1 HP/s, BLUEPRINT_EFFECTS).
+  if (s.tick % 42 === 0 && p.blueprints.includes('phoenixHull') && p.hp < maxHull(p))
+    p.hp = Math.min(maxHull(p), p.hp + BLUEPRINT_EFFECTS.hullRegenPerSecond);
 
   // 3. item use (edge intent)
   if (input.useItem) tryUseItem(s, input.useItem, out);

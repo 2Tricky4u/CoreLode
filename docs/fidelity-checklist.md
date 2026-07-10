@@ -9,6 +9,8 @@ marked [A]; manual items [M]. CAL items also update `docs/calibration.md`.
   bay's missing $500k tier; repair $15/HP; fuel $1/L; items 2k/7.5k/2k/5k/2k/10k (+$1 hidden).
 - [A] Points: dirt 25; mineral value ×5; cap at Diamond (Amazonite/artifacts = 500k).
 - [A] NG+: sale ÷ level, points × level, boss HP/damage × level.
+- [A] Goldium schematic specials: Phoenix Hull regen 1 HP/s; Slipstream free surface recall
+  (CAL values — Goldium SWF undecompiled; designed to sit above tier 7).
 - [M] Fuel dialog offers 5/10/25/50/Fill; sell is one-click whole-hold; hull purchase repairs free.
 
 ## Movement & fuel

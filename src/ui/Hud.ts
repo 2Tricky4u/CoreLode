@@ -180,8 +180,10 @@ export class Hud {
 
     for (const [id, btn] of this.itemButtons) {
       const count = p.inventory[id] ?? 0;
-      btn.querySelector('.hotbar-count')!.textContent = String(count);
-      btn.classList.toggle('empty', count === 0);
+      // Slipstream Engine schematic makes surface recall free — show ∞, never "empty".
+      const free = id === 'priorityTransporter' && p.blueprints.includes('slipstreamEngine');
+      btn.querySelector('.hotbar-count')!.textContent = free ? '∞' : String(count);
+      btn.classList.toggle('empty', !free && count === 0);
     }
 
     if (this.showTimer) this.timerNode.textContent = formatTime(s.tick);

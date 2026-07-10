@@ -316,6 +316,38 @@ describe('death conditions', () => {
   });
 });
 
+describe('blueprint specials', () => {
+  it('phoenix hull regenerates 1 HP per second up to its cap', () => {
+    const s = run();
+    s.pod.blueprints.push('phoenixHull');
+    s.pod.hp = 50;
+    step(s, {}, 42); // exactly one second of ticks
+    expect(s.pod.hp).toBe(51);
+  });
+
+  it('slipstream engine grants surface recall with zero transporters, consuming none', () => {
+    const s = run();
+    s.pod.blueprints.push('slipstreamEngine');
+    step(s, {}, 3);
+    s.pod.y += TILE_PX * 8; // in a tunnel underground...
+    s.pod.mode = 'ground'; // ...standing (items resolve before physics in the tick)
+    const out = step(s, { useItem: 'priorityTransporter' });
+    expect(out.some((e) => e.t === 'teleport' && e.item === 'priorityTransporter')).toBe(true);
+    expect(s.pod.inventory.priorityTransporter ?? 0).toBe(0);
+    expect(s.stats.itemsUsed).toBe(1);
+    expect(podDepthFt(s.pod)).toBeGreaterThanOrEqual(-1);
+  });
+
+  it('without the schematic, an empty transporter slot does nothing', () => {
+    const s = run();
+    step(s, {}, 3);
+    s.pod.y += TILE_PX * 8;
+    s.pod.mode = 'ground';
+    const out = step(s, { useItem: 'priorityTransporter' });
+    expect(out.some((e) => e.t === 'teleport')).toBe(false);
+  });
+});
+
 describe('fuel failsafe assist (rescue tow)', () => {
   const assistedRun = (): GameState =>
     createRun({
