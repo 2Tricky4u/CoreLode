@@ -8,7 +8,11 @@ import {
   type SimEvent,
   coresEarned,
   createRun,
+  dailyKey,
+  dailySeed,
+  decodeDailyResult,
   defaultSettings,
+  encodeDailyResult,
   deserialize,
   effectiveSettings,
   serialize,
@@ -279,28 +283,73 @@ export class App {
   private async showExpedition(): Promise<void> {
     const profile = await storage.readExpeditionProfile();
     const suspend = await storage.readSave('exp:0');
+    const today = dailyKey(new Date());
+    const daily = (await storage.readDaily())[today];
     this.screens.show(
       expeditionScreen({
         profile,
         hasSuspend: Boolean(suspend),
-        onStart: () => this.newExpeditionRun(),
+        dailyBest: daily
+          ? `${Math.round(daily.bestDepthFt).toLocaleString('en-US')} ft · $${daily.bestCash.toLocaleString('en-US')} · ${daily.attempts}×`
+          : null,
+        onStart: () => this.newExpeditionRun(false),
+        onDaily: () => this.newExpeditionRun(true),
+        onCopyResult: () => void this.copyDailyResult(),
+        onPasteResult: () => void this.compareDailyResult(),
         onResume: () => void this.resumeExpedition(),
         onBack: () => void this.showTitle(),
       }),
     );
   }
 
-  private newExpeditionRun(): void {
+  private newExpeditionRun(daily: boolean): void {
+    const dateKey = daily ? dailyKey(new Date()) : undefined;
     this.beginRun(
       createRun({
-        seed: entropySeed(),
+        // Daily: everyone digs the same UTC-dated earth on a standard rig.
+        seed: dateKey ? dailySeed(dateKey) : entropySeed(),
         mode: {
           kind: 'expedition',
           goldium: true,
-          expedition: { loadoutId: 'standard', modules: [] },
+          expedition: { dateKey, loadoutId: 'standard', modules: [] },
         },
       }),
     );
+  }
+
+  private async copyDailyResult(): Promise<void> {
+    const today = dailyKey(new Date());
+    const rec = (await storage.readDaily())[today];
+    if (!rec) {
+      this.ui.toast(t('expNoDaily'));
+      return;
+    }
+    const code = encodeDailyResult({
+      v: 1,
+      date: today,
+      depthFt: rec.bestDepthFt,
+      cash: rec.bestCash,
+      points: rec.bestPoints,
+      ticks: rec.bestTicks,
+      bestChain: rec.bestChain,
+      outcome: rec.outcome,
+    });
+    if (await copyToClipboard(code)) this.ui.toast(t('expResultCopied'));
+  }
+
+  private async compareDailyResult(): Promise<void> {
+    const text = window.prompt(t('expPasteResult'));
+    if (!text) return;
+    try {
+      const theirs = decodeDailyResult(text);
+      const mine = (await storage.readDaily())[theirs.date];
+      const fmt = (d: number, c: number) =>
+        `${Math.round(d).toLocaleString('en-US')} ft · $${c.toLocaleString('en-US')}`;
+      const mineLine = mine ? fmt(mine.bestDepthFt, mine.bestCash) : '(no run that day)';
+      this.ui.toast(`${theirs.date} — THEM ${fmt(theirs.depthFt, theirs.cash)} · YOU ${mineLine}`, 7000);
+    } catch {
+      this.ui.toast(t('expBadCode'));
+    }
   }
 
   /** Single life: the suspend slot is consumed on resume (re-written at each building). */
@@ -325,6 +374,26 @@ export class App {
     if (victory) profile.wins++;
     profile.bestDepthFt = Math.min(profile.bestDepthFt, s.story.maxDepthFt);
     await storage.writeExpeditionProfile(profile);
+
+    // Daily record: keep the single best RUN (by depth) so result codes stay
+    // honest — one real run, never a franken-best across attempts.
+    const dateKey = s.mode.expedition?.dateKey;
+    if (dateKey) {
+      const daily = await storage.readDaily();
+      const prev = daily[dateKey];
+      const deeper = !prev || s.story.maxDepthFt < prev.bestDepthFt;
+      daily[dateKey] = {
+        bestDepthFt: deeper ? s.story.maxDepthFt : prev.bestDepthFt,
+        bestCash: deeper ? Math.floor(s.pod.cash) : prev.bestCash,
+        bestTicks: deeper ? s.stats.ticks : prev.bestTicks,
+        bestChain: deeper ? s.stats.bestChain : prev.bestChain,
+        bestPoints: deeper ? s.pod.points : prev.bestPoints,
+        attempts: (prev?.attempts ?? 0) + 1,
+        outcome: deeper ? (victory ? 'victory' : 'destroyed') : prev.outcome,
+      };
+      await storage.writeDaily(daily);
+    }
+
     await storage.deleteSave('exp:0');
     return cores;
   }

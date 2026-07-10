@@ -90,17 +90,25 @@ const b64decode = (s: string): string => {
   return out;
 };
 
+/** Generic integrity-checked token: '<magic>.' + base64url(JSON) + '.' + crc32. */
+export function encodeToken(magic: string, payload: unknown): string {
+  const body = b64encode(JSON.stringify(payload));
+  return `${magic}.${body}.${crc32(body).toString(36)}`;
+}
+
+/** Inverse of encodeToken — magic + checksum verified, payload returned raw. */
+export function decodeToken(magic: string, text: string): unknown {
+  const parts = text.trim().split('.');
+  if (parts.length !== 3 || parts[0] !== magic) throw new SaveError(`not a ${magic} code`);
+  const [, body, crc] = parts;
+  if (crc32(body).toString(36) !== crc) throw new SaveError('corrupt code (checksum)');
+  return JSON.parse(b64decode(body));
+}
+
 export function encodeSave(save: SaveFile): string {
-  const json = JSON.stringify(save);
-  const body = b64encode(json);
-  return `${MAGIC}.${body}.${crc32(body).toString(36)}`;
+  return encodeToken(MAGIC, save);
 }
 
 export function decodeSave(text: string): SaveFile {
-  const parts = text.trim().split('.');
-  if (parts.length !== 3 || parts[0] !== MAGIC) throw new SaveError('not a save code');
-  const [, body, crc] = parts;
-  if (crc32(body).toString(36) !== crc) throw new SaveError('corrupt save (checksum)');
-  const json = b64decode(body);
-  return migrateAndValidate(JSON.parse(json));
+  return migrateAndValidate(decodeToken(MAGIC, text));
 }

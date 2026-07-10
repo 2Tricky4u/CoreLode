@@ -47,6 +47,11 @@
   opacity: 0.5;
   max-width: 420px;
 }
+.exp-daily-note {
+  font-size: 10px;
+  opacity: 0.55;
+  margin-top: 2px;
+}
 .title-continue-meta {
   font-size: 11px;
   opacity: 0.65;

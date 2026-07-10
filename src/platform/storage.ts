@@ -130,6 +130,29 @@ export async function writeRecords(r: ChallengeRecords): Promise<void> {
   await set('records', r);
 }
 
+/** Daily-run personal records, keyed by UTC date key (YYYY-MM-DD). */
+export interface DailyRecords {
+  [dateKey: string]: {
+    bestDepthFt: number;
+    bestCash: number;
+    bestTicks: number;
+    bestChain: number;
+    bestPoints: number;
+    attempts: number;
+    outcome: 'destroyed' | 'victory';
+  };
+}
+export function readDaily(): Promise<DailyRecords> {
+  return withTimeout(
+    Promise.resolve(get('daily') as Promise<DailyRecords | undefined>).then((r) => r ?? {}),
+    2500,
+    {},
+  );
+}
+export async function writeDaily(r: DailyRecords): Promise<void> {
+  await set('daily', r);
+}
+
 /** Lifetime profile: cross-run bests, counters, and one-time onboarding flags. */
 export interface LifetimeRecords {
   deepestFt: number; // most-negative depth ever reached

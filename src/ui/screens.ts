@@ -243,7 +243,12 @@ export function challengeScreen(opts: {
 export function expeditionScreen(opts: {
   profile: ExpeditionProfile;
   hasSuspend: boolean;
+  /** Today's daily record line, already formatted (null → none yet). */
+  dailyBest: string | null;
   onStart: () => void;
+  onDaily: () => void;
+  onCopyResult: () => void;
+  onPasteResult: () => void;
   onResume: () => void;
   onBack: () => void;
 }): HTMLElement {
@@ -259,9 +264,11 @@ export function expeditionScreen(opts: {
     stat(t('expBestDepth'), `${Math.round(p.bestDepthFt).toLocaleString('en-US')} ft`),
     stat(t('expRuns'), String(p.runs)),
     stat(t('expWins'), String(p.wins)),
+    opts.dailyBest ? stat(t('expDailyBest'), opts.dailyBest) : null,
+    el('p', { class: 'exp-daily-note', text: t('expDailyNote') }),
     el(
       'div',
-      { class: 'btn-row' },
+      { class: 'btn-col' },
       opts.hasSuspend
         ? el('button', { class: 'btn primary', onclick: opts.onResume }, t('expResume'))
         : null,
@@ -269,6 +276,13 @@ export function expeditionScreen(opts: {
         'button',
         { class: opts.hasSuspend ? 'btn' : 'btn primary', onclick: opts.onStart },
         t('expStart'),
+      ),
+      el('button', { class: 'btn', onclick: opts.onDaily }, t('expDaily')),
+      el(
+        'div',
+        { class: 'btn-row' },
+        el('button', { class: 'btn tiny', onclick: opts.onCopyResult }, t('expCopyResult')),
+        el('button', { class: 'btn tiny', onclick: opts.onPasteResult }, t('expPasteResult')),
       ),
       el('button', { class: 'btn', onclick: opts.onBack }, t('backToTitle')),
     ),

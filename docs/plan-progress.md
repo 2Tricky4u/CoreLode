@@ -22,7 +22,7 @@ possible, and continue; otherwise stop.
 - [x] [C9] Expedition mode core: ModeConfig, profile store, title entry, suspend save
 - [x] [C10] Heat system (second tension axis) + HUD bar + warnings
 - [x] [C11] Chain/combo system (sim + juice; expedition-only payout)
-- [ ] [C12] Daily seed + local daily records + CLDR1 share codes
+- [x] [C12] Daily seed + local daily records + CLDR1 share codes
 - [ ] [C13] Objective refactor (`objectiveMet`) + expedition contracts
 - [ ] [C14] Phase 2 gate: full regression incl. expedition determinism hash
 
