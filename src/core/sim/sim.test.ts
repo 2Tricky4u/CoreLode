@@ -316,6 +316,44 @@ describe('death conditions', () => {
   });
 });
 
+describe('fuel failsafe assist (rescue tow)', () => {
+  const assistedRun = (): GameState =>
+    createRun({
+      seed: 42,
+      mode: { kind: 'story', goldium: true, assists: { fuelFailsafe: true } },
+    });
+
+  it('tows to the surface instead of exploding: cash cut, cargo forfeited', () => {
+    const s = assistedRun();
+    step(s, {}, 3);
+    s.pod.cash = 1_000;
+    s.pod.bayContents[0] = 3;
+    s.pod.fuel = 0;
+    s.pod.y += TILE_PX * 4; // stranded underground
+    const out = step(s);
+    expect(out.some((e) => e.t === 'podExploded')).toBe(false);
+    const rescue = out.find((e) => e.t === 'rescue');
+    expect(rescue?.t === 'rescue' && rescue.cost).toBe(150); // 15% of $1,000
+    expect(rescue?.t === 'rescue' && rescue.cargoLost).toBe(3);
+    expect(s.outcome).toBe('active');
+    expect(s.pod.cash).toBe(850);
+    expect(s.pod.bayContents[0]).toBe(0);
+    expect(s.pod.fuel).toBeGreaterThan(0);
+    expect(podDepthFt(s.pod)).toBeGreaterThanOrEqual(-1); // back at the surface (settles on tick)
+    expect(s.stats.rescues).toBe(1);
+  });
+
+  it('changes nothing without the assist — authentic death path intact', () => {
+    const s = run();
+    step(s, {}, 3);
+    s.pod.fuel = 0;
+    s.pod.y += TILE_PX * 4;
+    const out = step(s);
+    expect(out.some((e) => e.t === 'rescue')).toBe(false);
+    expect(s.outcome).toBe('destroyed');
+  });
+});
+
 describe('determinism', () => {
   const script = (s: GameState): number => {
     const inputs: Array<Partial<IntentFrame>> = [

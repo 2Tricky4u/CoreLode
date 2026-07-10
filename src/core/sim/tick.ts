@@ -9,7 +9,7 @@ import type { IntentFrame } from '../intents';
 import { stepBoss } from './boss';
 import { stepDrilling } from './drilling';
 import { stepCharges } from './explosives';
-import { tryUseItem } from './items';
+import { rescueTow, tryUseItem } from './items';
 import { POD_HH, stepPhysics } from './physics';
 import { stepScripted } from './scripted';
 import { type GameState, bayContentsCount, challengeDef, podDepthFt, podTileX } from './state';
@@ -69,18 +69,26 @@ export function tick(s: GameState, input: IntentFrame, out: EventSink): void {
       out.push({ t: 'podExploded', cause: 'hull' });
     } else if (p.fuel <= 0 && p.mode !== 'ground') {
       // out of fuel airborne/digging → the pod is lost (authentic: explosion)
-      s.outcome = 'destroyed';
-      out.push({ t: 'podExploded', cause: 'fuel' });
+      fuelEmergency(s, out);
     } else if (p.fuel <= 0 && p.mode === 'ground' && podDepthFt(p) < -1) {
       // stranded underground with a dry tank → also lost
-      s.outcome = 'destroyed';
-      out.push({ t: 'podExploded', cause: 'fuel' });
+      fuelEmergency(s, out);
     }
     if (p.fuel > 0 && p.fuel < 2) out.push({ t: 'fuelLow' });
   }
 
   // 10. challenge objectives / timer
   stepChallenge(s, out);
+}
+
+/** A dry tank is fatal — unless the run was created with the fuel-failsafe assist. */
+function fuelEmergency(s: GameState, out: EventSink): void {
+  if (s.mode.assists?.fuelFailsafe) {
+    rescueTow(s, out);
+    return;
+  }
+  s.outcome = 'destroyed';
+  out.push({ t: 'podExploded', cause: 'fuel' });
 }
 
 function stepChallenge(s: GameState, out: EventSink): void {

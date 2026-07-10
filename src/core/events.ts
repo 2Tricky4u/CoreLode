@@ -16,6 +16,8 @@ export type SimEvent =
   | { t: 'landed'; impactVel: number; damage: number }
   | { t: 'damage'; amount: number; cause: DamageCause }
   | { t: 'fuelLow' }
+  /** Fuel-failsafe assist fired: towed to the surface, cargo forfeited. */
+  | { t: 'rescue'; cost: number; cargoLost: number }
   | { t: 'podExploded'; cause: 'hull' | 'fuel' }
   | { t: 'explosion'; x: number; y: number; radiusTiles: number; item: ItemId }
   | { t: 'gasIgnite'; x: number; y: number }

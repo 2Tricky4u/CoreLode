@@ -239,6 +239,7 @@ export const STRINGS: Record<string, string> = {
   setOreGlyphs: 'Colorblind ore glyphs (QoL)',
   setGasShimmer: 'Gas shimmer hint (QoL)',
   setSeededRuns: 'Seeded runs (QoL)',
+  setFuelFailsafe: 'Fuel failsafe tow (assist, applies to new runs)',
   setPuristMode: 'PURIST MODE (forces all QoL off)',
 
   // --- HUD / UI ---
@@ -261,6 +262,7 @@ export const STRINGS: Record<string, string> = {
   uiEmptySlot: '— empty slot —',
   uiConfirm: 'OK',
   uiCargoFull: 'CARGO HOLD FULL!',
+  uiRescue: 'EMERGENCY TOW — cargo forfeited',
   uiJettisonHint: 'Click cargo to jettison',
   uiPaused: 'PAUSED',
   uiResume: 'Resume',

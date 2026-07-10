@@ -1,3 +1,4 @@
+import { ASSIST } from '../data/assists';
 import { BOSS } from '../data/boss';
 import { SPAWN_COL } from '../data/buildings';
 import { PX_PER_FT, SURFACE_ROW, TILE_PX } from '../data/constants';
@@ -10,7 +11,7 @@ import { PX_PER_FT, SURFACE_ROW, TILE_PX } from '../data/constants';
 import { ITEM_BY_ID, ITEM_EFFECTS, type ItemId } from '../data/items';
 import { PHYSICS } from '../data/physics';
 import type { EventSink } from '../events';
-import { type GameState, maxHull, tankCapacity } from './state';
+import { type GameState, bayUsed, maxHull, tankCapacity } from './state';
 
 export function tryUseItem(s: GameState, id: ItemId, out: EventSink): void {
   const p = s.pod;
@@ -70,6 +71,25 @@ export function tryUseItem(s: GameState, id: ItemId, out: EventSink): void {
       out.push({ t: 'sfx', key: 'teleportUp' });
       break;
   }
+}
+
+/**
+ * Fuel-failsafe assist: instead of exploding on a dry tank, the pod is towed to
+ * the surface — for a cut of your cash and the entire cargo hold. Survivable,
+ * never free, and never usable as cheap transport.
+ */
+export function rescueTow(s: GameState, out: EventSink): void {
+  const p = s.pod;
+  const cost = Math.floor(p.cash * ASSIST.rescueCostPct);
+  const cargoLost = bayUsed(p);
+  p.cash -= cost;
+  p.bayContents.fill(0);
+  p.fuel = Math.min(tankCapacity(p), ASSIST.rescueFuelLiters);
+  teleportPod(s, (SPAWN_COL + 0.5) * TILE_PX, SURFACE_ROW * TILE_PX - 21);
+  p.mode = 'ground';
+  s.stats.rescues++;
+  out.push({ t: 'rescue', cost, cargoLost });
+  out.push({ t: 'sfx', key: 'rescue' });
 }
 
 function teleportPod(s: GameState, x: number, y: number): void {

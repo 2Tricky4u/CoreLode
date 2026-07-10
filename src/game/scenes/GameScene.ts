@@ -482,11 +482,13 @@ export class GameScene extends Phaser.Scene {
           );
         }
         break;
-      case 'teleport': {
+      case 'teleport':
+      case 'rescue': {
         const beam = this.add
           .sprite(this.state.pod.x, this.state.pod.y, 'atlas', 'teleBeam')
           .setDepth(30)
           .setBlendMode(Phaser.BlendModes.ADD);
+        if (e.t === 'rescue') beam.setTint(0xd95763); // distress-red tow beam
         this.tweens.add({
           targets: beam,
           alpha: 0,
@@ -615,7 +617,9 @@ export class GameScene extends Phaser.Scene {
       const bite = Math.min(1, job.traveledPx / PHYSICS.digBreakAtPx);
       this.crackSprite
         .setPosition((job.targetX + 0.5) * TILE_PX, (job.targetY + 0.5) * TILE_PX)
-        .setFrame(`bite_${job.dir === 'down' ? 'down' : 'side'}${Math.min(3, Math.floor(bite * 4))}`)
+        .setFrame(
+          `bite_${job.dir === 'down' ? 'down' : 'side'}${Math.min(3, Math.floor(bite * 4))}`,
+        )
         .setFlipX(job.dir === 'left') // side frames enter from the left face
         .setVisible(true);
     } else {

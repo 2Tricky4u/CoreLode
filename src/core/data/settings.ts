@@ -146,6 +146,14 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     affectsFidelity: true,
   },
   {
+    id: 'fuelFailsafe',
+    labelKey: 'setFuelFailsafe',
+    category: 'fidelity',
+    type: 'bool',
+    default: false,
+    affectsFidelity: true,
+  },
+  {
     id: 'puristMode',
     labelKey: 'setPuristMode',
     category: 'fidelity',

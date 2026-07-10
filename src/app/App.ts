@@ -247,7 +247,10 @@ export class App {
   // ---------- run lifecycle ----------
   private newStoryRun(): void {
     const seed = this.fx.seededRuns ? this.promptSeed() : entropySeed();
-    this.beginRun(createRun({ seed, mode: { kind: 'story', goldium: true } }));
+    // Assists are frozen into the run at creation: mid-run settings flips never
+    // change an in-flight run, and a save always replays identically.
+    const assists = { fuelFailsafe: Boolean(this.fx.fuelFailsafe) };
+    this.beginRun(createRun({ seed, mode: { kind: 'story', goldium: true, assists } }));
   }
 
   private promptSeed(): number {
@@ -331,6 +334,9 @@ export class App {
         break;
       case 'cargoFullLost':
         this.ui.toast(t('uiCargoFull'));
+        break;
+      case 'rescue':
+        this.ui.toast(`${t('uiRescue')} (-$${e.cost.toLocaleString('en-US')})`);
         break;
       case 'bonusCash':
         this.ui.toast(`+$${e.amount.toLocaleString('en-US')}`);

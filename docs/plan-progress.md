@@ -10,7 +10,7 @@ possible, and continue; otherwise stop.
 
 - [x] [C1] Save schema v2 + migration + frozen v1 fixture (`tests/fixtures/saves/v1.json`)
 - [x] [C2] Dug-tunnel round-trip regression test (onboarding toast moved to C5 — needs lifetime store)
-- [ ] [C3] Fuel failsafe assist (rescue tow), setting + `rescue` event + tests
+- [x] [C3] Fuel failsafe assist (rescue tow), setting + `rescue` event + tests
 - [ ] [C4] Implement declared blueprint effects: phoenixHull regen, slipstream free recall
 - [ ] [C5] Strata names + run-summary stats + lifetime records store
 - [ ] [C6] Death-cause explanations + first-encounter hazard log

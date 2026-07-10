@@ -43,6 +43,7 @@ export type SfxKey =
   | 'textBlip'
   | 'teleportUp'
   | 'teleportFail'
+  | 'rescue'
   | 'save'
   | 'schematic'
   | 'bossLaser'
@@ -100,6 +101,8 @@ export const SFX: Record<SfxKey, (number | undefined)[]> = {
   textBlip: [0.25, 0.02, 800, 0, 0.015, 0.03, 1, 1.2],
   teleportUp: [0.8, 0.05, 300, 0.08, 0.3, 0.4, 1, 1.5, 8, 0.4],
   teleportFail: [0.9, 0.1, 320, 0.05, 0.25, 0.4, 2, 1.2, -6, -0.3],
+  // Distress klaxon dipping into a tow whoosh — the fuel-failsafe rescue.
+  rescue: [0.9, 0.08, 180, 0.12, 0.35, 0.5, 1, 1.1, 5, 0.25],
   save: [0.6, 0.02, 660, 0.02, 0.15, 0.25, 0, 1.3, 0, 0, 110, 0.08],
   schematic: [0.7, 0.02, 480, 0.03, 0.3, 0.5, 1, 1.2, 2, 0, 150, 0.1],
   bossLaser: [1, 0.05, 1200, 0.05, 0.4, 0.3, 3, 0.8, -8, -0.2, 0, 0, 0, 2],
