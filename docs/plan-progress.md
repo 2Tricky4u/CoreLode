@@ -32,7 +32,7 @@ possible, and continue; otherwise stop.
 - [x] [C16] Relic pool + depth-milestone offers + `chooseRelic` command + modal
 - [x] [C17] Story objectives panel (informational, QoL toggle)
 - [x] [C18] Magmite critters (expedition sim) + CritterView
-- [ ] [C19] Seismic scanner relic (presentation reuse of gas hint)
+- [x] [C19] Seismic scanner relic (presentation reuse of gas hint)
 - [ ] Phase 3 gate: full regression
 
 ## Phase 4 — Polish

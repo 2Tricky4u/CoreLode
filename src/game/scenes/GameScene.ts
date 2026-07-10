@@ -83,6 +83,8 @@ export class GameScene extends Phaser.Scene {
   private guardianHalo: Phaser.GameObjects.Image | null = null;
   private screenShake = true;
   private damageFlash = true;
+  /** QoL gas-shimmer setting (the Seismic Scanner relic ORs on top per frame). */
+  private gasHintOpt = false;
   private pixelPerfect = true;
   private oreGlyphs = false;
   /** Play the carrier-landing cinematic on the first frame (fresh story runs only). */
@@ -125,6 +127,7 @@ export class GameScene extends Phaser.Scene {
     this.fxFull = opts.fxFull;
     this.damageFlash = opts.damageFlash;
     this.oreGlyphs = opts.oreGlyphs;
+    this.gasHintOpt = opts.gasHint;
     this.tiles?.setGasHint(opts.gasHint);
     this.setPixelPerfect(opts.pixelPerfect);
     if (!opts.oreGlyphs) for (const g of this.glyphs) g.setVisible(false);
@@ -173,7 +176,8 @@ export class GameScene extends Phaser.Scene {
 
     this.tiles = new TileRenderer(this, s);
     this.tiles.create();
-    this.tiles.setGasHint(data.gasHint ?? false);
+    this.gasHintOpt = data.gasHint ?? false;
+    this.tiles.setGasHint(this.gasHintOpt);
     this.time.addEvent({ delay: 166, loop: true, callback: () => this.tiles.cycle() });
 
     // Surface buildings.
@@ -598,6 +602,11 @@ export class GameScene extends Phaser.Scene {
     this.pod.update(alpha);
     this.boss.update(alpha);
     this.critterView.update();
+    // Seismic Scanner relic: the gas shimmer turns on for the rest of the run.
+    this.tiles.setGasHint(
+      this.gasHintOpt ||
+        (this.state.mode.kind === 'expedition' && this.state.pod.relics.includes('seismicScanner')),
+    );
 
     // Charges.
     while (this.chargeSprites.length < s.charges.length) {

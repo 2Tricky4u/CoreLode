@@ -363,7 +363,7 @@ export const STRINGS: Record<string, string> = {
   rlScavenger: 'Scavenger Furnace',
   rlScavengerBlurb: 'Overflow ore burns for double points instead of being lost.',
   rlSeismicScanner: 'Seismic Scanner',
-  rlSeismicScannerBlurb: 'Reveals gas shimmer and glowing magma seams.',
+  rlSeismicScannerBlurb: 'Reveals the tell-tale shimmer of buried gas pockets.',
   goTime: 'TIME ON THE CLOCK',
   goRate: 'EARNING RATE',
   goChain: 'BEST CHAIN',
