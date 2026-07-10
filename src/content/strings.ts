@@ -188,6 +188,8 @@ export const STRINGS: Record<string, string> = {
   tipFuel:
     'Tip: the deepest loot tempts, but the tank decides. Turn back at half — or carry reserves.',
   tipHeat: 'Tip: depth cooks the pod. Surface to vent, refuel to flush coolant, or buy radiators.',
+  tipCritter:
+    'Tip: magmites crawl through open tunnels. Explosives clear them; sealed shafts stall them.',
   // First-encounter hazard log (one toast per cause, ever).
   hazardFall: 'LOG — Hard landing: falls above a gentle drop damage the hull.',
   hazardLava: 'LOG — Magma contact: radiators reduce the damage. It will still hurt.',
@@ -196,6 +198,7 @@ export const STRINGS: Record<string, string> = {
   hazardBoss: 'LOG — Something struck the pod. It did not feel geological.',
   hazardTeleport: 'LOG — Rough rematerialization. Discount hardware, discount landing.',
   hazardHeat: 'LOG — Overheat: the hull is cooking. Vent shallow or flush coolant at the pump.',
+  hazardCritter: 'LOG — Something bit the hull. It came up through your own tunnel.',
   goDepth: 'DEEPEST DESCENT',
   goDug: 'BLOCKS DUG',
   goCash: 'CASH ON HAND',

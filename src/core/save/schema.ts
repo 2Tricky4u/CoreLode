@@ -162,6 +162,8 @@ export function deserialize(f: SaveFile): GameState {
     boss: null,
     projectiles: [],
     charges: [],
+    critters: [], // transient, like projectiles
+
     story: {
       fired: f.story.fired,
       maxDepthFt: f.story.maxDepthFt,

@@ -99,6 +99,13 @@ export interface Charge {
   fuse: number; // ticks
 }
 
+/** Expedition magmite — transient like projectiles (never serialized). */
+export interface Critter {
+  x: number; // px, tile-centered
+  y: number;
+  moveCooldown: number;
+}
+
 export interface StoryState {
   fired: string[]; // transmission/egg ids
   maxDepthFt: number; // most-negative depth reached
@@ -161,6 +168,7 @@ export interface GameState {
   boss: BossState | null;
   projectiles: Projectile[];
   charges: Charge[];
+  critters: Critter[];
   story: StoryState;
   stats: RunStats;
   /** Active collect chain (tracker runs in all modes; only expedition pays it out). */
@@ -320,6 +328,7 @@ export function createRun(opts: NewRunOptions = {}): GameState {
     boss: null,
     projectiles: [],
     charges: [],
+    critters: [],
     story: { fired: [], maxDepthFt: 0, maxAltFt: 0, pendingTransmission: null, nextQuakeTick: 0 },
     stats: {
       ticks: 0,

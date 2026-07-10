@@ -73,6 +73,15 @@ function detonate(
     }
   }
 
+  // Blasts clear magmites caught in (or one tile beyond) the radius.
+  if (s.critters.length > 0) {
+    s.critters = s.critters.filter((c) => {
+      const hit = Math.hypot(c.x - px, c.y - py) / TILE_PX <= radiusTiles + 1;
+      if (hit) out.push({ t: 'critterKilled', x: c.x, y: c.y });
+      return !hit;
+    });
+  }
+
   // Boss damage — center hit vs off-center (authentic values).
   const b = s.boss;
   if (b && b.phase !== 'dead' && b.phase !== 'transition') {

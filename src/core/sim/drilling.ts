@@ -26,6 +26,7 @@ import {
 } from '../world/tiles';
 import { getTile, setTile } from '../world/world';
 import { chainOnCollect } from './chain';
+import { maybeSpawnCritter } from './critters';
 import { applyGasPocket, applyLavaHit } from './hazards';
 import { groundedAt } from './physics';
 import {
@@ -86,6 +87,7 @@ function breakTile(s: GameState, tx: number, ty: number, out: EventSink): void {
       s.pod.heat + EXPEDITION.heat.perTileDug * heatGainMult(s.pod),
     );
   out.push({ t: 'tileCleared', x: tx, y: ty, tile, cause: 'drill' });
+  maybeSpawnCritter(s, tx, ty, out); // expedition-gated inside
 
   // Ore Magnet relic: minerals adjacent to a drilled tile pop out and collect.
   if (s.pod.relics.includes('oreMagnet')) {

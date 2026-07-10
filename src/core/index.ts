@@ -17,6 +17,7 @@ export {
   radiatorMult,
   challengeDef,
   hasSurveyor,
+  type Critter,
   type GameState,
   type PodState,
   type BossState,

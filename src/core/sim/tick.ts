@@ -10,6 +10,7 @@ import type { IntentFrame } from '../intents';
 import { stepBoss } from './boss';
 import { stepChain } from './chain';
 import { stepContracts } from './contracts';
+import { stepCritters } from './critters';
 import { stepDrilling } from './drilling';
 import { stepCharges } from './explosives';
 import { stepHeat } from './heat';
@@ -59,9 +60,10 @@ export function tick(s: GameState, input: IntentFrame, out: EventSink): void {
   // 5. placed charges
   stepCharges(s, out);
 
-  // 5b. expedition heat + chain timeout (both early-return outside expedition)
+  // 5b. expedition heat, chain timeout, critters (all early-return outside expedition)
   stepHeat(s, out);
   stepChain(s, out);
+  stepCritters(s, out);
 
   // 6. surface buildings — standing on one only shows a prompt; the menu opens
   //    on the explicit interact press, so walking past never hijacks the screen.

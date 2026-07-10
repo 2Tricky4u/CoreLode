@@ -31,7 +31,7 @@ possible, and continue; otherwise stop.
 - [x] [C15] Loadouts + re-slottable modules (cores economy)
 - [x] [C16] Relic pool + depth-milestone offers + `chooseRelic` command + modal
 - [x] [C17] Story objectives panel (informational, QoL toggle)
-- [ ] [C18] Magmite critters (expedition sim) + CritterView
+- [x] [C18] Magmite critters (expedition sim) + CritterView
 - [ ] [C19] Seismic scanner relic (presentation reuse of gas hint)
 - [ ] Phase 3 gate: full regression
 

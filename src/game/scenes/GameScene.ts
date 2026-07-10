@@ -28,6 +28,7 @@ import Phaser from 'phaser';
 import type { GameHost } from '../GameHost';
 import type { AudioBus } from '../audio/AudioBus';
 import { BossView } from '../render/BossView';
+import { CritterView } from '../render/CritterView';
 import { PodView } from '../render/PodView';
 import { TileRenderer } from '../render/TileRenderer';
 
@@ -58,6 +59,7 @@ export class GameScene extends Phaser.Scene {
   private tiles!: TileRenderer;
   private pod!: PodView;
   private boss!: BossView;
+  private critterView!: CritterView;
   private fxFull = true;
 
   private lightImg!: Phaser.GameObjects.Image;
@@ -184,6 +186,7 @@ export class GameScene extends Phaser.Scene {
     this.pod = new PodView(this, s);
     this.pod.create();
     this.boss = new BossView(this, s);
+    this.critterView = new CritterView(this, s);
 
     // Hole-bite overlay for the tile currently being drilled (above terrain, below the pod).
     this.crackSprite = this.add.sprite(0, 0, 'atlas', 'bite_down0').setDepth(6).setVisible(false);
@@ -501,6 +504,9 @@ export class GameScene extends Phaser.Scene {
       case 'chainBroken':
         if (!e.banked && e.count >= 3) this.popup('CHAIN LOST', 0xd95763);
         break;
+      case 'critterKilled':
+        if (this.fxFull) this.embersE.explode(10, e.x, e.y);
+        break;
       case 'heatWarning':
         // Overheat feedback: ember burst, plus a warm flash at the critical tier.
         if (this.fxFull)
@@ -591,6 +597,7 @@ export class GameScene extends Phaser.Scene {
 
     this.pod.update(alpha);
     this.boss.update(alpha);
+    this.critterView.update();
 
     // Charges.
     while (this.chargeSprites.length < s.charges.length) {

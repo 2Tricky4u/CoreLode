@@ -574,6 +574,7 @@ const TIP_KEYS: Record<string, string> = {
   teleport: 'tipTeleport',
   fuel: 'tipFuel',
   heat: 'tipHeat',
+  critter: 'tipCritter',
 };
 
 export function openGameOver(

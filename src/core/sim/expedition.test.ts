@@ -9,8 +9,10 @@ import type { EventSink } from '../events';
 import { EMPTY_INTENTS, type IntentFrame } from '../intents';
 import { fnv1a } from '../lib/math';
 import { Tile } from '../world/tiles';
+import { setTile } from '../world/world';
 import { chainOnCollect, chainOnDamage, stepChain } from './chain';
 import { generateContracts } from './contracts';
+import { CRITTER, maybeSpawnCritter, stepCritters } from './critters';
 import { collectTile } from './drilling';
 import { applyGasPocket } from './hazards';
 import {
@@ -392,6 +394,57 @@ describe('relics', () => {
     const out = step(s);
     const boom = out.find((e) => e.t === 'explosion');
     expect(boom?.t === 'explosion' && boom.radiusTiles).toBe(2); // dynamite 1 + relic 1
+  });
+});
+
+describe('magmite critters', () => {
+  it('spawns from deep digs (expedition only, capped)', () => {
+    const s = expRun(11);
+    step(s, {}, 3);
+    s.pod.y += 3_500 * 4; // below the −3000 ft gate
+    for (let i = 0; i < 400; i++) maybeSpawnCritter(s, 10, 300, []);
+    expect(s.critters.length).toBe(CRITTER.maxAlive);
+
+    const story = createRun({ seed: 11, mode: { kind: 'story', goldium: true } });
+    story.pod.y += 3_500 * 4;
+    for (let i = 0; i < 400; i++) maybeSpawnCritter(story, 10, 300, []);
+    expect(story.critters).toEqual([]);
+  });
+
+  it('hops through air toward the pod and bites on contact', () => {
+    const s = expRun(11);
+    step(s, {}, 3);
+    const p = s.pod;
+    const ptx = Math.floor(p.x / TILE_PX);
+    const pty = Math.floor(p.y / TILE_PX);
+    // Carve a two-tile air corridor left of the pod and drop a magmite there.
+    setTile(s.world, ptx - 1, pty, Tile.Air);
+    setTile(s.world, ptx - 2, pty, Tile.Air);
+    s.critters.push({ x: (ptx - 2 + 0.5) * TILE_PX, y: (pty + 0.5) * TILE_PX, moveCooldown: 1 });
+    const x0 = s.critters[0].x;
+    stepCritters(s, []);
+    expect(s.critters[0].x).toBeGreaterThan(x0); // hopped toward the pod
+
+    // Contact: teleport it onto the pod and step once.
+    s.critters[0].x = p.x;
+    s.critters[0].y = p.y;
+    const out: EventSink = [];
+    const hp = p.hp;
+    stepCritters(s, out);
+    expect(out.some((e) => e.t === 'damage' && e.cause === 'critter')).toBe(true);
+    expect(out.some((e) => e.t === 'critterKilled')).toBe(true);
+    expect(p.hp).toBeLessThan(hp);
+    expect(s.critters).toEqual([]);
+  });
+
+  it('explosions clear magmites', () => {
+    const s = expRun(11);
+    step(s, {}, 3);
+    s.critters.push({ x: s.pod.x + TILE_PX, y: s.pod.y + 200, moveCooldown: 99 });
+    s.charges.push({ item: 'dynamite', x: s.pod.x, y: s.pod.y + 200, fuse: 1 });
+    const out = step(s);
+    expect(out.some((e) => e.t === 'critterKilled')).toBe(true);
+    expect(s.critters).toEqual([]);
   });
 });
 

@@ -5,7 +5,15 @@ import type { BuildingId } from './data/buildings';
 import type { ItemId } from './data/items';
 import type { SfxKey } from './data/sfx';
 
-export type DamageCause = 'fall' | 'lava' | 'gas' | 'blast' | 'boss' | 'teleport' | 'heat';
+export type DamageCause =
+  | 'fall'
+  | 'lava'
+  | 'gas'
+  | 'blast'
+  | 'boss'
+  | 'teleport'
+  | 'heat'
+  | 'critter';
 
 export type SimEvent =
   | { t: 'tileCleared'; x: number; y: number; tile: number; cause: 'drill' | 'blast' }
@@ -28,6 +36,9 @@ export type SimEvent =
   | { t: 'contractDone'; index: number; rewardCash: number }
   /** Depth milestone reached — pick one of these relics (chooseRelic command). */
   | { t: 'relicOffer'; choices: string[] }
+  /** A magmite woke up (expedition) / was destroyed. */
+  | { t: 'critterSpawned'; x: number; y: number }
+  | { t: 'critterKilled'; x: number; y: number }
   | { t: 'podExploded'; cause: 'hull' | 'fuel' }
   | { t: 'explosion'; x: number; y: number; radiusTiles: number; item: ItemId }
   | { t: 'gasIgnite'; x: number; y: number }
