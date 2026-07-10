@@ -38,7 +38,7 @@ possible, and continue; otherwise stop.
 ## Phase 4 — Polish
 
 - [x] [C20] Juice pass: heartbeat, landing squash, chain polish, ambient fauna layer
-- [ ] [C21] Battered-hull pod frames (WAIT for user's uncommitted art/atlas work to land)
+- [x] [C21] Battered-hull pod frames (user art landed; decal-overlay approach)
 - [ ] [C22] Key remapping + modal keyboard parity + fidelity-checklist doc update
 - [ ] Phase 4 gate: full regression + manual purist-mode pass
 

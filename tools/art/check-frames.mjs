@@ -29,6 +29,7 @@ walk(join(ROOT, 'src'));
 // Dynamic frame families the code builds with template strings.
 const families = [
   ...['pod_idle', 'pod_hurt'],
+  ...[1, 2].map((i) => `pod_scuff${i}`),
   ...[0, 1].map((i) => `pod_fly${i}`),
   ...[0, 1, 2, 3].flatMap((i) => [`pod_drill_down${i}`, `pod_drill_side${i}`]),
   ...[0, 1, 2, 3].flatMap((i) => [`bite_down${i}`, `bite_side${i}`]),

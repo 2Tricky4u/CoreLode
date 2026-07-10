@@ -1,9 +1,10 @@
-import type { GameState } from '@core/index';
+import { type GameState, maxHull } from '@core/index';
 /** Pod sprite — reads interpolated sim state; animation from pod mode/inputs. */
 import type Phaser from 'phaser';
 
 export class PodView {
   sprite!: Phaser.GameObjects.Sprite;
+  private scuff!: Phaser.GameObjects.Image;
   private animTick = 0;
   private squashT = 0;
 
@@ -18,6 +19,12 @@ export class PodView {
     // hangs below) — anchor so the 50px body stays centred on the collision box.
     this.sprite.setOrigin(0.5, 25 / 56);
     this.sprite.setDepth(10);
+    // Battered-hull decal — rides on top of every animation frame.
+    this.scuff = this.scene.add
+      .image(this.state.pod.x, this.state.pod.y, 'atlas', 'pod_scuff1')
+      .setOrigin(0.5, 25 / 56)
+      .setDepth(10.5)
+      .setVisible(false);
   }
 
   update(alpha: number): void {
@@ -46,6 +53,18 @@ export class PodView {
       this.sprite.setScale(1 + k, 1 - k);
     } else if (this.sprite.scaleX !== 1) {
       this.sprite.setScale(1, 1);
+    }
+
+    // Battered-hull decal at hp thresholds (light under ⅔, heavy under ⅓).
+    const ratio = p.hp / maxHull(p);
+    const wear = ratio < 1 / 3 ? 'pod_scuff2' : ratio < 2 / 3 ? 'pod_scuff1' : null;
+    this.scuff.setVisible(wear !== null);
+    if (wear) {
+      this.scuff
+        .setFrame(wear)
+        .setPosition(x, y)
+        .setFlipX(p.facing === -1)
+        .setScale(this.sprite.scaleX, this.sprite.scaleY);
     }
   }
 
