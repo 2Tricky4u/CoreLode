@@ -29,6 +29,7 @@ import { AudioBus } from '@game/audio/AudioBus';
 import { createPhaserGame } from '@game/phaserGame';
 import type { GameScene } from '@game/scenes/GameScene';
 import { InputManager } from '@input/InputManager';
+import { BIND_ACTIONS, type BindAction } from '@input/bindings';
 import { entropySeed, isTouchDevice } from '@platform/env';
 import { copyToClipboard, downloadText, pickTextFile } from '@platform/exporter';
 import * as storage from '@platform/storage';
@@ -73,6 +74,7 @@ export class App {
   private host: GameHost | null = null;
   private settings: SettingsValues = defaultSettings();
   private lifetime: storage.LifetimeRecords = storage.defaultLifetime();
+  private binds: storage.StoredBinds = {};
   private lastManualSlot = 'manual:0';
   private hudTimer = 0;
 
@@ -131,6 +133,8 @@ export class App {
 
     this.settings = { ...defaultSettings(), ...((await storage.readSettings()) ?? {}) };
     this.lifetime = await storage.readLifetime();
+    this.binds = await storage.readBinds();
+    this.input.setBinds(this.binds);
     void storage.requestPersistence();
 
     // Wait for assets, but never hang forever — fall through to the title after 10s.
@@ -220,8 +224,34 @@ export class App {
           this.applySettings();
         },
         onBack: back,
+        bindTable: this.input.bindTable,
+        onRebind: (action, code) => {
+          this.rebindKey(action, code);
+          this.showSettings(back); // re-render with the new table
+        },
+        onResetBinds: () => {
+          this.binds = {};
+          void storage.writeBinds(this.binds);
+          this.input.setBinds(this.binds);
+          this.hud.refreshHotkeys();
+          this.showSettings(back);
+        },
       }),
     );
+  }
+
+  /** Assign a key to an action; a conflicting key is stolen from its old action. */
+  private rebindKey(action: BindAction, code: string): void {
+    for (const other of BIND_ACTIONS) {
+      if (other === action) continue;
+      const eff = this.input.bindTable[other];
+      if (eff.includes(code) || eff.includes(`Shift+${code}`))
+        this.binds[other] = eff.filter((c) => c !== code && c !== `Shift+${code}`);
+    }
+    this.binds[action] = [code];
+    void storage.writeBinds(this.binds);
+    this.input.setBinds(this.binds);
+    this.hud.refreshHotkeys();
   }
 
   private async showChallenges(): Promise<void> {

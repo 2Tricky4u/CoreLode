@@ -4,6 +4,8 @@ import {
   CHALLENGES,
   COLLECTIBLES,
   type GameState,
+  ITEM_BY_ID,
+  type ItemId,
   LOADOUTS,
   type LoadoutDef,
   type LoadoutId,
@@ -15,6 +17,7 @@ import {
   type SettingsValues,
   saleValue,
 } from '@core/index';
+import { BIND_ACTIONS, type BindAction, type KeyBinds, keyLabel } from '@input/bindings';
 import type {
   ChallengeRecords,
   ExpeditionProfile,
@@ -161,6 +164,10 @@ export function settingsScreen(opts: {
   values: SettingsValues;
   onChange: (id: string, v: boolean | number | string) => void;
   onBack: () => void;
+  /** Live bind table + rebind hooks (omit to hide the rebind section). */
+  bindTable?: KeyBinds;
+  onRebind?: (action: BindAction, code: string) => void;
+  onResetBinds?: () => void;
 }): HTMLElement {
   const rows = el('div', { class: 'settings-list' });
   for (const def of SETTING_DEFS) {
@@ -201,11 +208,52 @@ export function settingsScreen(opts: {
       ),
     );
   }
+  // --- rebindable keys ---
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  let bindSection: HTMLElement | null = null;
+  const table = opts.bindTable;
+  if (table && opts.onRebind) {
+    const bindRows = el('div', { class: 'settings-list' });
+    for (const action of BIND_ACTIONS) {
+      const item = ITEM_BY_ID[action as ItemId];
+      const label = item ? t(item.key) : t(`bind${cap(action)}`);
+      const codes = table[action];
+      const btn = el(
+        'button',
+        { class: 'btn tiny' },
+        codes.length > 0 ? codes.map(keyLabel).join(' / ') : t('bindUnbound'),
+      );
+      btn.addEventListener('click', () => {
+        btn.textContent = t('bindPress');
+        const capture = (e: KeyboardEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          window.removeEventListener('keydown', capture, true);
+          if (e.code === 'Escape')
+            btn.textContent = codes.length > 0 ? codes.map(keyLabel).join(' / ') : t('bindUnbound');
+          else opts.onRebind?.(action, e.code);
+        };
+        window.addEventListener('keydown', capture, true);
+      });
+      bindRows.append(el('label', { class: 'setting-row' }, el('span', { text: label }), btn));
+    }
+    bindSection = el(
+      'div',
+      {},
+      el('h2', { text: t('bindTitle') }),
+      bindRows,
+      opts.onResetBinds
+        ? el('button', { class: 'btn tiny', onclick: opts.onResetBinds }, t('bindReset'))
+        : null,
+    );
+  }
+
   return el(
     'div',
     { class: 'panel' },
     el('h2', { text: t('settings') }),
     rows,
+    bindSection,
     el('div', { class: 'btn-row' }, el('button', { class: 'btn', onclick: opts.onBack }, '◀ Back')),
   );
 }

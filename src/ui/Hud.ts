@@ -30,7 +30,7 @@ import {
   stratumIndexAt,
   tankCapacity,
 } from '@core/index';
-import { INTERACT_LABEL, itemKeyLabel } from '@input/InputManager';
+import { interactLabel, itemKeyLabel } from '@input/InputManager';
 import { el } from './reactive';
 
 /** Native minimap resolution (CSS upscales it, pixelated). */
@@ -106,13 +106,16 @@ export class Hud {
     this.depthText = el('span', { class: 'hud-depth', text: '0 ft.' });
     this.pointsText = el('span', { class: 'hud-points', text: '' });
 
-    const bar = (label: string, fill: HTMLElement) =>
-      el(
+    const bar = (label: string, fill: HTMLElement) => {
+      const node = el(
         'div',
         { class: 'hud-bar' },
         el('span', { class: 'bar-label', text: label }),
         el('div', { class: 'bar-track' }, fill),
       );
+      node.title = label; // text equivalent for assistive tech / hover
+      return node;
+    };
 
     const cargoBar = bar(t('hudCargo'), this.cargoFill);
     cargoBar.classList.add('hud-bar-cargo');
@@ -158,7 +161,7 @@ export class Hud {
         class: 'interact-prompt hidden',
         onclick: () => this.onInteract?.(),
       },
-      el('span', { class: 'prompt-key', text: INTERACT_LABEL }),
+      el('span', { class: 'prompt-key', text: interactLabel() }),
       this.promptText,
     );
 
@@ -207,13 +210,15 @@ export class Hud {
     this.timerNode.classList.toggle('hidden', !on);
   }
 
-  /** Re-label the hotbar keys after a control-scheme change. */
+  /** Re-label the hotbar keys after a control-scheme change or rebind. */
   refreshHotkeys(): void {
     for (const [id, btn] of this.itemButtons) {
       const label = itemKeyLabel(id);
       btn.querySelector('.hotbar-key')!.textContent = label;
       btn.title = btn.title.replace(/\[[^\]]*\]$/, `[${label}]`);
     }
+    const key = this.promptNode.querySelector('.prompt-key');
+    if (key) key.textContent = interactLabel();
   }
 
   setMinimap(on: boolean): void {

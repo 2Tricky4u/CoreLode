@@ -49,4 +49,10 @@ marked [A]; manual items [M]. CAL items also update `docs/calibration.md`.
 - [M] Save only at the SaveMate station; death offers "load last save"; dual-write backup
   recovers a corrupted slot; export/import codes round-trip between browsers.
 - [M] All 15 challenges winnable and losable; completing all awards the Fractal Bit.
-- [M] Purist Mode: every QoL toggle forced off; all checks above still pass.
+- [M] Purist Mode: every QoL toggle forced off; all checks above still pass. The list now
+  includes `fuelFailsafe` (assist tow) and `objectivesPanel`; `ambientLife` and key rebinding
+  are presentation/input-only and intentionally NOT purist-gated.
+- [A] Story purity guard (sim.test.ts): a default story run emits no remake-system events
+  (rescue/chain/heat/relic/contract/critter) and keeps their state fields inert.
+- [M] Expedition mode never leaks into story: no heat bar, chain meter, contracts panel,
+  relic offers, magmites, or cores outside `mode.kind === 'expedition'`.

@@ -228,6 +228,19 @@ export async function writeLifetime(r: LifetimeRecords): Promise<void> {
   await set('lifetime', r);
 }
 
+/** User key-bind overrides, keyed by action id (see input/bindings.ts). */
+export type StoredBinds = Record<string, string[]>;
+export function readBinds(): Promise<StoredBinds> {
+  return withTimeout(
+    Promise.resolve(get('binds') as Promise<StoredBinds | undefined>).then((r) => r ?? {}),
+    2500,
+    {},
+  );
+}
+export async function writeBinds(b: StoredBinds): Promise<void> {
+  await set('binds', b);
+}
+
 export async function requestPersistence(): Promise<void> {
   try {
     await navigator.storage?.persist?.();

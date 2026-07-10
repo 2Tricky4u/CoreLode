@@ -5,7 +5,7 @@
  */
 import { t } from '@content/strings';
 import { BUILDINGS, FUEL_PRICE_PER_L, ITEMS, REPAIR_COST_PER_HP } from '@core/index';
-import { INTERACT_LABEL, currentScheme, itemKeyLabel } from '@input/InputManager';
+import { currentScheme, interactLabel, itemKeyLabel } from '@input/InputManager';
 import { el } from './reactive';
 
 const key = (k: string) => el('kbd', { class: 'key', text: k });
@@ -34,7 +34,7 @@ export function helpScreen(onBack: () => void): HTMLElement {
     vim
       ? row(['↑', 'k'], 'Fire the thruster and fly (burns fuel)')
       : row(['↑', 'W'], 'Fire the thruster and fly (burns fuel)'),
-    row([INTERACT_LABEL], 'Interact — open the building you are standing on'),
+    row([interactLabel()], 'Interact — open the building you are standing on'),
     row(['I'], 'Cargo hold — inspect and jettison minerals, anywhere'),
     row(['Esc', 'P'], 'Pause (disabled during the final fight)'),
     el('p', {

@@ -1,66 +1,31 @@
 /**
  * Merges keyboard + gamepad + touch into one IntentFrame per tick.
- * Two key schemes (Settings → controls):
- *  - classic (default, authentic): arrows/WASD move; F fuel, R nano-welders,
- *    X dynamite, C plastique, Q discount tp, M priority tp, 0 core tp.
- *  - vim (trainer): h/j/k/l move (WASD disabled so the muscle memory sticks;
- *    arrows stay, as in real vim); items keep vim mnemonics — x (delete char =
- *    small blast), d (delete = big blast), r (replace = repair), f (find =
- *    fuel), t (till = risky teleport), g (gg → top = safe transport to the
- *    surface), G (→ bottom of file = the Core Teleporter).
+ * Keys resolve through a bind table: a per-scheme preset (classic / vim
+ * trainer — see bindings.ts) with user overrides merged on top, so every
+ * action is rebindable while the two presets stay one click away.
  * Central edge detection: useItem fires exactly once per press.
  */
 import type { IntentFrame, ItemId } from '@core/index';
+import {
+  type BindOverrides,
+  type ControlScheme,
+  ITEM_ACTIONS,
+  type KeyBinds,
+  keyLabel,
+  mergeBinds,
+} from './bindings';
 
-/** Keys that open the building menu you're standing on. */
-export const INTERACT_KEYS = ['KeyE', 'Enter', 'Space'];
-export const INTERACT_LABEL = 'E';
+export type { ControlScheme } from './bindings';
 
-export type ControlScheme = 'classic' | 'vim';
-
-const CLASSIC_ITEM_KEYS: Record<string, ItemId> = {
-  KeyF: 'reserveFuel',
-  KeyR: 'nanoWelders',
-  KeyX: 'dynamite',
-  KeyC: 'plastique',
-  KeyQ: 'discountTeleporter',
-  KeyM: 'priorityTransporter',
-  Digit0: 'coreTeleporter',
-};
-/** KeyG is resolved separately: g = priority transporter, G (shift) = core teleporter. */
-const VIM_ITEM_KEYS: Record<string, ItemId> = {
-  KeyF: 'reserveFuel',
-  KeyR: 'nanoWelders',
-  KeyX: 'dynamite',
-  KeyD: 'plastique',
-  KeyT: 'discountTeleporter',
-};
-
-/** Display labels per scheme (HUD hotbar, shop rows, help screen). */
-const ITEM_LABELS: Record<ControlScheme, Record<ItemId, string>> = {
-  classic: {
-    reserveFuel: 'F',
-    nanoWelders: 'R',
-    dynamite: 'X',
-    plastique: 'C',
-    discountTeleporter: 'Q',
-    priorityTransporter: 'M',
-    coreTeleporter: '0',
-  },
-  vim: {
-    reserveFuel: 'f',
-    nanoWelders: 'r',
-    dynamite: 'x',
-    plastique: 'd',
-    discountTeleporter: 't',
-    priorityTransporter: 'g',
-    coreTeleporter: 'G',
-  },
-};
-
+// Module-level view of the active binds so display helpers stay simple imports.
 let activeScheme: ControlScheme = 'classic';
+let activeBinds: KeyBinds = mergeBinds('classic', {});
+
 export const currentScheme = (): ControlScheme => activeScheme;
-export const itemKeyLabel = (id: ItemId): string => ITEM_LABELS[activeScheme][id];
+export const itemKeyLabel = (id: ItemId): string => keyLabel(activeBinds[id][0] ?? '?');
+export const interactLabel = (): string => keyLabel(activeBinds.interact[0] ?? 'KeyE');
+/** @deprecated construction-time snapshot; prefer interactLabel(). */
+export const INTERACT_LABEL = 'E';
 
 export class InputManager {
   private keys = new Set<string>();
@@ -74,23 +39,52 @@ export class InputManager {
   /** When false (a modal/screen owns focus), gameplay input is ignored. */
   gameFocus = true;
   onPause: (() => void) | null = null;
-  /** I opens the cargo inventory anywhere (authentic key, same in both schemes). */
+  /** Opens the cargo inventory anywhere (rebindable; I in both presets). */
   onInventory: (() => void) | null = null;
   private scheme: ControlScheme = 'classic';
+  private overrides: BindOverrides = {};
+  private binds: KeyBinds = mergeBinds('classic', {});
+  private itemByKey = new Map<string, ItemId>();
+
+  constructor() {
+    this.rebuild();
+  }
 
   setScheme(scheme: ControlScheme): void {
     if (scheme === this.scheme) return;
     this.scheme = scheme;
-    activeScheme = scheme;
+    this.rebuild();
     this.clearHeld(); // a held key must not survive a remap
   }
 
-  private itemFor(e: KeyboardEvent): ItemId | null {
-    if (this.scheme === 'vim') {
-      if (e.code === 'KeyG') return e.shiftKey ? 'coreTeleporter' : 'priorityTransporter';
-      return VIM_ITEM_KEYS[e.code] ?? null;
+  /** Apply user overrides (persisted app-side) on top of the scheme preset. */
+  setBinds(overrides: BindOverrides): void {
+    this.overrides = overrides;
+    this.rebuild();
+    this.clearHeld();
+  }
+
+  get bindTable(): KeyBinds {
+    return this.binds;
+  }
+
+  private rebuild(): void {
+    this.binds = mergeBinds(this.scheme, this.overrides);
+    activeScheme = this.scheme;
+    activeBinds = this.binds;
+    this.itemByKey.clear();
+    for (const id of ITEM_ACTIONS) {
+      for (const code of this.binds[id]) this.itemByKey.set(code, id);
     }
-    return CLASSIC_ITEM_KEYS[e.code] ?? null;
+  }
+
+  private itemFor(e: KeyboardEvent): ItemId | null {
+    // Shift-qualified binds win (vim's ⇧G), then the bare code.
+    return (
+      (e.shiftKey ? this.itemByKey.get(`Shift+${e.code}`) : undefined) ??
+      this.itemByKey.get(e.code) ??
+      null
+    );
   }
 
   attach(target: Window): void {
@@ -100,9 +94,9 @@ export class InputManager {
       this.keys.add(e.code);
       const item = this.itemFor(e);
       if (item) this.itemQueue.push(item);
-      if (INTERACT_KEYS.includes(e.code)) this.interactQueued = true;
-      if (e.code === 'Escape' || e.code === 'KeyP') this.onPause?.();
-      if (e.code === 'KeyI') this.onInventory?.();
+      if (this.binds.interact.includes(e.code)) this.interactQueued = true;
+      if (this.binds.pause.includes(e.code)) this.onPause?.();
+      if (this.binds.inventory.includes(e.code)) this.onInventory?.();
       this.prevent(e);
     });
     target.addEventListener('keyup', (e) => {
@@ -182,17 +176,15 @@ export class InputManager {
       return { left: false, right: false, up: false, down: false, useItem: null, interact: false };
     }
     const pad = this.padState();
-    const k = this.keys;
     const useItem = this.itemQueue.shift() ?? this.touchItemQueue.shift() ?? pad.item ?? null;
     const interact = this.interactQueued || pad.interact;
     this.interactQueued = false;
-    // vim: hjkl replace WASD entirely (training wheels off); arrows remain, as in real vim.
-    const vim = this.scheme === 'vim';
+    const held = (codes: string[]) => codes.some((c) => this.keys.has(c));
     return {
-      left: k.has('ArrowLeft') || k.has(vim ? 'KeyH' : 'KeyA') || this.touch.left || pad.left,
-      right: k.has('ArrowRight') || k.has(vim ? 'KeyL' : 'KeyD') || this.touch.right || pad.right,
-      up: k.has('ArrowUp') || k.has(vim ? 'KeyK' : 'KeyW') || this.touch.up || pad.up,
-      down: k.has('ArrowDown') || k.has(vim ? 'KeyJ' : 'KeyS') || this.touch.down || pad.down,
+      left: held(this.binds.left) || this.touch.left || pad.left,
+      right: held(this.binds.right) || this.touch.right || pad.right,
+      up: held(this.binds.up) || this.touch.up || pad.up,
+      down: held(this.binds.down) || this.touch.down || pad.down,
       useItem,
       interact,
     };
