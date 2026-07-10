@@ -6,7 +6,7 @@
 import { EXPEDITION } from '../data/expedition';
 import type { EventSink } from '../events';
 import { applyDamage } from './physics';
-import { type GameState, podDepthFt, radiatorMult } from './state';
+import { type GameState, heatGainMult, podDepthFt, radiatorMult } from './state';
 
 const H = EXPEDITION.heat;
 
@@ -17,7 +17,7 @@ export function stepHeat(s: GameState, out: EventSink): void {
 
   if (depth <= H.gainStartFt) {
     // ((−depth) + gainStartFt) / gainScaleFt → 0 at the gate, 1/s at −4500 ft stock.
-    const perSec = ((-depth + H.gainStartFt) / H.gainScaleFt) * radiatorMult(p);
+    const perSec = ((-depth + H.gainStartFt) / H.gainScaleFt) * radiatorMult(p) * heatGainMult(p);
     p.heat = Math.min(H.max, p.heat + perSec / 42);
   } else if (depth >= -1) {
     p.heat = Math.max(0, p.heat - H.coolSurfacePerSec / 42); // surface air rushes in

@@ -3,12 +3,21 @@ import { describe, expect, it } from 'vitest';
 import { applyCommand } from '../commands';
 import { TILE_PX } from '../data/constants';
 import { EXPEDITION, coresEarned } from '../data/expedition';
+import type { ModuleId } from '../data/expedition';
 import type { EventSink } from '../events';
 import { EMPTY_INTENTS, type IntentFrame } from '../intents';
 import { fnv1a } from '../lib/math';
 import { chainOnCollect, chainOnDamage, stepChain } from './chain';
 import { generateContracts } from './contracts';
-import { type GameState, createRun, tankCapacity } from './state';
+import {
+  type GameState,
+  createRun,
+  digFuelMult,
+  fallDamageMult,
+  heatGainMult,
+  maxHull,
+  tankCapacity,
+} from './state';
 import { tick } from './tick';
 
 const expRun = (seed = 99): GameState =>
@@ -212,6 +221,60 @@ describe('collect chains', () => {
     chainOnCollect(s, 0, []);
     chainOnCollect(s, 0, []);
     expect(s.chain).toBeNull();
+  });
+});
+
+describe('loadouts and modules', () => {
+  const withModules = (modules: string[]): GameState =>
+    createRun({
+      seed: 5,
+      mode: {
+        kind: 'expedition',
+        goldium: true,
+        expedition: { loadoutId: 'standard', modules: modules as ModuleId[] },
+      },
+    });
+
+  it('loadout tier overrides apply to expedition pods', () => {
+    const s = createRun({
+      seed: 5,
+      mode: {
+        kind: 'expedition',
+        goldium: true,
+        expedition: { loadoutId: 'heavyRig', modules: [] },
+      },
+    });
+    expect(s.pod.upgrades.hull).toBe(2);
+    expect(s.pod.upgrades.radiator).toBe(2);
+    expect(s.pod.upgrades.drill).toBe(0);
+  });
+
+  it('modules modify the accessors; story pods are provably unchanged', () => {
+    const m = withModules(['bulkhead', 'auxTank']);
+    expect(maxHull(m.pod)).toBe(10 + 20);
+    expect(tankCapacity(m.pod)).toBe(10 + 15);
+    expect(heatGainMult(withModules(['thermalFins']).pod)).toBe(0.75);
+    expect(fallDamageMult(withModules(['shockAbsorbers']).pod)).toBe(0.7);
+    expect(digFuelMult(withModules(['sparkPlug']).pod)).toBe(0.85);
+    const story = createRun({ seed: 5, mode: { kind: 'story', goldium: true } });
+    expect(story.pod.modules).toEqual([]);
+    expect(maxHull(story.pod)).toBe(10);
+    expect(tankCapacity(story.pod)).toBe(10);
+    expect(heatGainMult(story.pod)).toBe(1);
+    expect(fallDamageMult(story.pod)).toBe(1);
+    expect(digFuelMult(story.pod)).toBe(1);
+  });
+
+  it('daily runs strip modules for comparability', () => {
+    const s = createRun({
+      seed: 5,
+      mode: {
+        kind: 'expedition',
+        goldium: true,
+        expedition: { dateKey: '2026-07-10', loadoutId: 'standard', modules: ['bulkhead'] },
+      },
+    });
+    expect(s.pod.modules).toEqual([]);
   });
 });
 

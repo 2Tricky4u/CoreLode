@@ -47,6 +47,16 @@
   opacity: 0.5;
   max-width: 420px;
 }
+.exp-section {
+  margin: 10px 0 4px;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  opacity: 0.8;
+}
+.btn-row.wrap {
+  flex-wrap: wrap;
+  gap: 4px;
+}
 .exp-daily-note {
   font-size: 10px;
   opacity: 0.55;

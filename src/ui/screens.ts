@@ -4,6 +4,13 @@ import {
   CHALLENGES,
   COLLECTIBLES,
   type GameState,
+  LOADOUTS,
+  type LoadoutDef,
+  type LoadoutId,
+  MODULES,
+  MODULE_SLOTS,
+  type ModuleDef,
+  type ModuleId,
   SETTING_DEFS,
   type SettingsValues,
   saleValue,
@@ -251,10 +258,46 @@ export function expeditionScreen(opts: {
   onPasteResult: () => void;
   onResume: () => void;
   onBack: () => void;
+  /** Meta-shop callbacks — the app mutates the profile and re-renders. */
+  onPickLoadout: (id: LoadoutId) => void;
+  onToggleModule: (id: ModuleId) => void;
 }): HTMLElement {
   const p = opts.profile;
   const stat = (label: string, value: string) =>
     el('div', { class: 'stat-row' }, el('span', { text: label }), el('span', { text: value }));
+
+  const loadoutBtn = (def: LoadoutDef) => {
+    const owned = p.unlocked.loadouts.includes(def.id);
+    const picked = p.loadout === def.id;
+    const label = owned
+      ? t(def.key)
+      : `${t(def.key)} — ${t('expLocked')} (${def.cost} ${t('expCores').toLowerCase()})`;
+    return el(
+      'button',
+      {
+        class: `btn tiny${picked ? ' primary' : ''}`,
+        title: t(`${def.key}Blurb`),
+        onclick: () => opts.onPickLoadout(def.id),
+      },
+      label,
+    );
+  };
+
+  const moduleBtn = (def: ModuleDef) => {
+    const owned = p.unlocked.modules.includes(def.id);
+    const slotted = p.slotted.includes(def.id);
+    const label = owned ? `${slotted ? '◉ ' : '○ '}${t(def.key)}` : `${t(def.key)} — ${def.cost}⛭`;
+    return el(
+      'button',
+      {
+        class: `btn tiny${slotted ? ' primary' : ''}`,
+        title: t(`${def.key}Blurb`),
+        onclick: () => opts.onToggleModule(def.id),
+      },
+      label,
+    );
+  };
+
   return el(
     'div',
     { class: 'panel expedition' },
@@ -265,6 +308,13 @@ export function expeditionScreen(opts: {
     stat(t('expRuns'), String(p.runs)),
     stat(t('expWins'), String(p.wins)),
     opts.dailyBest ? stat(t('expDailyBest'), opts.dailyBest) : null,
+    el('h3', { class: 'exp-section', text: t('expLoadouts') }),
+    el('div', { class: 'btn-row wrap' }, ...LOADOUTS.map(loadoutBtn)),
+    el('h3', {
+      class: 'exp-section',
+      text: `${t('expModules')} (${p.slotted.length}/${MODULE_SLOTS} ${t('expSlots')})`,
+    }),
+    el('div', { class: 'btn-row wrap' }, ...MODULES.map(moduleBtn)),
     el('p', { class: 'exp-daily-note', text: t('expDailyNote') }),
     el(
       'div',

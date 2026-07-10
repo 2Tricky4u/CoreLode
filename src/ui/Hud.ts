@@ -17,6 +17,7 @@ import {
   bayCapacity,
   bayUsed,
   getTile,
+  hasSurveyor,
   isArtifact,
   isBoulder,
   isLava,
@@ -282,7 +283,10 @@ export class Hud {
 
     if (this.showTimer) this.timerNode.textContent = formatTime(s.tick);
     // Minimap redraws at ~6 Hz — the world changes slowly, a full redraw each frame is wasteful.
-    if (this.showMinimap && this.minimapFrame++ % 10 === 0) this.drawMinimap(s);
+    // The expedition surveyor module forces it on regardless of the QoL toggle.
+    const mapOn = this.showMinimap || (exp && hasSurveyor(p));
+    this.minimapNode.classList.toggle('hidden', !mapOn);
+    if (mapOn && this.minimapFrame++ % 10 === 0) this.drawMinimap(s);
   }
 
   /** Depth strip: soil bands + minerals/hazards + the pod's position. Gas draws as soil (fidelity). */

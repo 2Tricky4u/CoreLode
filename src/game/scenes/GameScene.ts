@@ -12,6 +12,7 @@ import {
   WORLD_H,
   WORLD_W,
   getTile,
+  hasSurveyor,
   isArtifact,
   isMineral,
   podDepthFt,
@@ -827,7 +828,9 @@ export class GameScene extends Phaser.Scene {
 
   /** Colour-blind ore glyphs: pooled labels over on-screen minerals only. */
   private updateGlyphs(): void {
-    if (!this.oreGlyphs) return; // pool is hidden by applyFx when toggled off
+    // The expedition surveyor module forces glyphs on (modules are fixed per run).
+    const survey = this.state.mode.kind === 'expedition' && hasSurveyor(this.state.pod);
+    if (!this.oreGlyphs && !survey) return; // pool is hidden by applyFx when toggled off
     const cam = this.cameras.main;
     const x0 = Math.max(0, Math.floor(cam.scrollX / TILE_PX));
     const x1 = Math.min(WORLD_W - 1, Math.ceil((cam.scrollX + cam.width) / TILE_PX));

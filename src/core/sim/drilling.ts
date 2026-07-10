@@ -30,9 +30,11 @@ import {
   type GameState,
   bayCapacity,
   bayUsed,
+  digFuelMult,
   drillSpeed,
   enginePower,
   hasFractalDrill,
+  heatGainMult,
   podTileX,
   podTileY,
 } from './state';
@@ -73,7 +75,10 @@ function breakTile(s: GameState, tx: number, ty: number, out: EventSink): void {
   setTile(s.world, tx, ty, Tile.Air);
   s.stats.tilesDug++;
   if (s.mode.kind === 'expedition')
-    s.pod.heat = Math.min(EXPEDITION.heat.max, s.pod.heat + EXPEDITION.heat.perTileDug);
+    s.pod.heat = Math.min(
+      EXPEDITION.heat.max,
+      s.pod.heat + EXPEDITION.heat.perTileDug * heatGainMult(s.pod),
+    );
   out.push({ t: 'tileCleared', x: tx, y: ty, tile, cause: 'drill' });
 
   if (tile === Tile.Slate) {
@@ -109,7 +114,7 @@ export function stepDrilling(s: GameState, input: IntentFrame, out: EventSink): 
     const job = p.drilling;
     const speed = drillSpeed(p);
     job.traveledPx += speed;
-    p.fuel = Math.max(0, p.fuel - enginePower(p) / PHYSICS.fuelDigDivisor);
+    p.fuel = Math.max(0, p.fuel - (enginePower(p) / PHYSICS.fuelDigDivisor) * digFuelMult(p));
 
     // Move the pod toward the target tile center.
     const cx = (job.targetX + 0.5) * TILE_PX;

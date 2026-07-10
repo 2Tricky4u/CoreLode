@@ -180,6 +180,9 @@ export const defaultLifetime = (): LifetimeRecords => ({
 export interface ExpeditionProfile {
   cores: number;
   unlocked: { loadouts: LoadoutId[]; modules: ModuleId[] };
+  /** Current picks for the next run (re-slotting is free). */
+  loadout: LoadoutId;
+  slotted: ModuleId[];
   bestDepthFt: number;
   runs: number;
   wins: number;
@@ -188,6 +191,8 @@ export interface ExpeditionProfile {
 export const defaultExpeditionProfile = (): ExpeditionProfile => ({
   cores: 0,
   unlocked: { loadouts: ['standard'], modules: [] },
+  loadout: 'standard',
+  slotted: [],
   bestDepthFt: 0,
   runs: 0,
   wins: 0,

@@ -3,7 +3,7 @@ import type { BossAttackKind } from '../data/boss';
 import { type BuildingId, SPAWN_COL } from '../data/buildings';
 import { CHALLENGES, type ChallengeDef, type Objective } from '../data/challenges';
 import { SURFACE_ROW, TILE_PX, WORLD_W } from '../data/constants';
-import type { ExpeditionConfig } from '../data/expedition';
+import { type ExpeditionConfig, LOADOUTS, MODULE_EFFECTS } from '../data/expedition';
 import type { ItemId } from '../data/items';
 import { COLLECTIBLES } from '../data/minerals';
 /** Game state shapes + run construction. Pure data — serializable as-is. */
@@ -175,14 +175,20 @@ export interface GameState {
   victoryRewarded: boolean;
 }
 
+// Expedition modules hook exactly where blueprints do; story pods carry
+// modules: [] so every accessor below is provably unchanged in story mode.
+const hasModule = (p: PodState, id: string): boolean => p.modules.includes(id);
+
 export const maxHull = (p: PodState): number => {
+  const bulk = hasModule(p, 'bulkhead') ? MODULE_EFFECTS.bulkheadHp : 0;
   const bp = p.blueprints.includes('phoenixHull');
-  return bp ? 220 : UPGRADES.hull[p.upgrades.hull].stat;
+  return (bp ? 220 : UPGRADES.hull[p.upgrades.hull].stat) + bulk;
 };
 export const enginePower = (p: PodState): number =>
   p.blueprints.includes('slipstreamEngine') ? 230 : UPGRADES.engine[p.upgrades.engine].stat;
 export const tankCapacity = (p: PodState): number =>
-  p.blueprints.includes('siphonTank') ? 200 : UPGRADES.fuelTank[p.upgrades.fuelTank].stat;
+  (p.blueprints.includes('siphonTank') ? 200 : UPGRADES.fuelTank[p.upgrades.fuelTank].stat) +
+  (hasModule(p, 'auxTank') ? MODULE_EFFECTS.auxTankLiters : 0);
 export const radiatorMult = (p: PodState): number =>
   p.blueprints.includes('magmaTap') ? 0.1 : UPGRADES.radiator[p.upgrades.radiator].stat;
 export const bayCapacity = (p: PodState): number =>
@@ -192,6 +198,15 @@ export const drillSpeed = (p: PodState): number =>
     ? 15
     : UPGRADES.drill[p.upgrades.drill].stat * (DRILL_SPEED_TUNE[p.upgrades.drill] ?? 1);
 export const hasFractalDrill = (p: PodState): boolean => p.blueprints.includes('fractalDrill');
+
+/** Expedition module multipliers (all 1 outside expedition — modules stay empty). */
+export const heatGainMult = (p: PodState): number =>
+  hasModule(p, 'thermalFins') ? MODULE_EFFECTS.thermalFinsHeatMult : 1;
+export const fallDamageMult = (p: PodState): number =>
+  hasModule(p, 'shockAbsorbers') ? MODULE_EFFECTS.shockAbsorbersFallMult : 1;
+export const digFuelMult = (p: PodState): number =>
+  hasModule(p, 'sparkPlug') ? MODULE_EFFECTS.sparkPlugDigFuelMult : 1;
+export const hasSurveyor = (p: PodState): boolean => hasModule(p, 'surveyor');
 
 export const podMass = (p: PodState): number => {
   let m = PHYSICS.baseMass;
@@ -233,6 +248,8 @@ export function createRun(opts: NewRunOptions = {}): GameState {
   // Expedition invariant: the fuel failsafe is part of its balance, always on.
   if (mode.kind === 'expedition') mode.assists = { fuelFailsafe: true };
   const ch = mode.kind === 'challenge' ? CHALLENGES.find((c) => c.id === mode.challengeId) : null;
+  const exp = mode.kind === 'expedition' ? mode.expedition : undefined;
+  const loadout = exp ? LOADOUTS.find((l) => l.id === exp.loadoutId) : undefined;
   // Seed must come from the caller (app layer owns entropy); fixed fallback keeps core pure.
   const seed = ch ? ch.seed : (opts.seed ?? hash32(0x600d, 0xc0de));
   const level = Math.max(1, opts.level ?? 1);
@@ -249,6 +266,7 @@ export function createRun(opts: NewRunOptions = {}): GameState {
     bay: 0,
     ...(opts.carry?.upgrades ?? {}),
     ...(ch?.loadout.upgrades ?? {}),
+    ...(loadout?.upgrades ?? {}),
   };
 
   const pod: PodState = {
@@ -277,7 +295,8 @@ export function createRun(opts: NewRunOptions = {}): GameState {
     nearBuilding: null,
     heat: 0,
     relics: [],
-    modules: [],
+    // Daily runs ignore modules so result codes stay comparable across players.
+    modules: exp && !exp.dateKey ? [...exp.modules] : [],
     lastDamage: null,
   };
   pod.hp = maxHull(pod);

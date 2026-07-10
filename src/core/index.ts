@@ -16,6 +16,7 @@ export {
   drillSpeed,
   radiatorMult,
   challengeDef,
+  hasSurveyor,
   type GameState,
   type PodState,
   type BossState,
@@ -43,9 +44,14 @@ export { TRANSMISSIONS, SKY_EGGS } from './data/story';
 export { STRATA_KEYS, stratumIndexAt } from './data/strata';
 export {
   EXPEDITION,
+  LOADOUTS,
+  MODULES,
+  MODULE_SLOTS,
   coresEarned,
   type ExpeditionConfig,
+  type LoadoutDef,
   type LoadoutId,
+  type ModuleDef,
   type ModuleId,
 } from './data/expedition';
 export { CHALLENGES, type Objective } from './data/challenges';

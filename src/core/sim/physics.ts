@@ -13,7 +13,7 @@ import type { IntentFrame } from '../intents';
 import { clamp } from '../lib/math';
 import { solidAt } from '../world/world';
 import { chainOnDamage } from './chain';
-import { type GameState, enginePower, podMass } from './state';
+import { type GameState, enginePower, fallDamageMult, podMass } from './state';
 
 /** Pod AABB half-extents (px). Slightly smaller than a tile, like the original clip. */
 export const POD_HW = 19;
@@ -145,8 +145,8 @@ export function stepPhysics(s: GameState, input: IntentFrame, out: EventSink): v
     ny = p.y;
     for (let i = 0; i < MAX_SWEEP && !collides(s, p.x, ny + step); i++) ny += step;
     if (p.yVel > 0) {
-      // landing
-      const dmg = fallDamage(p.yVel);
+      // landing (shock-absorber module scales the calibrated formula; ×1 in story)
+      const dmg = Math.floor(fallDamage(p.yVel) * fallDamageMult(p));
       if (dmg > 0) {
         applyDamage(s, dmg, 'fall', out);
         out.push({ t: 'landed', impactVel: p.yVel, damage: dmg });

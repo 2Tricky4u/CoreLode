@@ -4,6 +4,11 @@ import {
   type BuildingId,
   CHALLENGES,
   type GameState,
+  LOADOUTS,
+  type LoadoutId,
+  MODULES,
+  MODULE_SLOTS,
+  type ModuleId,
   type SettingsValues,
   type SimEvent,
   coresEarned,
@@ -292,17 +297,20 @@ export class App {
         dailyBest: daily
           ? `${Math.round(daily.bestDepthFt).toLocaleString('en-US')} ft · $${daily.bestCash.toLocaleString('en-US')} · ${daily.attempts}×`
           : null,
-        onStart: () => this.newExpeditionRun(false),
-        onDaily: () => this.newExpeditionRun(true),
+        onStart: () => void this.newExpeditionRun(false),
+        onDaily: () => void this.newExpeditionRun(true),
         onCopyResult: () => void this.copyDailyResult(),
         onPasteResult: () => void this.compareDailyResult(),
         onResume: () => void this.resumeExpedition(),
         onBack: () => void this.showTitle(),
+        onPickLoadout: (id) => void this.pickLoadout(id),
+        onToggleModule: (id) => void this.toggleModule(id),
       }),
     );
   }
 
-  private newExpeditionRun(daily: boolean): void {
+  private async newExpeditionRun(daily: boolean): Promise<void> {
+    const profile = await storage.readExpeditionProfile();
     const dateKey = daily ? dailyKey(new Date()) : undefined;
     this.beginRun(
       createRun({
@@ -311,10 +319,58 @@ export class App {
         mode: {
           kind: 'expedition',
           goldium: true,
-          expedition: { dateKey, loadoutId: 'standard', modules: [] },
+          expedition: {
+            dateKey,
+            loadoutId: daily ? 'standard' : profile.loadout,
+            modules: daily ? [] : [...profile.slotted],
+          },
         },
       }),
     );
+  }
+
+  /** Unlock (with cores) or select a starting rig. */
+  private async pickLoadout(id: LoadoutId): Promise<void> {
+    const profile = await storage.readExpeditionProfile();
+    const def = LOADOUTS.find((l) => l.id === id);
+    if (!def) return;
+    if (!profile.unlocked.loadouts.includes(id)) {
+      if (profile.cores < def.cost) {
+        this.ui.toast(t('expNotEnoughCores'));
+        return;
+      }
+      profile.cores -= def.cost;
+      profile.unlocked.loadouts.push(id);
+      this.audio.play('buy');
+    }
+    profile.loadout = id;
+    await storage.writeExpeditionProfile(profile);
+    void this.showExpedition();
+  }
+
+  /** Unlock (with cores), slot, or unslot a module — re-slotting is free. */
+  private async toggleModule(id: ModuleId): Promise<void> {
+    const profile = await storage.readExpeditionProfile();
+    const def = MODULES.find((m) => m.id === id);
+    if (!def) return;
+    if (!profile.unlocked.modules.includes(id)) {
+      if (profile.cores < def.cost) {
+        this.ui.toast(t('expNotEnoughCores'));
+        return;
+      }
+      profile.cores -= def.cost;
+      profile.unlocked.modules.push(id);
+      this.audio.play('buy');
+      if (profile.slotted.length < MODULE_SLOTS) profile.slotted.push(id); // auto-slot
+    } else if (profile.slotted.includes(id)) {
+      profile.slotted = profile.slotted.filter((m) => m !== id);
+    } else if (profile.slotted.length < MODULE_SLOTS) {
+      profile.slotted.push(id);
+    } else {
+      this.ui.toast(`${MODULE_SLOTS} ${t('expSlots')} max — unslot one first`);
+    }
+    await storage.writeExpeditionProfile(profile);
+    void this.showExpedition();
   }
 
   private async copyDailyResult(): Promise<void> {

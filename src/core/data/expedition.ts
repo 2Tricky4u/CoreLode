@@ -3,6 +3,8 @@
  * generator itself is untouched), heat pressure, contracts, and a "drive cores"
  * meta-economy. Every number here is remake tuning, never calibration data.
  */
+import type { UpgradeCategory } from './upgrades';
+
 export type LoadoutId = 'standard' | 'heavyRig' | 'prospector';
 export type ModuleId =
   | 'thermalFins'
@@ -54,6 +56,51 @@ export const EXPEDITION = {
     maxBankPct: 50,
     timeoutTicks: 840, // 20 s of no pickups gently banks instead of voiding
   },
+} as const;
+
+/** Starting rigs, unlocked once with cores, then free to pick per run. */
+export interface LoadoutDef {
+  id: LoadoutId;
+  key: string; // strings.ts name/blurb lookup
+  cost: number; // cores, one-time unlock
+  upgrades: Partial<Record<UpgradeCategory, number>>; // tier overrides
+}
+
+export const LOADOUTS: readonly LoadoutDef[] = [
+  { id: 'standard', key: 'loStandard', cost: 0, upgrades: {} },
+  { id: 'heavyRig', key: 'loHeavyRig', cost: 20, upgrades: { hull: 2, radiator: 2 } },
+  { id: 'prospector', key: 'loProspector', cost: 30, upgrades: { drill: 2, engine: 1 } },
+];
+
+/**
+ * Modules — the SteamWorld Dig 2 "cogs" lesson: buy once with cores, re-slot
+ * freely between runs (experimentation is free), MODULE_SLOTS at a time.
+ * Daily runs ignore modules so result codes stay comparable.
+ */
+export interface ModuleDef {
+  id: ModuleId;
+  key: string; // strings.ts name/blurb lookup
+  cost: number; // cores, one-time unlock
+}
+
+export const MODULE_SLOTS = 2;
+
+export const MODULES: readonly ModuleDef[] = [
+  { id: 'thermalFins', key: 'mdThermalFins', cost: 10 },
+  { id: 'auxTank', key: 'mdAuxTank', cost: 10 },
+  { id: 'shockAbsorbers', key: 'mdShockAbsorbers', cost: 12 },
+  { id: 'bulkhead', key: 'mdBulkhead', cost: 12 },
+  { id: 'sparkPlug', key: 'mdSparkPlug', cost: 15 },
+  { id: 'surveyor', key: 'mdSurveyor', cost: 8 },
+];
+
+export const MODULE_EFFECTS = {
+  thermalFinsHeatMult: 0.75,
+  auxTankLiters: 15,
+  shockAbsorbersFallMult: 0.7,
+  bulkheadHp: 20,
+  sparkPlugDigFuelMult: 0.85,
+  // surveyor is presentation-only: forces the minimap + ore glyphs on.
 } as const;
 
 /** Drive cores banked by a finished run (win or wreck — depth always pays). */

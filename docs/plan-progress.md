@@ -28,7 +28,7 @@ possible, and continue; otherwise stop.
 
 ## Phase 3 — Expedition content
 
-- [ ] [C15] Loadouts + re-slottable modules (cores economy)
+- [x] [C15] Loadouts + re-slottable modules (cores economy)
 - [ ] [C16] Relic pool + depth-milestone offers + `chooseRelic` command + modal
 - [ ] [C17] Story objectives panel (informational, QoL toggle)
 - [ ] [C18] Magmite critters (expedition sim) + CritterView
