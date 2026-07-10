@@ -12,8 +12,8 @@ import { UPGRADES, type UpgradeCategory } from '../data/upgrades';
 import type { DamageCause } from '../events';
 import { Rng, hash32 } from '../lib/rng';
 import { applyMaze } from '../world/mazes';
-import { generateContracts } from './contracts';
 import { type WorldState, createWorld } from '../world/world';
+import { generateContracts } from './contracts';
 
 export type PodMode = 'air' | 'ground' | 'dig';
 export type Region = 'sky' | 'surface' | 'underground' | 'arena';

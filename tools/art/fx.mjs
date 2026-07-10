@@ -142,7 +142,7 @@ export function biteFrames() {
       }
       // Hairline cracks wandering on from the notch rim.
       for (const i of cracks.slice(0, 2 + stage)) {
-        let a = face === 'down' ? Math.PI / 2 + (i < 0 ? 0.5 : -0.5) : (i < 0 ? -0.4 : 0.4);
+        let a = face === 'down' ? Math.PI / 2 + (i < 0 ? 0.5 : -0.5) : i < 0 ? -0.4 : 0.4;
         let x = face === 'down' ? 25 + i : depth;
         let y = face === 'down' ? depth : 25 + i;
         for (let d = 0; d < 6 + stage * 3; d++) {

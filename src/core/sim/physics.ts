@@ -11,8 +11,8 @@ import { GUARDIAN_DAMAGE_FACTOR } from '../data/story';
 import type { DamageCause, EventSink } from '../events';
 import type { IntentFrame } from '../intents';
 import { clamp } from '../lib/math';
-import { chainOnDamage } from './chain';
 import { solidAt } from '../world/world';
+import { chainOnDamage } from './chain';
 import { type GameState, enginePower, podMass } from './state';
 
 /** Pod AABB half-extents (px). Slightly smaller than a tile, like the original clip. */

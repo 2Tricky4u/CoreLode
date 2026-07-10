@@ -183,8 +183,10 @@ export const STRINGS: Record<string, string> = {
   tipGas: 'Tip: gas pockets hide in plain soil, and they hit harder the deeper you are.',
   tipBlast: 'Tip: explosives ignite where you stand. Drop the charge, then leave.',
   tipBoss: 'Tip: only explosives wound what lives down there. Stock up before descending.',
-  tipTeleport: 'Tip: the discount teleporter drops you from a random height. You get what you pay for.',
-  tipFuel: 'Tip: the deepest loot tempts, but the tank decides. Turn back at half — or carry reserves.',
+  tipTeleport:
+    'Tip: the discount teleporter drops you from a random height. You get what you pay for.',
+  tipFuel:
+    'Tip: the deepest loot tempts, but the tank decides. Turn back at half — or carry reserves.',
   tipHeat: 'Tip: depth cooks the pod. Surface to vent, refuel to flush coolant, or buy radiators.',
   // First-encounter hazard log (one toast per cause, ever).
   hazardFall: 'LOG — Hard landing: falls above a gentle drop damage the hull.',

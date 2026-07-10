@@ -1,8 +1,8 @@
 import { ASSIST } from '../data/assists';
 import { BOSS } from '../data/boss';
-import { EXPEDITION } from '../data/expedition';
 import { SPAWN_COL } from '../data/buildings';
 import { PX_PER_FT, SURFACE_ROW, TILE_PX } from '../data/constants';
+import { EXPEDITION } from '../data/expedition';
 /**
  * Consumable activation — original rules: 5-frame cooldown, ground-only for
  * explosives/teleporters, refuel/repair usable anytime and min-capped.

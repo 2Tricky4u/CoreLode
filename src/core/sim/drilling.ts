@@ -2,7 +2,6 @@ import { BLUEPRINTS } from '../data/blueprints';
 import { TILE_PX } from '../data/constants';
 import { pointsMod } from '../data/difficulty';
 import { EXPEDITION } from '../data/expedition';
-import { chainOnCollect } from './chain';
 import { COLLECTIBLES, DIRT_POINTS, POINTS_TILE_CAP, POINTS_VALUE_MULT } from '../data/minerals';
 /**
  * Drilling — original rules: hold a direction into diggable ground for >5 frames
@@ -24,6 +23,7 @@ import {
   isSolid,
 } from '../world/tiles';
 import { getTile, setTile } from '../world/world';
+import { chainOnCollect } from './chain';
 import { applyGasPocket, applyLavaHit } from './hazards';
 import { groundedAt } from './physics';
 import {

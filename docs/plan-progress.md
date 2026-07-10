@@ -24,7 +24,7 @@ possible, and continue; otherwise stop.
 - [x] [C11] Chain/combo system (sim + juice; expedition-only payout)
 - [x] [C12] Daily seed + local daily records + CLDR1 share codes
 - [x] [C13] Objective refactor (`objectiveMet`) + expedition contracts
-- [ ] [C14] Phase 2 gate: full regression incl. expedition determinism hash
+- [x] [C14] Phase 2 gate: full regression incl. expedition determinism hash
 
 ## Phase 3 — Expedition content
 

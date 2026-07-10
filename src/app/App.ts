@@ -12,9 +12,9 @@ import {
   dailySeed,
   decodeDailyResult,
   defaultSettings,
-  encodeDailyResult,
   deserialize,
   effectiveSettings,
+  encodeDailyResult,
   serialize,
 } from '@core/index';
 import { decodeSave, encodeSave } from '@core/save/codec';
@@ -346,7 +346,10 @@ export class App {
       const fmt = (d: number, c: number) =>
         `${Math.round(d).toLocaleString('en-US')} ft · $${c.toLocaleString('en-US')}`;
       const mineLine = mine ? fmt(mine.bestDepthFt, mine.bestCash) : '(no run that day)';
-      this.ui.toast(`${theirs.date} — THEM ${fmt(theirs.depthFt, theirs.cash)} · YOU ${mineLine}`, 7000);
+      this.ui.toast(
+        `${theirs.date} — THEM ${fmt(theirs.depthFt, theirs.cash)} · YOU ${mineLine}`,
+        7000,
+      );
     } catch {
       this.ui.toast(t('expBadCode'));
     }

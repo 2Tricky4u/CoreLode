@@ -232,9 +232,7 @@ describe('contracts', () => {
 
   it('expedition runs start with contracts; story runs have none', () => {
     expect(expRun(1234).contracts).toHaveLength(3);
-    expect(createRun({ seed: 1234, mode: { kind: 'story', goldium: true } }).contracts).toEqual(
-      [],
-    );
+    expect(createRun({ seed: 1234, mode: { kind: 'story', goldium: true } }).contracts).toEqual([]);
   });
 
   it('pays out once when the objective is met', () => {
