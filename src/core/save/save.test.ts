@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import v1Fixture from '../../../tests/fixtures/saves/v1.json';
+import type { SimEvent } from '../events';
 import { EMPTY_INTENTS } from '../intents';
 import { createRun } from '../sim/state';
 import { tick } from '../sim/tick';
+import { Tile } from '../world/tiles';
+import { getTile } from '../world/world';
 import { decodeSave, encodeSave } from './codec';
 import { SaveError, migrateAndValidate } from './migrate';
 import { type SaveFile, deserialize, rleDecode, rleEncode, serialize } from './schema';
@@ -42,6 +45,26 @@ describe('serialize/deserialize', () => {
       true,
     );
     expect(back.rng.state).toBe(s.rng.state);
+  });
+});
+
+describe('dug tunnels persist across save/load', () => {
+  it('every tile cleared mid-run is still air after a round-trip, and the run resumes', () => {
+    const s = createRun({ seed: 777, mode: { kind: 'story', goldium: true } });
+    const cleared: Array<{ x: number; y: number }> = [];
+    for (let i = 0; i < 420; i++) {
+      const sink: SimEvent[] = [];
+      tick(s, { ...EMPTY_INTENTS, down: true }, sink);
+      for (const e of sink) if (e.t === 'tileCleared') cleared.push({ x: e.x, y: e.y });
+    }
+    expect(cleared.length).toBeGreaterThan(3); // the run actually carved a shaft
+    const back = deserialize(migrateAndValidate(JSON.parse(JSON.stringify(serialize(s, 0)))));
+    for (const c of cleared) expect(getTile(back.world, c.x, c.y)).toBe(Tile.Air);
+    expect(Buffer.from(back.world.tiles.buffer).equals(Buffer.from(s.world.tiles.buffer))).toBe(
+      true,
+    );
+    for (let i = 0; i < 100; i++) tick(back, EMPTY_INTENTS, []);
+    expect(back.outcome).toBe('active');
   });
 });
 

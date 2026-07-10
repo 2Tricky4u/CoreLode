@@ -9,7 +9,7 @@ possible, and continue; otherwise stop.
 ## Phase 1 — Foundation + story-safe quick wins
 
 - [x] [C1] Save schema v2 + migration + frozen v1 fixture (`tests/fixtures/saves/v1.json`)
-- [ ] [C2] Dug-tunnel round-trip regression test + autosave onboarding toast
+- [x] [C2] Dug-tunnel round-trip regression test (onboarding toast moved to C5 — needs lifetime store)
 - [ ] [C3] Fuel failsafe assist (rescue tow), setting + `rescue` event + tests
 - [ ] [C4] Implement declared blueprint effects: phoenixHull regen, slipstream free recall
 - [ ] [C5] Strata names + run-summary stats + lifetime records store
@@ -44,4 +44,5 @@ possible, and continue; otherwise stop.
 
 ## Notes / decisions log
 
-(append entries here as work proceeds)
+- C2: the autosave-onboarding toast depends on the lifetime-records store that C5 introduces,
+  so that half ships with C5. C2 is the persistence regression test only.
