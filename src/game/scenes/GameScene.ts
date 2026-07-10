@@ -14,6 +14,7 @@ import {
   getTile,
   hasSurveyor,
   isArtifact,
+  isBoulder,
   isMineral,
   podDepthFt,
   saleValue,
@@ -83,6 +84,8 @@ export class GameScene extends Phaser.Scene {
   private chargeSprites: Phaser.GameObjects.Sprite[] = [];
   private crackSprite!: Phaser.GameObjects.Sprite;
   private digFxTimer = 0;
+  /** Face of the block currently being drilled (held visually until dig end). */
+  private digHoldTile: number = Tile.Air;
   private guardianSprite: Phaser.GameObjects.Sprite | null = null;
   private guardianHalo: Phaser.GameObjects.Image | null = null;
   private screenShake = true;
@@ -669,10 +672,15 @@ export class GameScene extends Phaser.Scene {
 
     // --- drilling feedback: hole being carved, straining loop pitch, chip spray ---
     const job = s.pod.drilling;
-    if (job && !job.broken) {
-      // The notch eats into the tile from the drilled face until it gives way
-      // at digBreakAtPx (top entry leaves the block reading as a U).
-      const bite = Math.min(1, job.traveledPx / PHYSICS.digBreakAtPx);
+    if (job) {
+      // The sim clears the cell early (authentic 15 px break), but the block
+      // must READ solid for the whole dig: hold its face in the renderer and
+      // pace the bite notch across the full traversal, so the hole opens up
+      // exactly when the drilling time ends — at any drill speed.
+      if (!job.broken) this.digHoldTile = getTile(s.world, job.targetX, job.targetY);
+      if (this.digHoldTile !== Tile.Air)
+        this.tiles.holdCell(job.targetX, job.targetY, this.digHoldTile);
+      const bite = Math.min(1, job.traveledPx / PHYSICS.digDonePx);
       this.crackSprite
         .setPosition((job.targetX + 0.5) * TILE_PX, (job.targetY + 0.5) * TILE_PX)
         .setFrame(
@@ -681,6 +689,7 @@ export class GameScene extends Phaser.Scene {
         .setFlipX(job.dir === 'left') // side frames enter from the left face
         .setVisible(true);
     } else {
+      this.tiles.releaseHold();
       this.crackSprite.setVisible(false);
     }
     if (job) {
@@ -767,6 +776,13 @@ export class GameScene extends Phaser.Scene {
   private updateCorners(): void {
     const cam = this.cameras.main;
     const w = this.state.world;
+    // The cell being drilled is visually held solid until the dig ends —
+    // sample it as its held face so wedges/lumps don't bloom around it early.
+    const job = this.state.pod.drilling;
+    const holdX = job && this.digHoldTile !== Tile.Air ? job.targetX : -1;
+    const holdY = job && this.digHoldTile !== Tile.Air ? job.targetY : -1;
+    const tileAt = (x: number, y: number): number =>
+      x === holdX && y === holdY ? this.digHoldTile : getTile(w, x, y);
     const R = 14; // full wedge size
     const R2 = 7; // soft inner-corner wedge size
     const x0 = Math.max(1, Math.floor(cam.scrollX / TILE_PX));
@@ -779,18 +795,24 @@ export class GameScene extends Phaser.Scene {
       const band = bandAt(cy);
       for (let cx = x0; cx <= x1; cx++) {
         // Quadrants around the grid corner point (cx,cy): bit i set = solid.
+        // Boulders are tracked separately: undrillable stone must keep its
+        // hard machined silhouette — no rounding, no concave smoothing.
         let solidMask = 0;
+        let boulderMask = 0;
         let solidCount = 0;
         for (let i = 0; i < 4; i++) {
-          if (getTile(w, cx - 1 + (i & 1), cy - 1 + (i >> 1)) !== Tile.Air) {
+          const qt = tileAt(cx - 1 + (i & 1), cy - 1 + (i >> 1));
+          if (qt !== Tile.Air) {
             solidMask |= 1 << i;
             solidCount++;
+            if (isBoulder(qt)) boulderMask |= 1 << i;
           }
         }
         if (solidCount === 0 || solidCount === 4) continue;
         if (solidCount === 1) {
           // Lone solid corner (pillar/inner turn): round the square's OWN tip —
           // a cave-colored wedge over the tile corner cuts it round in place.
+          if (solidMask & boulderMask) continue; // boulders stay square
           const j = [1, 2, 4, 8].indexOf(solidMask); // the solid quadrant itself
           const img = this.cornerAt(n++);
           img.setFrame('cornerCut');
@@ -802,6 +824,9 @@ export class GameScene extends Phaser.Scene {
         for (let i = 0; i < 4; i++) {
           if (solidMask & (1 << i)) continue; // must be air
           if (!(solidMask & (1 << (i ^ 1))) || !(solidMask & (1 << (i ^ 2)))) continue;
+          // The wedge visually extends the two solids flanking the air corner —
+          // if either is a boulder, smoothing would soften its edge: skip.
+          if (boulderMask & ((1 << (i ^ 1)) | (1 << (i ^ 2)))) continue;
           const img = this.cornerAt(n++);
           img.setFrame(`cornerRound_p${band}`);
           img.setPosition(cx * TILE_PX - (i & 1 ? 0 : R), cy * TILE_PX - (i & 2 ? 0 : R));
@@ -823,11 +848,13 @@ export class GameScene extends Phaser.Scene {
     for (let ty = y0; ty <= y1; ty++) {
       const band = bandAt(ty);
       for (let tx = tx0; tx <= tx1; tx++) {
-        if (getTile(w, tx, ty) !== Tile.Air) continue;
+        if (tileAt(tx, ty) !== Tile.Air) continue;
         for (let side = 0; side < 4; side++) {
           const nx = tx + (side === 2 ? -1 : side === 3 ? 1 : 0);
           const ny = ty + (side === 0 ? -1 : side === 1 ? 1 : 0);
-          if (getTile(w, nx, ny) === Tile.Air) continue;
+          const wall = tileAt(nx, ny);
+          if (wall === Tile.Air) continue;
+          if (isBoulder(wall)) continue; // soil lumps never grow on machined stone
           const h = ((tx * 73856093) ^ (ty * 19349663) ^ ((side + 1) * 83492791)) >>> 0;
           if (h % 100 >= 68) continue; // ~68% of wall faces get one lump
           const v = LUMP_PICK[h % LUMP_PICK.length];

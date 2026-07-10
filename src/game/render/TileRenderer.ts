@@ -39,6 +39,8 @@ export class TileRenderer {
   private overlay!: Phaser.Tilemaps.TilemapLayer;
   private meta!: TilesetMeta;
   private gasHint = false;
+  /** Cell kept visually solid while the drill eats through it (sim clears early). */
+  private hold: { x: number; y: number; tile: number } | null = null;
   /** Animated cells, keyed y*W+x (values = tile coords). Rebuilt on repaint. */
   private lavaCells = new Map<number, { x: number; y: number }>();
   private gasCells = new Map<number, { x: number; y: number }>();
@@ -65,6 +67,27 @@ export class TileRenderer {
 
   setGasHint(on: boolean): void {
     this.gasHint = on;
+  }
+
+  /**
+   * Keep painting `tile` at (x,y) although the sim already cleared the cell —
+   * the block must read solid until the drill is through (the sim breaks it
+   * at the authentic 15 px point, well before the 40 px traversal ends).
+   * The collectible overlay is dropped while held: the gem pops early with
+   * the collect event; the remaining rock keeps grinding away.
+   */
+  holdCell(x: number, y: number, tile: number): void {
+    if (this.hold && this.hold.x === x && this.hold.y === y && this.hold.tile === tile) return;
+    this.releaseHold();
+    this.hold = { x, y, tile };
+    this.paint(x, y);
+  }
+
+  releaseHold(): void {
+    if (!this.hold) return;
+    const { x, y } = this.hold;
+    this.hold = null;
+    this.paint(x, y);
   }
 
   /** Advance the lava/gas animation one phase (call ~6×/second). */
@@ -112,7 +135,8 @@ export class TileRenderer {
   }
 
   paint(x: number, y: number): void {
-    const t = getTile(this.state.world, x, y);
+    const held = this.hold !== null && this.hold.x === x && this.hold.y === y;
+    const t = held && this.hold ? this.hold.tile : getTile(this.state.world, x, y);
     const key = y * WORLD_W + x;
     if (isLava(t)) this.lavaCells.set(key, { x, y });
     else this.lavaCells.delete(key);
@@ -122,7 +146,7 @@ export class TileRenderer {
     const ix = this.frameFor(t, x, y);
     if (ix < 0) this.base.removeTileAt(x, y);
     else this.base.putTileAt(ix, x, y);
-    const ov = this.overlayFor(t, x, y);
+    const ov = held ? -1 : this.overlayFor(t, x, y);
     if (ov < 0) this.overlay.removeTileAt(x, y);
     else this.overlay.putTileAt(ov, x, y);
   }
