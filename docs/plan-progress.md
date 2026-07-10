@@ -8,7 +8,7 @@ possible, and continue; otherwise stop.
 
 ## Phase 1 — Foundation + story-safe quick wins
 
-- [ ] [C1] Save schema v2 + migration + frozen v1 fixture (`tests/fixtures/saves/v1.json`)
+- [x] [C1] Save schema v2 + migration + frozen v1 fixture (`tests/fixtures/saves/v1.json`)
 - [ ] [C2] Dug-tunnel round-trip regression test + autosave onboarding toast
 - [ ] [C3] Fuel failsafe assist (rescue tow), setting + `rescue` event + tests
 - [ ] [C4] Implement declared blueprint effects: phoenixHull regen, slipstream free recall

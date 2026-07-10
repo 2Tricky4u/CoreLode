@@ -1,13 +1,14 @@
 import type { BlueprintId } from '../data/blueprints';
 import type { BossAttackKind } from '../data/boss';
 import { type BuildingId, SPAWN_COL } from '../data/buildings';
-import { CHALLENGES, type ChallengeDef } from '../data/challenges';
+import { CHALLENGES, type ChallengeDef, type Objective } from '../data/challenges';
 import { SURFACE_ROW, TILE_PX, WORLD_W } from '../data/constants';
 import type { ItemId } from '../data/items';
 import { COLLECTIBLES } from '../data/minerals';
 /** Game state shapes + run construction. Pure data — serializable as-is. */
 import { DRILL_SPEED_TUNE, PHYSICS } from '../data/physics';
 import { UPGRADES, type UpgradeCategory } from '../data/upgrades';
+import type { DamageCause } from '../events';
 import { Rng, hash32 } from '../lib/rng';
 import { applyMaze } from '../world/mazes';
 import { type WorldState, createWorld } from '../world/world';
@@ -52,6 +53,14 @@ export interface PodState {
   lavaLatch: number; // ticks until lava can damage again
   /** Building the pod is currently standing on (drives the "press E" prompt). */
   nearBuilding: BuildingId | null;
+  /** Expedition heat, 0–100+. Always 0 in story/challenge (stepHeat is expedition-gated). */
+  heat: number;
+  /** Expedition relic ids. Always empty outside expedition (ids narrowed in data/relics.ts). */
+  relics: string[];
+  /** Expedition module ids. Always empty outside expedition (ids narrowed in data/expedition.ts). */
+  modules: string[];
+  /** Most recent damage taken — lets the app explain a death cause. */
+  lastDamage: { cause: DamageCause; atTick: number } | null;
 }
 
 export interface BossState {
@@ -100,6 +109,26 @@ export interface ModeConfig {
   kind: 'story' | 'challenge';
   challengeId?: string;
   goldium: boolean; // Goldium features on (blueprints buried, challenges menu)
+  /**
+   * Assist options frozen into the run at creation (never read live from settings —
+   * keeps replays deterministic and "was this run assisted?" answerable from the save).
+   */
+  assists?: { fuelFailsafe: boolean };
+}
+
+/** Same-mineral collect streak; bankPct pays out at the processor (expedition only). */
+export interface ChainState {
+  id: number; // COLLECTIBLES index being chained
+  count: number;
+  bankPct: number; // banked sale bonus, 0–50
+  lastCollectTick: number;
+}
+
+/** An expedition side-goal (reuses the challenge Objective vocabulary). */
+export interface ContractState {
+  objective: Objective;
+  rewardCash: number;
+  done: boolean;
 }
 
 export interface RunStats {
@@ -113,6 +142,8 @@ export interface RunStats {
   biggestSaleMass: number;
   exitReached: boolean;
   soldCount: number[]; // per COLLECTIBLES index
+  bestChain: number; // longest same-mineral chain this run
+  rescues: number; // fuel-failsafe tows used
 }
 
 export interface GameState {
@@ -128,6 +159,10 @@ export interface GameState {
   charges: Charge[];
   story: StoryState;
   stats: RunStats;
+  /** Active collect chain (tracker runs in all modes; only expedition pays it out). */
+  chain: ChainState | null;
+  /** Expedition contracts; always empty in story/challenge. */
+  contracts: ContractState[];
   outcome: Outcome;
   challengeEndTick: number; // 0 unless challenge mode
   /** Set once when the run ends victorious — drops granted flag. */
@@ -232,6 +267,10 @@ export function createRun(opts: NewRunOptions = {}): GameState {
     guardian: false,
     lavaLatch: 0,
     nearBuilding: null,
+    heat: 0,
+    relics: [],
+    modules: [],
+    lastDamage: null,
   };
   pod.hp = maxHull(pod);
   pod.fuel = Math.min(pod.fuel, tankCapacity(pod));
@@ -262,7 +301,11 @@ export function createRun(opts: NewRunOptions = {}): GameState {
       biggestSaleMass: 0,
       exitReached: false,
       soldCount: new Array(COLLECTIBLES.length).fill(0),
+      bestChain: 0,
+      rescues: 0,
     },
+    chain: null,
+    contracts: [],
     outcome: 'active',
     challengeEndTick: ch ? ch.timeLimitTicks : 0,
     victoryRewarded: false,

@@ -9,7 +9,22 @@ type Migration = (raw: Record<string, unknown>) => Record<string, unknown>;
 
 /** v(n) → v(n+1) steps, keyed by source version. */
 const MIGRATIONS: Record<number, Migration> = {
-  // 1: (raw) => ({ ...raw, v: 2, newField: defaultValue }),
+  // v2: heat/relics/modules/lastDamage on pod, chain/contracts on the file,
+  // bestChain/rescues in stats (all inert defaults for a v1 story run).
+  1: (raw) => ({
+    ...raw,
+    v: 2,
+    pod: {
+      ...(raw.pod as Record<string, unknown>),
+      heat: 0,
+      relics: [],
+      modules: [],
+      lastDamage: null,
+    },
+    stats: { ...(raw.stats as Record<string, unknown>), bestChain: 0, rescues: 0 },
+    chain: null,
+    contracts: [],
+  }),
 };
 
 export class SaveError extends Error {}
@@ -51,6 +66,11 @@ function validate(f: Record<string, unknown>): void {
     req(typeof pod[k] === 'number', `pod.${k}`);
   req(typeof pod.upgrades === 'object' && pod.upgrades !== null, 'pod.upgrades');
   req(Array.isArray(pod.bayContents), 'pod.bayContents');
+  req(typeof pod.heat === 'number', 'pod.heat');
+  req(Array.isArray(pod.relics), 'pod.relics');
+  req(Array.isArray(pod.modules), 'pod.modules');
   const story = f.story as Record<string, unknown>;
   req(typeof story === 'object' && story !== null && Array.isArray(story.fired), 'story');
+  req(f.chain === null || (typeof f.chain === 'object' && f.chain !== null), 'chain');
+  req(Array.isArray(f.contracts), 'contracts');
 }

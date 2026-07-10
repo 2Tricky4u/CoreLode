@@ -9,10 +9,11 @@ import { COLLECTIBLES } from '../data/minerals';
  * Pure serialization only; storage/IndexedDB lives in the platform layer.
  */
 import type { UpgradeCategory } from '../data/upgrades';
+import type { DamageCause } from '../events';
 import { Rng } from '../lib/rng';
-import type { GameState, ModeConfig, RunStats } from '../sim/state';
+import type { ChainState, ContractState, GameState, ModeConfig, RunStats } from '../sim/state';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export interface SaveFile {
   v: number;
@@ -37,9 +38,15 @@ export interface SaveFile {
     bayContents: number[];
     inventory: Partial<Record<ItemId, number>>;
     guardian: boolean;
+    heat: number;
+    relics: string[];
+    modules: string[];
+    lastDamage: { cause: DamageCause; atTick: number } | null;
   };
   story: { fired: string[]; maxDepthFt: number; maxAltFt: number; nextQuakeTick: number };
   stats: RunStats;
+  chain: ChainState | null;
+  contracts: ContractState[];
 }
 
 export function rleEncode(tiles: Uint16Array): number[] {
@@ -94,6 +101,10 @@ export function serialize(s: GameState, updatedAt: number): SaveFile {
       bayContents: [...s.pod.bayContents],
       inventory: { ...s.pod.inventory },
       guardian: s.pod.guardian,
+      heat: s.pod.heat,
+      relics: [...s.pod.relics],
+      modules: [...s.pod.modules],
+      lastDamage: s.pod.lastDamage ? { ...s.pod.lastDamage } : null,
     },
     story: {
       fired: [...s.story.fired],
@@ -102,6 +113,8 @@ export function serialize(s: GameState, updatedAt: number): SaveFile {
       nextQuakeTick: s.story.nextQuakeTick,
     },
     stats: { ...s.stats, soldCount: [...s.stats.soldCount] },
+    chain: s.chain ? { ...s.chain } : null,
+    contracts: s.contracts.map((c) => ({ ...c, objective: { ...c.objective } })),
   };
 }
 
@@ -141,6 +154,10 @@ export function deserialize(f: SaveFile): GameState {
       guardian: f.pod.guardian,
       lavaLatch: 0,
       nearBuilding: null,
+      heat: f.pod.heat,
+      relics: f.pod.relics,
+      modules: f.pod.modules,
+      lastDamage: f.pod.lastDamage,
     },
     boss: null,
     projectiles: [],
@@ -153,6 +170,8 @@ export function deserialize(f: SaveFile): GameState {
       nextQuakeTick: f.story.nextQuakeTick,
     },
     stats: f.stats,
+    chain: f.chain,
+    contracts: f.contracts,
     outcome: 'active',
     challengeEndTick: 0,
     victoryRewarded: false,
