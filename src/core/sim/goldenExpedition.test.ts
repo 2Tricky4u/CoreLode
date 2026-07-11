@@ -74,8 +74,9 @@ function playGolden(): GameState {
   for (let i = 0; i < GOLDEN_TICKS; i++) {
     tick(s, [{ ...EMPTY_INTENTS, ...script[Math.floor(i / 30) % script.length] }], []);
     // Scripted relic picks: always the first pending choice, at fixed ticks.
-    if ((i === 300 || i === 600) && s.pendingRelicChoices) {
-      applyCommand(s, { c: 'chooseRelic', id: s.pendingRelicChoices[0] }, 0, []);
+    const offer = s.pendingRelicChoices[0];
+    if ((i === 300 || i === 600) && offer) {
+      applyCommand(s, { c: 'chooseRelic', id: offer[0] }, 0, []);
     }
     // Scripted sale mid-run: banks the chain vault into the wallet.
     if (i === 2_000) applyCommand(s, { c: 'sellAllCargo' }, 0, []);
@@ -103,7 +104,7 @@ describe('golden solo expedition replay (remake-tuning contract)', () => {
       s.pod.relics.length,
       s.pod.chain?.count ?? -1,
       s.pod.chain?.bankPct ?? -1,
-      s.pendingRelicChoices?.length ?? -1,
+      s.pendingRelicChoices[0]?.length ?? -1,
       s.contracts.filter((c) => c.done).length,
       s.critters.length,
       s.stats.tilesDug,

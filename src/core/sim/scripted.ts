@@ -36,6 +36,7 @@ export function stepScripted(s: GameState, out: EventSink): void {
     const q = s.pods[i];
     if (!podAlive(q)) continue;
     const depth = podDepthFt(q);
+    if (depth < q.maxDepthFt) q.maxDepthFt = depth; // pod 0's ≡ story.maxDepthFt in solo
     if (depth < s.story.maxDepthFt) s.story.maxDepthFt = depth;
     if (depth > s.story.maxAltFt) {
       s.story.maxAltFt = depth;

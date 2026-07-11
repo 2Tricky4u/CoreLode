@@ -62,6 +62,8 @@ export interface PodState {
   heatWarn: number;
   /** Expedition collect chain — this pod's running combo and banked vault. */
   chain: ChainState | null;
+  /** This pod's own deepest point (ft, negative) — relic milestones key on it. */
+  maxDepthFt: number;
   /** Expedition relic ids. Always empty outside expedition (ids narrowed in data/relics.ts). */
   relics: string[];
   /** Expedition module ids. Always empty outside expedition (ids narrowed in data/expedition.ts). */
@@ -200,7 +202,8 @@ export interface GameState {
   challengeEndTick: number; // 0 unless challenge mode
   /** Latched heat-warning tier (0/1/2) — transient, resets on load. */
   /** Relic ids offered and awaiting a chooseRelic command — transient. */
-  pendingRelicChoices: string[] | null;
+  /** Pending relic offers, indexed by player (transient — latch is durable). */
+  pendingRelicChoices: Array<string[] | null>;
   /** Set once when the run ends victorious — drops granted flag. */
   victoryRewarded: boolean;
 }
@@ -345,6 +348,7 @@ export function createRun(opts: NewRunOptions = {}): GameState {
       heat: 0,
       heatWarn: 0,
       chain: null,
+      maxDepthFt: 0,
       relics: [],
       // Daily runs ignore modules so result codes stay comparable across players.
       modules: exp && !exp.dateKey ? [...exp.modules] : [],
@@ -397,7 +401,7 @@ export function createRun(opts: NewRunOptions = {}): GameState {
     contracts: mode.kind === 'expedition' ? generateContracts(seed) : [],
     outcome: 'active',
     challengeEndTick: ch ? ch.timeLimitTicks : 0,
-    pendingRelicChoices: null,
+    pendingRelicChoices: pods.map(() => null),
     victoryRewarded: false,
   };
 }

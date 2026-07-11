@@ -326,16 +326,16 @@ describe('relics', () => {
   it('offers three distinct choices at the first depth milestone, latched once', () => {
     const s = expRun(31);
     step(s, {}, 3);
-    s.story.maxDepthFt = -1_001;
+    s.pod.maxDepthFt = -1_001;
     const out = step(s);
     const offer = out.find((e) => e.t === 'relicOffer');
     expect(offer?.t === 'relicOffer' && offer.choices.length).toBe(3);
     expect(offer?.t === 'relicOffer' && new Set(offer.choices).size).toBe(3);
-    expect(s.pendingRelicChoices).toHaveLength(3);
+    expect(s.pendingRelicChoices[0]).toHaveLength(3);
     // Same seed + same script → same offer (deterministic).
     const s2 = expRun(31);
     step(s2, {}, 3);
-    s2.story.maxDepthFt = -1_001;
+    s2.pod.maxDepthFt = -1_001;
     const out2 = step(s2);
     const offer2 = out2.find((e) => e.t === 'relicOffer');
     expect(offer2?.t === 'relicOffer' && offer2.choices).toEqual(
@@ -348,9 +348,9 @@ describe('relics', () => {
   it('chooseRelic only accepts an offered relic', () => {
     const s = expRun(31);
     step(s, {}, 3);
-    s.story.maxDepthFt = -1_001;
+    s.pod.maxDepthFt = -1_001;
     step(s);
-    const offered = s.pendingRelicChoices ?? [];
+    const offered = s.pendingRelicChoices[0] ?? [];
     const notOffered = RELICS.map((r) => r.id).find((r) => !offered.includes(r));
     if (notOffered) {
       applyCommand(s, { c: 'chooseRelic', id: notOffered }, 0, []);
@@ -358,7 +358,7 @@ describe('relics', () => {
     }
     applyCommand(s, { c: 'chooseRelic', id: offered[0] }, 0, []);
     expect(s.pod.relics).toEqual([offered[0]]);
-    expect(s.pendingRelicChoices).toBeNull();
+    expect(s.pendingRelicChoices[0]).toBeNull();
   });
 
   it('gasPhase nullifies pockets; heatSink halves gain; scavenger converts overflow', () => {

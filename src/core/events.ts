@@ -42,7 +42,7 @@ export type SimEvent =
   /** An expedition contract completed and paid out. */
   | { t: 'contractDone'; index: number; rewardCash: number }
   /** Depth milestone reached — pick one of these relics (chooseRelic command). */
-  | { t: 'relicOffer'; choices: string[] }
+  | { t: 'relicOffer'; choices: string[]; player?: number }
   /** A magmite woke up (expedition) / was destroyed. */
   | { t: 'critterSpawned'; x: number; y: number }
   | { t: 'critterKilled'; x: number; y: number }

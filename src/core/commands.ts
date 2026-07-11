@@ -35,10 +35,10 @@ export function applyCommand(s: GameState, cmd: Command, player: number, out: Ev
   if (!p) return; // out-of-range player index — ignore (defensive vs. bad peers)
   switch (cmd.c) {
     case 'chooseRelic': {
-      // Only a currently-offered relic may be taken (deterministic command stream).
-      if (!s.pendingRelicChoices?.includes(cmd.id)) return;
+      // Only a relic currently offered to THIS player may be taken.
+      if (!s.pendingRelicChoices[player]?.includes(cmd.id)) return;
       p.relics.push(cmd.id);
-      s.pendingRelicChoices = null;
+      s.pendingRelicChoices[player] = null;
       out.push({ t: 'sfx', key: 'schematic' });
       break;
     }

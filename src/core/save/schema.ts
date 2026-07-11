@@ -162,6 +162,7 @@ function revivePod(sp: SavedPod): PodState {
     hp: sp.hp,
     heatWarn: 0, // transient latch — a re-warning after load is harmless
     chain: null, // v4 saves carry pod 0's chain at file level; deserialize re-attaches
+    maxDepthFt: 0, // v4 saves: re-seeded from story.maxDepthFt below (schema v5 stores it)
     fuel: sp.fuel,
     cash: sp.cash,
     points: sp.points,
@@ -186,6 +187,8 @@ export function deserialize(f: SaveFile): GameState {
   const pods = f.pods.map(revivePod);
   // v4 file shape: the file-level chain field is pod 0's (schema v5 moves it per-pod).
   pods[0].chain = f.chain ? { ...f.chain } : null;
+  // Best available v4 watermark: the team record (exact for solo saves).
+  for (const p of pods) p.maxDepthFt = f.story.maxDepthFt;
   return {
     seed: f.seed,
     level: f.level,
@@ -217,7 +220,7 @@ export function deserialize(f: SaveFile): GameState {
     outcome: 'active',
     challengeEndTick: 0,
 
-    pendingRelicChoices: null, // transient — the milestone latch lives in story.fired
+    pendingRelicChoices: pods.map(() => null), // transient — the latch is durable
     victoryRewarded: false,
   };
 }

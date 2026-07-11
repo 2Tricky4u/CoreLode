@@ -114,3 +114,52 @@ describe('expedition co-op: per-pod chains', () => {
     expect(s.pods[0].chain?.bankPct).toBe(0);
   });
 });
+
+describe('expedition co-op: per-pod relic offers', () => {
+  it('each pod earns offers at its own depth; slots are independent', () => {
+    const s = expeditionDuo(31);
+    const out = stepN(s, 3);
+    void out;
+    s.pods[1].maxDepthFt = -1_001; // only pod 1 has crossed the milestone
+    const ev = stepN(s, 1);
+    const offer = ev.find((e) => e.t === 'relicOffer');
+    expect(offer?.t === 'relicOffer' && offer.player).toBe(1);
+    expect(s.pendingRelicChoices[0]).toBeNull();
+    expect(s.pendingRelicChoices[1]).toHaveLength(3);
+    // Pod 0 keeps the HISTORICAL latch key; pod 1 gets the suffixed one.
+    expect(s.story.fired).toContain('relic-1000:1');
+    expect(s.story.fired).not.toContain('relic-1000');
+
+    // Pod 1's pending offer must not block pod 0's own milestone.
+    s.pods[0].maxDepthFt = -1_001;
+    const ev2 = stepN(s, 1);
+    const offer2 = ev2.find((e) => e.t === 'relicOffer');
+    expect(offer2?.t === 'relicOffer' && offer2.player).toBe(0);
+    expect(s.story.fired).toContain('relic-1000');
+    expect(s.pendingRelicChoices[0]).toHaveLength(3);
+    expect(s.pendingRelicChoices[1]).toHaveLength(3);
+  });
+
+  it("chooseRelic consumes only the acting player's slot", () => {
+    const s = expeditionDuo(31);
+    stepN(s, 3);
+    s.pods[0].maxDepthFt = -1_001;
+    s.pods[1].maxDepthFt = -1_001;
+    stepN(s, 1);
+    const mine = s.pendingRelicChoices[0];
+    const theirs = s.pendingRelicChoices[1];
+    expect(mine).not.toBeNull();
+    expect(theirs).not.toBeNull();
+    if (!mine || !theirs) return;
+    // Player 1 cannot take from player 0's offer unless it's also in their own.
+    const onlyMine = mine.find((r) => !theirs.includes(r));
+    if (onlyMine) {
+      applyCommand(s, { c: 'chooseRelic', id: onlyMine }, 1, []);
+      expect(s.pods[1].relics).toEqual([]);
+    }
+    applyCommand(s, { c: 'chooseRelic', id: theirs[0] }, 1, []);
+    expect(s.pods[1].relics).toEqual([theirs[0]]);
+    expect(s.pendingRelicChoices[1]).toBeNull();
+    expect(s.pendingRelicChoices[0]).toEqual(mine); // untouched
+  });
+});
