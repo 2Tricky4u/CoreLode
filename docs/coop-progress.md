@@ -46,7 +46,7 @@ Autonomous sessions resume at the first unchecked step; genuine design forks go 
 - [x] [N20] RtcChannel (manual SDP tokens CLDP1/CLDP2, iceServers: [])
 - [x] [N21] Co-op menu + lobby (per-seat offers, ready states)
 - [x] [N22] Session bootstrap end-to-end (start + version handshake; chunked SaveFile resume lands in N27)
-- [ ] [N23] Rendering: PodView per pod + tints, local camera, per-pod FX
+- [x] [N23] Rendering: PodView per pod + tints, local camera, per-pod FX
 - [ ] [N24] HUD: local player bars, SHARED wallet, teammate list, minimap dots
 - [ ] [N25] Connection lifecycle UX (waiting overlay, drop handling, bye)
 - [ ] M5 gate: full suite + build + ≥3-client LAN playthrough, merge

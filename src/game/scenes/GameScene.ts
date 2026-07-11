@@ -60,7 +60,11 @@ export class GameScene extends Phaser.Scene {
   private host!: SimHost;
   private audio!: AudioBus;
   private tiles!: TileRenderer;
+  /** The LOCAL player's view — camera target and anchor for full-fat FX. */
   private pod!: PodView;
+  /** One view per pod (co-op); index-aligned with state.pods. */
+  private podViews: PodView[] = [];
+  private localIdx = 0;
   private boss!: BossView;
   private critterView!: CritterView;
   private fauna!: FaunaLayer;
@@ -82,10 +86,10 @@ export class GameScene extends Phaser.Scene {
   private embersE!: Phaser.GameObjects.Particles.ParticleEmitter;
 
   private chargeSprites: Phaser.GameObjects.Sprite[] = [];
-  private crackSprite!: Phaser.GameObjects.Sprite;
+  private crackSprites: Phaser.GameObjects.Sprite[] = [];
   private digFxTimer = 0;
-  /** Face of the block currently being drilled (held visually until dig end). */
-  private digHoldTile: number = Tile.Air;
+  /** Per-pod face of the block being drilled (held visually until dig end). */
+  private digHoldTiles: number[] = [];
   private guardianSprite: Phaser.GameObjects.Sprite | null = null;
   private guardianHalo: Phaser.GameObjects.Image | null = null;
   private screenShake = true;
@@ -118,8 +122,10 @@ export class GameScene extends Phaser.Scene {
     oreGlyphs?: boolean;
     ambientLife?: boolean;
     intro?: boolean;
+    localPlayer?: number;
   }): void {
     this.host = data.host;
+    this.localIdx = data.localPlayer ?? 0;
     this.audio = data.audio;
     this.screenShake = data.screenShake;
     this.fxFull = data.fxFull ?? true;
@@ -203,15 +209,19 @@ export class GameScene extends Phaser.Scene {
       this.add.sprite(x, y, 'atlas', `building${i}`).setOrigin(0.5, 1).setDepth(5);
     });
 
-    this.pod = new PodView(this, s);
-    this.pod.create();
+    this.podViews = s.pods.map((_, i) => new PodView(this, s, i));
+    for (const v of this.podViews) v.create();
+    this.pod = this.podViews[this.localIdx] ?? this.podViews[0];
     this.boss = new BossView(this, s);
     this.critterView = new CritterView(this, s);
     this.fauna = new FaunaLayer(this, s);
     this.fauna.enabled = this.ambientLife && this.fxFull;
 
-    // Hole-bite overlay for the tile currently being drilled (above terrain, below the pod).
-    this.crackSprite = this.add.sprite(0, 0, 'atlas', 'bite_down0').setDepth(6).setVisible(false);
+    // Hole-bite overlays, one per pod (above terrain, below the pods).
+    this.crackSprites = s.pods.map(() =>
+      this.add.sprite(0, 0, 'atlas', 'bite_down0').setDepth(6).setVisible(false),
+    );
+    this.digHoldTiles = s.pods.map(() => Tile.Air);
 
     // --- glows ---
     this.headGlow = this.add
@@ -442,11 +452,15 @@ export class GameScene extends Phaser.Scene {
       }
       case 'collected': {
         const def = COLLECTIBLES[e.collectibleId];
-        this.popup(`+$${saleValue(def.value, this.state.level).toLocaleString('en-US')}`, 0xfbf236);
+        this.popup(
+          `+$${saleValue(def.value, this.state.level).toLocaleString('en-US')}`,
+          0xfbf236,
+          this.podOf(e.player),
+        );
         break;
       }
       case 'cargoFullLost':
-        this.popup('LOST!', 0xd95763);
+        this.popup('LOST!', 0xd95763, this.podOf(e.player));
         break;
       case 'quake':
         this.tiles.repaintRows(e.rows);
@@ -494,24 +508,24 @@ export class GameScene extends Phaser.Scene {
         break;
       }
       case 'damage':
-        this.pod.flashHurt();
-        this.vignetteAlpha = Math.min(0.75, this.vignetteAlpha + e.amount / 24);
-        if (this.screenShake && e.amount >= 5) this.cameras.main.shake(220, 0.009);
-        break;
-      case 'landed':
-        if (e.impactVel > 4) {
-          this.debrisE.setParticleTint(BAND_TINTS[bandAt(Math.floor(this.state.pod.y / TILE_PX))]);
-          this.debrisE.explode(
-            Math.min(16, Math.round(e.impactVel * 1.2)),
-            this.state.pod.x,
-            this.state.pod.y + 22,
-          );
-          // Impact squash — feel proportional to the hit (PodView restores itself).
-          this.pod.squash(Math.min(1, e.impactVel / 16));
+        this.viewOf(e.player).flashHurt();
+        if (this.isLocal(e.player)) {
+          this.vignetteAlpha = Math.min(0.75, this.vignetteAlpha + e.amount / 24);
+          if (this.screenShake && e.amount >= 5) this.cameras.main.shake(220, 0.009);
         }
-        if (e.damage > 0 && this.screenShake)
+        break;
+      case 'landed': {
+        const who = this.podOf(e.player);
+        if (e.impactVel > 4) {
+          this.debrisE.setParticleTint(BAND_TINTS[bandAt(Math.floor(who.y / TILE_PX))]);
+          this.debrisE.explode(Math.min(16, Math.round(e.impactVel * 1.2)), who.x, who.y + 22);
+          // Impact squash — feel proportional to the hit (PodView restores itself).
+          this.viewOf(e.player).squash(Math.min(1, e.impactVel / 16));
+        }
+        if (e.damage > 0 && this.screenShake && this.isLocal(e.player))
           this.cameras.main.shake(90, 0.002 + e.damage * 0.0006);
         break;
+      }
       case 'chain': {
         // Rank colors escalate with the chain (DB32 ramp).
         const c =
@@ -543,8 +557,9 @@ export class GameScene extends Phaser.Scene {
         break;
       case 'teleport':
       case 'rescue': {
+        const who = this.podOf(e.player);
         const beam = this.add
-          .sprite(this.state.pod.x, this.state.pod.y, 'atlas', 'teleBeam')
+          .sprite(who.x, who.y, 'atlas', 'teleBeam')
           .setDepth(30)
           .setBlendMode(Phaser.BlendModes.ADD);
         if (e.t === 'rescue') beam.setTint(0xd95763); // distress-red tow beam
@@ -578,9 +593,8 @@ export class GameScene extends Phaser.Scene {
         this.boss.destroyAll();
         break;
       case 'podExploded': {
-        const boom = this.add
-          .sprite(this.state.pod.x, this.state.pod.y, 'atlas', 'boom2')
-          .setDepth(30);
+        const who = this.podOf(e.player);
+        const boom = this.add.sprite(who.x, who.y, 'atlas', 'boom2').setDepth(30);
         this.tweens.add({
           targets: boom,
           scale: 3.4,
@@ -588,17 +602,61 @@ export class GameScene extends Phaser.Scene {
           duration: 900,
           onComplete: () => boom.destroy(),
         });
-        this.embersE.explode(30, this.state.pod.x, this.state.pod.y);
-        this.pod.sprite.setVisible(false);
+        this.embersE.explode(30, who.x, who.y);
+        this.viewOf(e.player).sprite.setVisible(false);
+        break;
+      }
+      case 'podDown': {
+        // Co-op knockout: a boom at the fallen pod; the wipe (podExploded) has its own FX.
+        const who = this.podOf(e.player);
+        const boom = this.add.sprite(who.x, who.y, 'atlas', 'boom2').setDepth(30);
+        this.tweens.add({
+          targets: boom,
+          scale: 2.6,
+          alpha: 0,
+          duration: 700,
+          onComplete: () => boom.destroy(),
+        });
+        this.embersE.explode(18, who.x, who.y);
+        if (this.isLocal(e.player) && this.screenShake) this.cameras.main.shake(300, 0.012);
+        break;
+      }
+      case 'podRespawned': {
+        const who = this.podOf(e.player);
+        const beam = this.add
+          .sprite(who.x, who.y, 'atlas', 'teleBeam')
+          .setDepth(30)
+          .setBlendMode(Phaser.BlendModes.ADD);
+        this.tweens.add({
+          targets: beam,
+          alpha: 0,
+          scaleY: 2,
+          duration: 520,
+          onComplete: () => beam.destroy(),
+        });
         break;
       }
     }
     this.audio.onEvent(e);
   }
 
-  private popup(text: string, color: number): void {
+  /** Pod a pod-attributed event refers to (solo events omit player). */
+  private podOf(player?: number) {
+    return this.state.pods[player ?? 0] ?? this.state.pod;
+  }
+
+  private viewOf(player?: number): PodView {
+    return this.podViews[player ?? 0] ?? this.pod;
+  }
+
+  private isLocal(player?: number): boolean {
+    return (player ?? 0) === this.localIdx;
+  }
+
+  private popup(text: string, color: number, at?: { x: number; y: number }): void {
+    const a = at ?? this.podOf(this.localIdx);
     const t = this.add
-      .text(this.state.pod.x, this.state.pod.y - 30, text, {
+      .text(a.x, a.y - 30, text, {
         fontFamily: 'VT323, Courier New, monospace',
         fontSize: '16px',
         color: `#${color.toString(16).padStart(6, '0')}`,
@@ -621,15 +679,16 @@ export class GameScene extends Phaser.Scene {
     this.host.update(dtMs);
     const alpha = this.host.alpha;
     const s = this.state;
+    const lp = s.pods[this.localIdx] ?? s.pod;
 
-    this.pod.update(alpha);
+    for (const v of this.podViews) v.update(alpha);
     this.boss.update(alpha);
     this.critterView.update();
     this.fauna.update();
     // Seismic Scanner relic: the gas shimmer turns on for the rest of the run.
     this.tiles.setGasHint(
       this.gasHintOpt ||
-        (this.state.mode.kind === 'expedition' && this.state.pod.relics.includes('seismicScanner')),
+        (this.state.mode.kind === 'expedition' && lp.relics.includes('seismicScanner')),
     );
 
     // Charges.
@@ -644,14 +703,16 @@ export class GameScene extends Phaser.Scene {
 
     // Guardian.
     if (this.guardianSprite) {
-      if (!s.pod.guardian) {
+      const gi = s.pods.findIndex((p) => p.guardian);
+      if (gi < 0) {
         this.guardianSprite.destroy();
         this.guardianHalo?.destroy();
         this.guardianSprite = null;
         this.guardianHalo = null;
       } else {
-        const gx = this.pod.sprite.x - 40;
-        const gy = this.pod.sprite.y - 30 + Math.sin(this.time.now / 300) * 4;
+        const gv = this.podViews[gi] ?? this.pod;
+        const gx = gv.sprite.x - 40;
+        const gy = gv.sprite.y - 30 + Math.sin(this.time.now / 300) * 4;
         this.guardianSprite.setPosition(gx, gy);
         this.guardianHalo
           ?.setPosition(gx, gy - 14)
@@ -660,8 +721,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Thrust FX + audio loops.
-    const thrusting = s.pod.mode === 'air' && s.pod.fuel > 0 && this.host.paused === false;
-    const inputUp = thrusting && s.pod.yVel < 2; // heuristic: actively climbing/hovering
+    const thrusting = lp.mode === 'air' && lp.fuel > 0 && this.host.paused === false;
+    const inputUp = thrusting && lp.yVel < 2; // heuristic: actively climbing/hovering
     this.thrustE.setPosition(this.pod.sprite.x, this.pod.sprite.y + 24);
     this.smokeE.setPosition(this.pod.sprite.x, this.pod.sprite.y + 26);
     if (inputUp && !this.thrustE.emitting) {
@@ -673,30 +734,37 @@ export class GameScene extends Phaser.Scene {
     }
     this.thrustGlow.setPosition(this.pod.sprite.x, this.pod.sprite.y + 26);
     this.thrustGlow.setAlpha(inputUp ? 0.35 + (this.fxFull ? Math.random() * 0.15 : 0) : 0);
-    this.audio.setLoops(s.pod.mode === 'dig', inputUp);
+    this.audio.setLoops(lp.mode === 'dig', inputUp);
 
     // --- drilling feedback: hole being carved, straining loop pitch, chip spray ---
-    const job = s.pod.drilling;
-    if (job) {
-      // The sim clears the cell early (authentic 15 px break), but the block
-      // must READ solid for the whole dig: hold its face in the renderer and
-      // pace the bite notch across the full traversal, so the hole opens up
-      // exactly when the drilling time ends — at any drill speed.
-      if (!job.broken) this.digHoldTile = getTile(s.world, job.targetX, job.targetY);
-      if (this.digHoldTile !== Tile.Air)
-        this.tiles.holdCell(job.targetX, job.targetY, this.digHoldTile);
-      const bite = Math.min(1, job.traveledPx / PHYSICS.digDonePx);
-      this.crackSprite
-        .setPosition((job.targetX + 0.5) * TILE_PX, (job.targetY + 0.5) * TILE_PX)
-        .setFrame(
-          `bite_${job.dir === 'down' ? 'down' : 'side'}${Math.min(3, Math.floor(bite * 4))}`,
-        )
-        .setFlipX(job.dir === 'left') // side frames enter from the left face
-        .setVisible(true);
-    } else {
-      this.tiles.releaseHold();
-      this.crackSprite.setVisible(false);
-    }
+    // The sim clears the cell early (authentic 15 px break), but the block
+    // must READ solid for the whole dig: hold its face in the renderer and
+    // pace the bite notch across the full traversal, so the hole opens up
+    // exactly when the drilling time ends — at any drill speed. In co-op,
+    // every pod gets its own hold + bite notch.
+    const holds: Array<{ x: number; y: number; tile: number }> = [];
+    s.pods.forEach((q, i) => {
+      const jb = q.drilling;
+      const spr = this.crackSprites[i];
+      if (!spr) return;
+      if (jb) {
+        if (!jb.broken) this.digHoldTiles[i] = getTile(s.world, jb.targetX, jb.targetY);
+        const held = this.digHoldTiles[i];
+        if (held !== Tile.Air) holds.push({ x: jb.targetX, y: jb.targetY, tile: held });
+        const bite = Math.min(1, jb.traveledPx / PHYSICS.digDonePx);
+        spr
+          .setPosition((jb.targetX + 0.5) * TILE_PX, (jb.targetY + 0.5) * TILE_PX)
+          .setFrame(
+            `bite_${jb.dir === 'down' ? 'down' : 'side'}${Math.min(3, Math.floor(bite * 4))}`,
+          )
+          .setFlipX(jb.dir === 'left') // side frames enter from the left face
+          .setVisible(true);
+      } else {
+        spr.setVisible(false);
+      }
+    });
+    this.tiles.setHolds(holds);
+    const job = lp.drilling;
     if (job) {
       // The auger strains upward in pitch across the block, resetting per dig.
       const prog = Math.min(1, job.traveledPx / PHYSICS.digDonePx);
@@ -718,7 +786,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Pod headlight glow (brighter as it gets darker).
-    const depth = podDepthFt(s.pod);
+    const depth = podDepthFt(lp);
     const darkness = Math.max(0, Math.min(0.86, (-depth / 7400) * 0.95));
     this.headGlow.setPosition(this.pod.sprite.x, this.pod.sprite.y);
     this.headGlow.setAlpha(
@@ -746,14 +814,14 @@ export class GameScene extends Phaser.Scene {
     // --- audio: score follows depth, ambient bed follows the world ---
     this.audio.setMusicDepth(depth);
     // Low-fuel heartbeat under 2 L (the sim's fuelLow threshold), racing toward 0.
-    this.audio.setFuelPulse(s.outcome === 'active' && s.pod.fuel < 2 ? 1 - s.pod.fuel / 2 : null);
+    this.audio.setFuelPulse(s.outcome === 'active' && lp.fuel < 2 ? 1 - lp.fuel / 2 : null);
     this.audioTimer += dtMs;
     if (this.audioTimer > 150) {
       this.audioTimer = 0;
       // Reuse the ember query: how close is visible lava?
       const near = this.tiles.lavaCellsNear(this.pod.sprite.x, this.pod.sprite.y, 260);
       const lavaNear = Math.min(1, near.length / 4);
-      const driving = s.pod.mode === 'ground' && Math.abs(s.pod.xVel) > 0.6;
+      const driving = lp.mode === 'ground' && Math.abs(lp.xVel) > 0.6;
       this.audio.ambience.update(depth, lavaNear, driving);
     }
 
@@ -781,13 +849,17 @@ export class GameScene extends Phaser.Scene {
   private updateCorners(): void {
     const cam = this.cameras.main;
     const w = this.state.world;
-    // The cell being drilled is visually held solid until the dig ends —
-    // sample it as its held face so wedges/lumps don't bloom around it early.
-    const job = this.state.pod.drilling;
-    const holdX = job && this.digHoldTile !== Tile.Air ? job.targetX : -1;
-    const holdY = job && this.digHoldTile !== Tile.Air ? job.targetY : -1;
+    // Cells being drilled are visually held solid until each dig ends —
+    // sample them as their held face so wedges/lumps don't bloom early.
+    const heldAt = new Map<number, number>();
+    this.state.pods.forEach((q, i) => {
+      const jb = q.drilling;
+      const ht = this.digHoldTiles[i];
+      if (jb && ht !== undefined && ht !== Tile.Air)
+        heldAt.set(jb.targetY * WORLD_W + jb.targetX, ht);
+    });
     const tileAt = (x: number, y: number): number =>
-      x === holdX && y === holdY ? this.digHoldTile : getTile(w, x, y);
+      heldAt.get(y * WORLD_W + x) ?? getTile(w, x, y);
     const R = 14; // full wedge size
     const R2 = 7; // soft inner-corner wedge size
     const x0 = Math.max(1, Math.floor(cam.scrollX / TILE_PX));
@@ -978,21 +1050,25 @@ export class GameScene extends Phaser.Scene {
     this.lightImg.setVisible(true);
     ctx.fillStyle = inArena ? `rgba(38,6,6,${dark})` : `rgba(2,1,6,${dark})`;
     ctx.fillRect(0, 0, LIGHT_W, LIGHT_H);
-    // Punch the pod light out of the darkness.
+    // Punch each pod's headlight out of the darkness (local pod gets the full beam).
     const cam = this.cameras.main;
-    const px = ((this.pod.sprite.x - cam.scrollX) / this.scale.width) * LIGHT_W;
-    const py = ((this.pod.sprite.y - cam.scrollY) / this.scale.height) * LIGHT_H;
     const flick = this.fxFull ? Math.sin(this.time.now / 70) * 1.2 : 0;
-    const radius = 62 + flick + (1 - dark) * 24;
     ctx.globalCompositeOperation = 'destination-out';
-    const g = ctx.createRadialGradient(px, py, 6, px, py, radius);
-    g.addColorStop(0, 'rgba(255,255,255,1)');
-    g.addColorStop(0.55, 'rgba(255,255,255,0.85)');
-    g.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(px, py, radius, 0, Math.PI * 2);
-    ctx.fill();
+    this.podViews.forEach((v, i) => {
+      if (!v.sprite.visible) return;
+      const px = ((v.sprite.x - cam.scrollX) / this.scale.width) * LIGHT_W;
+      const py = ((v.sprite.y - cam.scrollY) / this.scale.height) * LIGHT_H;
+      const radius = (i === this.localIdx ? 62 : 44) + flick + (1 - dark) * 24;
+      if (px < -radius || px > LIGHT_W + radius || py < -radius || py > LIGHT_H + radius) return;
+      const g = ctx.createRadialGradient(px, py, 6, px, py, radius);
+      g.addColorStop(0, 'rgba(255,255,255,1)');
+      g.addColorStop(0.55, 'rgba(255,255,255,0.85)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(px, py, radius, 0, Math.PI * 2);
+      ctx.fill();
+    });
     ctx.globalCompositeOperation = 'source-over';
     tex.refresh();
   }

@@ -39,8 +39,9 @@ export class TileRenderer {
   private overlay!: Phaser.Tilemaps.TilemapLayer;
   private meta!: TilesetMeta;
   private gasHint = false;
-  /** Cell kept visually solid while the drill eats through it (sim clears early). */
-  private hold: { x: number; y: number; tile: number } | null = null;
+  /** Cells kept visually solid while drills eat through them (sim clears early).
+   *  Keyed y*W+x — co-op can have several pods drilling at once. */
+  private holds = new Map<number, number>();
   /** Animated cells, keyed y*W+x (values = tile coords). Rebuilt on repaint. */
   private lavaCells = new Map<number, { x: number; y: number }>();
   private gasCells = new Map<number, { x: number; y: number }>();
@@ -76,18 +77,26 @@ export class TileRenderer {
    * The collectible overlay is dropped while held: the gem pops early with
    * the collect event; the remaining rock keeps grinding away.
    */
-  holdCell(x: number, y: number, tile: number): void {
-    if (this.hold && this.hold.x === x && this.hold.y === y && this.hold.tile === tile) return;
-    this.releaseHold();
-    this.hold = { x, y, tile };
-    this.paint(x, y);
+  setHolds(cells: Array<{ x: number; y: number; tile: number }>): void {
+    const next = new Map<number, number>();
+    for (const c of cells) next.set(c.y * WORLD_W + c.x, c.tile);
+    // Repaint cells that left or changed, then cells that are new/different.
+    for (const [key, tile] of this.holds) {
+      if (next.get(key) !== tile) {
+        this.holds.delete(key);
+        this.paint(key % WORLD_W, Math.floor(key / WORLD_W));
+      }
+    }
+    for (const [key, tile] of next) {
+      if (this.holds.get(key) !== tile) {
+        this.holds.set(key, tile);
+        this.paint(key % WORLD_W, Math.floor(key / WORLD_W));
+      }
+    }
   }
 
   releaseHold(): void {
-    if (!this.hold) return;
-    const { x, y } = this.hold;
-    this.hold = null;
-    this.paint(x, y);
+    this.setHolds([]);
   }
 
   /** Advance the lava/gas animation one phase (call ~6×/second). */
@@ -135,8 +144,9 @@ export class TileRenderer {
   }
 
   paint(x: number, y: number): void {
-    const held = this.hold !== null && this.hold.x === x && this.hold.y === y;
-    const t = held && this.hold ? this.hold.tile : getTile(this.state.world, x, y);
+    const heldTile = this.holds.get(y * WORLD_W + x);
+    const held = heldTile !== undefined;
+    const t = held ? heldTile : getTile(this.state.world, x, y);
     const key = y * WORLD_W + x;
     if (isLava(t)) this.lavaCells.set(key, { x, y });
     else this.lavaCells.delete(key);

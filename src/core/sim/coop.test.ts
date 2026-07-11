@@ -11,7 +11,7 @@ import { podOverlapsSolid } from './physics';
 import { type GameState, createRun, wallet } from './state';
 import { tick } from './tick';
 
-export const coopRun = (players = 2, seed = 4242): GameState =>
+const coopRun = (players = 2, seed = 4242): GameState =>
   createRun({ seed, mode: { kind: 'coop', goldium: true, players } });
 
 const stepN = (s: GameState, inputs: Array<Partial<IntentFrame>>, n = 1): EventSink => {

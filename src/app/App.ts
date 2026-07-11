@@ -833,6 +833,7 @@ export class App {
         ambientLife: Boolean(this.fx.ambientLife),
         // Carrier-landing cinematic: fresh story runs only (not loads, not challenges).
         intro: state.tick === 0 && state.mode.kind === 'story',
+        localPlayer,
       });
 
       // HUD refresh loop (display-rate, cheap).

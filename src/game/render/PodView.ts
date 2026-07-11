@@ -2,6 +2,9 @@ import { type GameState, maxHull } from '@core/index';
 /** Pod sprite — reads interpolated sim state; animation from pod mode/inputs. */
 import type Phaser from 'phaser';
 
+/** Per-player accent tints (index = player; 0 = untinted). Consistent on every peer. */
+export const PLAYER_TINTS = [0xffffff, 0x99e550, 0x5fcde4, 0xd77bba, 0xfbf236, 0xdf7126];
+
 export class PodView {
   sprite!: Phaser.GameObjects.Sprite;
   private scuff!: Phaser.GameObjects.Image;
@@ -11,10 +14,17 @@ export class PodView {
   constructor(
     private scene: Phaser.Scene,
     private state: GameState,
+    private podIndex = 0,
   ) {}
 
+  private get p() {
+    return this.state.pods[this.podIndex] ?? this.state.pod;
+  }
+
   create(): void {
-    this.sprite = this.scene.add.sprite(this.state.pod.x, this.state.pod.y, 'atlas', 'pod_idle');
+    this.sprite = this.scene.add.sprite(this.p.x, this.p.y, 'atlas', 'pod_idle');
+    const tint = PLAYER_TINTS[this.podIndex] ?? 0xffffff;
+    if (tint !== 0xffffff) this.sprite.setTint(tint);
     // Frames are 56px tall but the body occupies rows 0-49 (the down-drill auger
     // hangs below) — anchor so the 50px body stays centred on the collision box.
     this.sprite.setOrigin(0.5, 25 / 56);
@@ -27,8 +37,22 @@ export class PodView {
       .setVisible(false);
   }
 
+  private wasDown = false;
+
   update(alpha: number): void {
-    const p = this.state.pod;
+    const p = this.p;
+    // A downed co-op pod is gone until it respawns. (Story pods never go down,
+    // so this can't fight the intro cinematic's own visibility control.)
+    if (p.respawnAtTick > 0) {
+      this.sprite.setVisible(false);
+      this.scuff.setVisible(false);
+      this.wasDown = true;
+      return;
+    }
+    if (this.wasDown) {
+      this.sprite.setVisible(true);
+      this.wasDown = false;
+    }
     const x = p.prevX + (p.x - p.prevX) * alpha;
     const y = p.prevY + (p.y - p.prevY) * alpha;
     this.sprite.setPosition(x, y);

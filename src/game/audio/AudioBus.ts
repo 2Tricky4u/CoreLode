@@ -124,6 +124,13 @@ export class AudioBus {
         this.play('podExplode');
         this.ambience.silence();
         break;
+      case 'podDown':
+        // Co-op knockout — the boom without cutting the ambience (the run goes on).
+        this.play('podExplode', 0.8);
+        break;
+      case 'podRespawned':
+        this.play('teleportUp', 0.8);
+        break;
       case 'enterBuilding':
         this.play('doorOpen');
         break;
