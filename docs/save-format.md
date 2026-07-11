@@ -1,7 +1,11 @@
 # Save format
 
-Current version: **1** (`src/core/save/schema.ts`). Migration ladder in `migrate.ts` —
-every version bump adds a step there plus a frozen fixture in the tests.
+Current version: **5** (`src/core/save/schema.ts`). Migration ladder in `migrate.ts` —
+every version bump adds a step there plus a frozen fixture in the tests:
+v1 → v2 expedition fields (heat/relics/modules/chain/contracts) · v2 → v3 minimap fog
+(`discoveredRle`, grandfathered fully revealed) · v3 → v4 multi-pod (`pods[]`,
+`respawnAtTick`) · v4 → v5 per-pod `chain` + `maxDepthFt` (file-level chain moved onto
+pod 0).
 
 - Storage: IndexedDB via idb-keyval. Keys: `save:manual:0..2`, `save:auto:0..2` (QoL),
   `records` (challenge bests), `settings`. Every write keeps the previous copy at

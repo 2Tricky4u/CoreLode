@@ -61,3 +61,9 @@ marked [A]; manual items [M]. CAL items also update `docs/calibration.md`.
   state/world hashes; the co-op purity test keeps coop-kind events out of story runs.
 - [M] Co-op sanity loop: ≥3 clients (tabs or LAN), shop-while-others-dig, a death +
   respawn, a quake, an arena visit, and a save → full-crew resume — no desync dialog.
+- [A] Solo expedition is frozen too: `src/core/sim/goldenExpedition.test.ts` pins a
+  3,000-tick scripted expedition run (heat/chain/relic/contract/critter paths all
+  exercised) to hard-coded hashes — the per-pod expedition-coop refactors cannot move it.
+- [M] Expedition co-op sanity loop: 2 tabs (`?coop=host&room=dev&players=2&exp=1`), per-pod
+  heat + chains + a relic offer on one seat only, a permanent death → LOST + spectate,
+  wipe → identical cores banked on every client; a daily crew run writes NO daily record.

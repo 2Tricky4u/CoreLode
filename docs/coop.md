@@ -79,8 +79,40 @@ Only the **host** can save (guests get a toast at the SaveMate). Co-op slots sho
 same crew size has reconnected (fresh paste handshake), then ships the save to every
 guest so all sims resume from the identical file. NG+ is solo-only in v1.
 
+## Expedition co-op (2–6 players, one life each)
+
+The full roguelike runs on the same lockstep: pick **Expedition** (or **Daily**) at the
+top of the host lobby. Everything expedition is per-pod in a crew:
+
+- **One life each.** A destroyed pod is permanently out — no fee, no respawn. It
+  spectates (the camera follows the nearest living teammate under a red LOST banner);
+  the run ends when the last pod falls, or in glory at the boss.
+- **Your own rig.** Every player picks a loadout + modules from their OWN local unlocks
+  in the lobby (buy gear on the Expedition screen; unlocks never transfer). Rigs travel
+  to the host as a `cfg` message — validated for shape (known ids, ≤2 modules), with
+  ownership deliberately trusted; an invalid rig falls back to a badged standard rig.
+- **Your own heat, chains, and relics.** Each pod cooks by its own depth, builds its own
+  chain (vault banks into the shared wallet at that pod's sale), and earns relic offers
+  at its own depth milestones — the choice modal opens only on the earning player's
+  machine while everyone else keeps digging. Contracts stay team goals paid to the
+  shared wallet (split hauls count), and magmites chase whoever is closest.
+- **Everyone banks the same cores.** Settlement is computed from the shared
+  deterministic state, so every machine banks the identical payout into its own local
+  profile. **Co-op dailies are never recorded** — the daily board stays a solo
+  leaderboard.
+- **Suspend/resume is the host's.** Any pod docking suspends the run to the host's
+  `exp:0` slot; resuming routes through the lobby (crew size must match) and the slot
+  only burns when the session actually starts — an abandoned lobby can't eat the run.
+- The dev panel's expedition mutators are disabled in any co-op session (a host-local
+  edit would desync the crew).
+
+Wire note: the rig exchange bumped `PROTO_VERSION` to 2 — mixed builds refuse each
+other cleanly at the `hi` handshake.
+
 ## Fidelity note
 
 Co-op is **remake-only** — nothing here exists in the 2004 original, and none of it can
 leak into solo: the golden replay test freezes a 3,000-tick solo story run against
-hard-coded hashes, so any change that would alter solo behavior fails CI.
+hard-coded hashes, and `goldenExpedition.test.ts` does the same for a solo expedition
+run (heat, chains, relics, contracts, critters), so any change that would alter solo
+behavior — story or roguelike — fails CI.

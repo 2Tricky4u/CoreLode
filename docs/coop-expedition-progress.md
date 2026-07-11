@@ -37,7 +37,7 @@ Branch `feat/coop-expedition`; one commit per step; merge --ff-only per mileston
 
 ## M5 — Docs + final gate
 
-- [ ] [X15] Docs (coop.md expedition section, fidelity entry, CLAUDE.md)
+- [x] [X15] Docs (coop.md expedition section, fidelity entry, CLAUDE.md)
 - [ ] [X16] Final gate: 2/6-tab loops + solo + story-coop regression, merge --ff-only
 
 ## Notes / decisions log

@@ -95,8 +95,14 @@ BroadcastChannel for same-machine tabs — `?coop=host&room=dev&players=2` /
 `?coop=join&room=dev&seat=1`); the driver is `src/game/LockstepHost.ts` (implements
 `SimHost`, so GameScene/App don't care whether a run is solo or networked). Everyone
 executes only host-sequenced bundles; commands ride the input stream; presentation
-pauses are ignored in co-op ('user' pause is synchronized). Solo fidelity is enforced
-by `src/core/sim/golden.test.ts` — its literals must never change. See `docs/coop.md`.
+pauses are ignored in co-op ('user' pause is synchronized). Expedition also runs in
+co-op (`kind:'expedition'` with `players` 2–6): every roguelike system is per-pod
+(heat/chain/relics — index-ascending loops that reduce to solo at one pod), death is
+permanent (single life, `respawnAtTick: -1`), rigs travel via the lobby `cfg` message
+into `mode.expedition.perPod`, and cores settle identically on every client. Solo
+fidelity is enforced by `src/core/sim/golden.test.ts` AND
+`src/core/sim/goldenExpedition.test.ts` — their literals must never change. See
+`docs/coop.md`.
 
 ### Save / persistence
 
