@@ -41,7 +41,7 @@ import {
 } from '@core/index';
 import { decodeSave, encodeSave } from '@core/save/codec';
 import { migrateAndValidate } from '@core/save/migrate';
-import { GameHost } from '@game/GameHost';
+import { GameHost, type SimHost } from '@game/GameHost';
 import { AudioBus } from '@game/audio/AudioBus';
 import { createPhaserGame } from '@game/phaserGame';
 import type { GameScene } from '@game/scenes/GameScene';
@@ -89,7 +89,7 @@ export class App {
   private input = new InputManager();
   private audio = new AudioBus();
   private touch: TouchControls;
-  private host: GameHost | null = null;
+  private host: SimHost | null = null;
   private settings: SettingsValues = defaultSettings();
   private lifetime: storage.LifetimeRecords = storage.defaultLifetime();
   private binds: storage.StoredBinds = {};

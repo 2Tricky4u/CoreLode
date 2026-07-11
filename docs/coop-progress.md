@@ -35,7 +35,7 @@ Autonomous sessions resume at the first unchecked step; genuine design forks go 
 ## M4 — Lockstep core + channels + tab play
 
 - [x] [N15] Pure protocol: messages + HostSequencer + BundleLedger + coopStateHash + tests
-- [ ] [N16] SimHost interface extraction (type-only refactor)
+- [x] [N16] SimHost interface extraction (type-only refactor)
 - [ ] [N17] NetChannel iface + LocalChannel (BroadcastChannel) + 16 KB chunker
 - [ ] [N18] LockstepHost (host/guest roles) + N-host in-memory tests
 - [ ] [N19] App wiring, coop pause gating, shop re-render on events, multi-tab dev entry

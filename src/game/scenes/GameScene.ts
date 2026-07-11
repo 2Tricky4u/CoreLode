@@ -26,7 +26,7 @@ import {
  * lava palette-cycling, damage vignette, collect popups, star field + day/night.
  */
 import Phaser from 'phaser';
-import type { GameHost } from '../GameHost';
+import type { SimHost } from '../GameHost';
 import type { AudioBus } from '../audio/AudioBus';
 import { BossView } from '../render/BossView';
 import { CritterView } from '../render/CritterView';
@@ -57,7 +57,7 @@ export interface FxOptions {
 }
 
 export class GameScene extends Phaser.Scene {
-  private host!: GameHost;
+  private host!: SimHost;
   private audio!: AudioBus;
   private tiles!: TileRenderer;
   private pod!: PodView;
@@ -108,7 +108,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   init(data: {
-    host: GameHost;
+    host: SimHost;
     audio: AudioBus;
     screenShake: boolean;
     gasHint: boolean;

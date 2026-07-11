@@ -16,7 +16,27 @@ import type { InputManager } from '@input/InputManager';
 
 export type EventListener = (e: SimEvent) => void;
 
-export class GameHost {
+/**
+ * What the scene/app/HUD need from a sim driver. GameHost (solo/local) and
+ * LockstepHost (networked co-op) both implement it, so the presentation
+ * layer never knows which one is pumping the ticks.
+ */
+export interface SimHost {
+  readonly state: GameState;
+  /** Render interpolation factor 0..1 within the current tick. */
+  alpha: number;
+  timeScale: number;
+  beforeTick: (() => void) | null;
+  readonly paused: boolean;
+  readonly pausedBy: ReadonlySet<string>;
+  pause(reason: string): void;
+  resume(reason: string): void;
+  command(cmd: Command): void;
+  onEvent(fn: EventListener): void;
+  update(dtMs: number): void;
+}
+
+export class GameHost implements SimHost {
   readonly state: GameState;
   private acc = 0;
   private pauseReasons = new Set<string>();
