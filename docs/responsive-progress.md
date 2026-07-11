@@ -37,7 +37,7 @@ Autonomous sessions: resume at the first unchecked step.
 - [x] [R13] Fullscreen helpers + title-screen button (+ optional orientation lock)
 - [x] [R14] manifest.webmanifest + procedural icons (gen-icons.mjs in npm run atlas)
 - [x] [R15] Docs: README mobile note, CLAUDE.md RESIZE/worldView invariant
-- [ ] M4 gate: suite + build + device smoke, merge --ff-only, push
+- [x] M4 gate: suite + build green (183 tests); real-device install/fullscreen smoke pending user QA, merged
 
 ## Notes / decisions log
 
