@@ -1097,6 +1097,7 @@ export class App {
 
   private stopRun(): void {
     if (this.hudTimer) cancelAnimationFrame(this.hudTimer);
+    this.hud.setSpectating(null);
     if (this.lockstep) {
       this.lockstep.shutdown();
       this.lockstep = null;
@@ -1154,6 +1155,16 @@ export class App {
         if (local) this.ui.toast(`${t('uiRescue')} (-$${e.cost.toLocaleString('en-US')})`);
         break;
       case 'podDown':
+        if (host.state.mode.kind === 'expedition') {
+          // Single life: no fee, no countdown — and the local loss goes
+          // full-screen (the camera hands itself to a living teammate).
+          if ((e.player ?? 0) === this.localPlayer) {
+            this.hud.setSpectating(t('coopSpectating'));
+          } else {
+            this.ui.toast(`P${e.player + 1} ${t('coopLostToast')}`, 4000);
+          }
+          break;
+        }
         this.ui.toast(
           `P${e.player + 1} ${t('coopDownToast')} -$${e.fee.toLocaleString('en-US')}`,
           3200,
@@ -1277,6 +1288,7 @@ export class App {
       ? (this.phaser.scene.getScene('game') as GameScene | null)
       : null;
     openDevPanel(this.modals, {
+      lockstep: this.lockstep !== null,
       info: () => {
         const p = s.pod;
         return (

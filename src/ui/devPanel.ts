@@ -10,6 +10,8 @@ import { el } from './reactive';
 export interface DevActions {
   /** One-line live status: depth/tile/seed/mode. */
   info: () => string;
+  /** Networked session: hide state mutators — a host-local edit desyncs the crew. */
+  lockstep?: boolean;
   give: (kind: 'cash' | 'points' | 'items' | 'upgrades' | 'blueprints' | 'refit') => void;
   /** Returns the new state of the toggle. */
   toggleGod: () => boolean;
@@ -147,37 +149,42 @@ export function openDevPanel(m: ModalManager, a: DevActions): void {
       ),
     ),
     section('RUN', speedBtn),
-    section(
-      'EXPEDITION',
-      btn(
-        'Heat 0',
-        act(() => a.setHeat(0)),
-      ),
-      btn(
-        'Heat 90',
-        act(() => a.setHeat(90)),
-      ),
-      btn(
-        'All relics',
-        act(() => a.grantAllRelics()),
-      ),
-      btn(
-        'Clear relics',
-        act(() => a.clearRelics()),
-      ),
-      btn(
-        'Finish contracts',
-        act(() => a.completeContracts()),
-      ),
-      btn(
-        'Spawn magmite',
-        act(() => a.spawnCritter()),
-      ),
-      btn(
-        '+10 cores',
-        act(() => a.addCores(10)),
-      ),
-    ),
+    a.lockstep
+      ? section(
+          'EXPEDITION',
+          el('span', { class: 'dev-note', text: 'disabled in co-op (would desync)' }),
+        )
+      : section(
+          'EXPEDITION',
+          btn(
+            'Heat 0',
+            act(() => a.setHeat(0)),
+          ),
+          btn(
+            'Heat 90',
+            act(() => a.setHeat(90)),
+          ),
+          btn(
+            'All relics',
+            act(() => a.grantAllRelics()),
+          ),
+          btn(
+            'Clear relics',
+            act(() => a.clearRelics()),
+          ),
+          btn(
+            'Finish contracts',
+            act(() => a.completeContracts()),
+          ),
+          btn(
+            'Spawn magmite',
+            act(() => a.spawnCritter()),
+          ),
+          btn(
+            '+10 cores',
+            act(() => a.addCores(10)),
+          ),
+        ),
   );
 
   m.open(

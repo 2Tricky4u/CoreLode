@@ -107,6 +107,7 @@ export class Hud {
   private teamRows: TeamRow[] = [];
   private droppedSeats: ReadonlySet<number> = new Set();
   private waitingNode: HTMLElement;
+  private spectateNode: HTMLElement;
   private minimapNode: HTMLElement;
   private minimapCanvas: HTMLCanvasElement;
   private minimapCtx: CanvasRenderingContext2D | null;
@@ -166,6 +167,7 @@ export class Hud {
 
     this.teamNode = el('div', { class: 'hud-team hidden' });
     this.waitingNode = el('div', { class: 'hud-waiting hidden', text: '' });
+    this.spectateNode = el('div', { class: 'hud-spectate hidden', text: '' });
 
     this.minimapCanvas = el('canvas', { class: 'minimap-canvas' });
     this.minimapCanvas.width = MAP_W;
@@ -206,6 +208,7 @@ export class Hud {
       el('div', { class: 'hud-right' }, this.cashText, hotbar),
       this.teamNode,
       this.waitingNode,
+      this.spectateNode,
       this.minimapNode,
       this.contractsNode,
       this.objectiveNode,
@@ -240,6 +243,12 @@ export class Hud {
     }
     const key = this.promptNode.querySelector('.prompt-key');
     if (key) key.textContent = interactLabel();
+  }
+
+  /** Persistent spectator banner (expedition co-op: your pod is gone). */
+  setSpectating(text: string | null): void {
+    this.spectateNode.classList.toggle('hidden', text === null);
+    if (text !== null) this.spectateNode.textContent = text;
   }
 
   /** Network-stall overlay: pass the message to show, or null to hide. */

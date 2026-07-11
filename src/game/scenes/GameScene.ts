@@ -16,6 +16,7 @@ import {
   isArtifact,
   isBoulder,
   isMineral,
+  podAlive,
   podDepthFt,
   saleValue,
 } from '@core/index';
@@ -66,6 +67,8 @@ export class GameScene extends Phaser.Scene {
   /** One view per pod (co-op); index-aligned with state.pods. */
   private podViews: PodView[] = [];
   private localIdx = 0;
+  /** Pod index the camera follows while the local pod is permanently lost. */
+  private spectating = -1;
   private boss!: BossView;
   private critterView!: CritterView;
   private fauna!: FaunaLayer;
@@ -706,8 +709,30 @@ export class GameScene extends Phaser.Scene {
     const alpha = this.host.alpha;
     const s = this.state;
     const lp = s.pods[this.localIdx] ?? s.pod;
+    const localAlive = podAlive(lp);
 
     for (const v of this.podViews) v.update(alpha);
+    // Spectator: a permanently-lost pod (expedition co-op) hands the camera to
+    // the nearest living teammate, re-picking whenever the target goes down.
+    if (lp.respawnAtTick < 0) {
+      const cur = this.spectating >= 0 ? s.pods[this.spectating] : null;
+      if (!cur || !podAlive(cur)) {
+        let best = -1;
+        let bestD = Number.POSITIVE_INFINITY;
+        s.pods.forEach((q, i) => {
+          if (!podAlive(q)) return;
+          const d = Math.abs(q.x - lp.x) + Math.abs(q.y - lp.y);
+          if (d < bestD) {
+            bestD = d;
+            best = i;
+          }
+        });
+        if (best >= 0 && this.podViews[best]) {
+          this.spectating = best;
+          this.cameras.main.startFollow(this.podViews[best].sprite, false, 0.12, 0.12);
+        }
+      }
+    }
     this.boss.update(alpha);
     this.critterView.update();
     this.fauna.update();
@@ -747,7 +772,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Thrust FX + audio loops.
-    const thrusting = lp.mode === 'air' && lp.fuel > 0 && this.host.paused === false;
+    const thrusting = localAlive && lp.mode === 'air' && lp.fuel > 0 && this.host.paused === false;
     const inputUp = thrusting && lp.yVel < 2; // heuristic: actively climbing/hovering
     this.thrustE.setPosition(this.pod.sprite.x, this.pod.sprite.y + 24);
     this.smokeE.setPosition(this.pod.sprite.x, this.pod.sprite.y + 26);
@@ -814,7 +839,9 @@ export class GameScene extends Phaser.Scene {
     // Pod headlight glow (brighter as it gets darker).
     const depth = podDepthFt(lp);
     const darkness = Math.max(0, Math.min(0.86, (-depth / 7400) * 0.95));
-    this.headGlow.setPosition(this.pod.sprite.x, this.pod.sprite.y);
+    this.headGlow.setVisible(localAlive || this.spectating >= 0);
+    const glowView = this.spectating >= 0 ? (this.podViews[this.spectating] ?? this.pod) : this.pod;
+    this.headGlow.setPosition(glowView.sprite.x, glowView.sprite.y);
     this.headGlow.setAlpha(
       0.08 + darkness * 0.3 + (this.fxFull ? Math.sin(this.time.now / 90) * 0.015 : 0),
     );

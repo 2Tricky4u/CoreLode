@@ -452,3 +452,22 @@
     bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
   }
 }
+
+/* Spectator banner — the local pod is permanently lost (expedition co-op). */
+.hud-spectate {
+  position: absolute;
+  top: calc(var(--px) * 46px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: calc(var(--px) * 3px) calc(var(--px) * 8px);
+  background: #140c1cd9;
+  border: 1px solid var(--c-red, #d95763);
+  color: var(--c-red, #d95763);
+  font-size: calc(var(--px) * 9px);
+  letter-spacing: 0.08em;
+  text-shadow: 1px 1px 0 #000;
+  pointer-events: none;
+}
+.hud-spectate.hidden {
+  display: none;
+}

@@ -384,6 +384,8 @@ export const STRINGS: Record<string, string> = {
   coopHostSuspends: 'The host keeps the expedition suspended',
   coopRelicFound: 'reached a relic cache and is choosing…',
   hudLost: 'LOST',
+  coopSpectating: 'YOUR POD IS LOST — spectating the crew',
+  coopLostToast: 'is gone — their pod is lost for the run',
   uiFullscreen: 'Fullscreen',
   hudDown: 'DOWN',
   coopDownToast: 'is down! Respawn fee',

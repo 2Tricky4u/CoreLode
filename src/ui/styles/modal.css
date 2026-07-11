@@ -378,3 +378,8 @@
 .hud-bar-cargo:hover .bar-track {
   border-color: var(--c-gold);
 }
+
+.dev-note {
+  font-size: calc(var(--px) * 8px);
+  opacity: 0.6;
+}
