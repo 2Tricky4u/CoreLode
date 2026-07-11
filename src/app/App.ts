@@ -11,6 +11,7 @@ import {
   type LoadoutId,
   MODULES,
   MODULE_SLOTS,
+  type ModeConfig,
   type ModuleId,
   PROTO_VERSION,
   RELICS,
@@ -44,6 +45,7 @@ import {
   podDepthFt,
   podTileX,
   podTileY,
+  sanitizeRig,
   serialize,
   setTile,
   tankCapacity,
@@ -65,7 +67,7 @@ import * as storage from '@platform/storage';
 import { Hud } from '@ui/Hud';
 import { TouchControls } from '@ui/TouchControls';
 import { UiRoot } from '@ui/UiRoot';
-import { coopScreen } from '@ui/coopScreen';
+import { type CoopRigView, type CoopSessionMode, coopScreen } from '@ui/coopScreen';
 import { openDevPanel } from '@ui/devPanel';
 import { showFatal } from '@ui/fatal';
 import { helpScreen } from '@ui/help';
@@ -596,8 +598,17 @@ export class App {
   }
 
   // ---------- co-op lobby (WebRTC paste-code handshake) ----------
-  private coopSeats: Array<{ channel: RtcChannel; offerToken: string; connected: boolean }> = [];
+  private coopSeats: Array<{
+    channel: RtcChannel;
+    offerToken: string;
+    connected: boolean;
+    rig: { loadoutId: LoadoutId; modules: ModuleId[] } | null;
+  }> = [];
   private coopView: 'menu' | 'host' | 'join' = 'menu';
+  private coopMode: CoopSessionMode = 'story';
+  private coopProfile: storage.ExpeditionProfile | null = null;
+  /** Guest lobby channel — rig changes re-send cfg on it until the session starts. */
+  private coopGuestChannel: NetChannel | null = null;
   private coopStatus = '';
   private coopAnswerToken: string | null = null;
 
@@ -605,14 +616,66 @@ export class App {
     this.teardownCoopLobby();
     this.coopPendingSave = null;
     this.coopView = 'menu';
+    this.coopMode = 'story';
     this.coopStatus = '';
     this.renderCoop();
+    // The rig picker needs the local unlocks; re-render when they arrive.
+    void storage.readExpeditionProfile().then((profile) => {
+      this.coopProfile = profile;
+      if (this.screens.visible) this.renderCoop();
+    });
   }
 
   private teardownCoopLobby(): void {
     for (const seat of this.coopSeats) seat.channel.close();
     this.coopSeats = [];
     this.coopAnswerToken = null;
+    this.coopGuestChannel = null;
+  }
+
+  /** My current rig, from the local expedition profile (standard until loaded). */
+  private myRig(): { loadoutId: LoadoutId; modules: ModuleId[] } {
+    const pr = this.coopProfile;
+    return pr
+      ? { loadoutId: pr.loadout, modules: [...pr.slotted] }
+      : { loadoutId: 'standard', modules: [] };
+  }
+
+  private rigBadge(rig: { loadoutId: LoadoutId; modules: ModuleId[] } | null): string {
+    if (!rig) return t('coopRigStandard');
+    const lo = LOADOUTS.find((l) => l.id === rig.loadoutId);
+    const name = lo ? t(lo.key) : rig.loadoutId;
+    return rig.modules.length > 0 ? `${name} +${rig.modules.length}` : name;
+  }
+
+  private rigView(): CoopRigView | null {
+    const pr = this.coopProfile;
+    if (!pr) return null;
+    return {
+      loadouts: pr.unlocked.loadouts.map((id) => ({
+        id,
+        label: t(LOADOUTS.find((l) => l.id === id)?.key ?? id),
+        active: pr.loadout === id,
+      })),
+      modules: pr.unlocked.modules.map((id) => ({
+        id,
+        label: t(MODULES.find((m) => m.id === id)?.key ?? id),
+        slotted: pr.slotted.includes(id),
+      })),
+    };
+  }
+
+  /** Lobby rig edits: persist the preference and (as a guest) re-mail the cfg. */
+  private async lobbyRigChange(fn: (pr: storage.ExpeditionProfile) => void): Promise<void> {
+    const pr = this.coopProfile ?? (await storage.readExpeditionProfile());
+    fn(pr);
+    this.coopProfile = pr;
+    await storage.writeExpeditionProfile(pr);
+    const rig = this.myRig();
+    this.coopGuestChannel?.send(
+      encodeMsg({ m: 'cfg', loadout: rig.loadoutId, modules: rig.modules }),
+    );
+    this.renderCoop();
   }
 
   private renderCoop(): void {
@@ -624,6 +687,7 @@ export class App {
           status: s.connected ? 'connected' : 'waiting',
           offerToken: s.offerToken,
           label: `Player ${i + 2}`,
+          rig: this.coopMode === 'exp' && s.connected ? this.rigBadge(s.rig) : null,
         })),
         canStart:
           this.coopSeats.length > 0 &&
@@ -633,6 +697,25 @@ export class App {
           this.coopSeats.length < (this.coopPendingSave ? this.coopPendingPlayers() - 1 : 5) &&
           this.coopSeats.every((s) => s.connected),
         answerToken: this.coopAnswerToken,
+        mode: this.coopMode,
+        // Rig picking is moot for a pending resume (rigs live in the save).
+        rig: this.coopPendingSave ? null : this.rigView(),
+        onMode: (m) => {
+          if (this.coopPendingSave) return; // a loaded save fixes the session flavor
+          this.coopMode = m;
+          this.renderCoop();
+        },
+        onPickLoadout: (id) =>
+          void this.lobbyRigChange((pr) => {
+            if (pr.unlocked.loadouts.includes(id as LoadoutId)) pr.loadout = id as LoadoutId;
+          }),
+        onToggleModule: (id) =>
+          void this.lobbyRigChange((pr) => {
+            const mid = id as ModuleId;
+            if (!pr.unlocked.modules.includes(mid)) return;
+            if (pr.slotted.includes(mid)) pr.slotted = pr.slotted.filter((m) => m !== mid);
+            else if (pr.slotted.length < MODULE_SLOTS) pr.slotted.push(mid);
+          }),
         onHost: () => {
           this.coopView = 'host';
           void this.addCoopSeat();
@@ -659,10 +742,21 @@ export class App {
     this.renderCoop();
     try {
       const { channel, offerToken } = await RtcChannel.host();
-      const seat = { channel, offerToken, connected: false };
-      // Version handshake: the guest sends hi when its channel opens.
+      const seat: (typeof this.coopSeats)[number] = {
+        channel,
+        offerToken,
+        connected: false,
+        rig: null,
+      };
+      // Version handshake: the guest sends hi when its channel opens; its rig
+      // (cfg) follows and may be re-sent whenever the guest changes gear.
       channel.onMessage = (text) => {
         const msg = decodeMsg(text);
+        if (msg?.m === 'cfg') {
+          seat.rig = sanitizeRig(msg.loadout, msg.modules); // null → standard + badge
+          this.renderCoop();
+          return;
+        }
         if (msg?.m !== 'hi') return;
         if (msg.proto !== PROTO_VERSION || msg.saveV !== SAVE_VERSION) {
           this.ui.toast(t('coopVersionMismatch'), 6000);
@@ -703,6 +797,24 @@ export class App {
     return mode && podCount(mode) > 1 ? podCount(mode) : 0;
   }
 
+  /** Fresh expedition/daily co-op mode from the lobby rigs (host = seat 0). */
+  private expeditionCoopMode(players: number): ModeConfig {
+    const dateKey = this.coopMode === 'daily' ? dailyKey(new Date()) : undefined;
+    const hostRig = this.myRig();
+    const perPod = [
+      hostRig,
+      ...this.coopSeats
+        .filter((s) => s.connected)
+        .map((s) => s.rig ?? { loadoutId: 'standard' as LoadoutId, modules: [] }),
+    ];
+    return {
+      kind: 'expedition',
+      goldium: true,
+      players,
+      expedition: { dateKey, loadoutId: hostRig.loadoutId, modules: hostRig.modules, perPod },
+    };
+  }
+
   private startCoopSession(): void {
     const channels = this.coopSeats.filter((s) => s.connected).map((s) => s.channel);
     if (channels.length === 0) return;
@@ -712,8 +824,11 @@ export class App {
       return;
     }
     const players = pending ? this.coopPendingPlayers() : channels.length + 1;
-    const seed = entropySeed();
-    const mode = { kind: 'coop' as const, goldium: true, players };
+    const seed = this.coopMode === 'daily' ? dailySeed(dailyKey(new Date())) : entropySeed();
+    const mode: ModeConfig =
+      this.coopMode === 'story' || pending
+        ? { kind: 'coop', goldium: true, players }
+        : this.expeditionCoopMode(players);
     if (pending) {
       const parts = chunkSplit(encodeSave(pending));
       channels.forEach((ch, i) => {
@@ -752,6 +867,9 @@ export class App {
       this.renderCoop();
       await channel.waitOpen();
       channel.send(encodeMsg({ m: 'hi', proto: PROTO_VERSION, saveV: SAVE_VERSION }));
+      const rig = this.myRig();
+      channel.send(encodeMsg({ m: 'cfg', loadout: rig.loadoutId, modules: rig.modules }));
+      this.coopGuestChannel = channel;
       await this.guestAwaitAndBegin(channel);
     } catch {
       this.coopStatus = '';
@@ -768,6 +886,7 @@ export class App {
       const parts = new ChunkAssembler();
       const begin = (state: GameState) => {
         if (!joined) return;
+        this.coopGuestChannel = null;
         const host = new LockstepHost(state, {
           role: 'guest',
           localPlayer: joined.player,
@@ -864,8 +983,22 @@ export class App {
           };
         });
       });
-      const seed = entropySeed();
-      const mode = { kind: 'coop' as const, goldium: true, players };
+      const exp = params.get('exp'); // '1' → expedition, 'daily' → today's seed
+      this.coopMode = exp === 'daily' ? 'daily' : exp ? 'exp' : 'story';
+      const seed = this.coopMode === 'daily' ? dailySeed(dailyKey(new Date())) : entropySeed();
+      const mode: ModeConfig =
+        this.coopMode === 'story'
+          ? { kind: 'coop', goldium: true, players }
+          : {
+              kind: 'expedition',
+              goldium: true,
+              players,
+              expedition: {
+                dateKey: this.coopMode === 'daily' ? dailyKey(new Date()) : undefined,
+                loadoutId: 'standard',
+                modules: [],
+              },
+            };
       for (const ch of channels) ch.send(encodeMsg({ m: 'start', seed, mode, level: 1 }));
       const state = createRun({ seed, mode });
       const host = new LockstepHost(state, {

@@ -10,6 +10,16 @@ export interface CoopSeatView {
   status: 'waiting' | 'connected';
   offerToken: string;
   label: string;
+  /** Expedition sessions: the rig this seat mailed in (badge text), if any. */
+  rig?: string | null;
+}
+
+export type CoopSessionMode = 'story' | 'exp' | 'daily';
+
+/** My local rig picker (unlocked gear only — purchases live on the Expedition screen). */
+export interface CoopRigView {
+  loadouts: Array<{ id: string; label: string; active: boolean }>;
+  modules: Array<{ id: string; label: string; slotted: boolean }>;
 }
 
 export interface CoopScreenOpts {
@@ -20,6 +30,13 @@ export interface CoopScreenOpts {
   canAddSeat: boolean;
   /** Guest: the minted answer token to send back (null until an offer is pasted). */
   answerToken: string | null;
+  /** Host: which session flavor Start will launch. */
+  mode: CoopSessionMode;
+  /** My rig (shown on the host view in expedition modes, and on the join view). */
+  rig: CoopRigView | null;
+  onMode: (m: CoopSessionMode) => void;
+  onPickLoadout: (id: string) => void;
+  onToggleModule: (id: string) => void;
   onHost: () => void;
   onJoin: () => void;
   onAddSeat: () => void;
@@ -64,6 +81,40 @@ const pasteBox = (placeholder: string, onSubmit: (text: string) => void): HTMLEl
   );
 };
 
+const rigSection = (o: CoopScreenOpts): HTMLElement | null => {
+  if (!o.rig) return null;
+  return el(
+    'div',
+    { class: 'coop-rig' },
+    el('p', { class: 'exp-daily-note', text: t('coopMyRig') }),
+    el(
+      'div',
+      { class: 'btn-row wrap' },
+      ...o.rig.loadouts.map((l) =>
+        el(
+          'button',
+          { class: `btn tiny${l.active ? ' primary' : ''}`, onclick: () => o.onPickLoadout(l.id) },
+          l.label,
+        ),
+      ),
+    ),
+    el(
+      'div',
+      { class: 'btn-row wrap' },
+      ...o.rig.modules.map((m) =>
+        el(
+          'button',
+          {
+            class: `btn tiny${m.slotted ? ' primary' : ''}`,
+            onclick: () => o.onToggleModule(m.id),
+          },
+          m.label,
+        ),
+      ),
+    ),
+  );
+};
+
 export function coopScreen(o: CoopScreenOpts): HTMLElement {
   const kids: (HTMLElement | null)[] = [
     el('h2', { text: t('coopTitle') }),
@@ -83,13 +134,42 @@ export function coopScreen(o: CoopScreenOpts): HTMLElement {
       ),
     );
   } else if (o.view === 'host') {
+    // Session flavor: story co-op, expedition, or the (unrecorded) daily.
+    kids.push(
+      el(
+        'div',
+        { class: 'btn-row' },
+        ...(
+          [
+            ['story', t('coopModeStory')],
+            ['exp', t('coopModeExp')],
+            ['daily', t('coopModeDaily')],
+          ] as Array<[CoopSessionMode, string]>
+        ).map(([m, label]) =>
+          el(
+            'button',
+            { class: `btn tiny${o.mode === m ? ' primary' : ''}`, onclick: () => o.onMode(m) },
+            label,
+          ),
+        ),
+      ),
+    );
+    if (o.mode === 'daily')
+      kids.push(el('p', { class: 'exp-daily-note', text: t('coopDailyNote') }));
+    if (o.mode === 'exp') {
+      const rig = rigSection(o);
+      if (rig) kids.push(rig);
+    }
     const seatRows = o.seats.map((seat, i) =>
       el(
         'div',
         { class: 'coop-seat' },
         el('strong', { text: seat.label }),
         seat.status === 'connected'
-          ? el('span', { class: 'coop-ok', text: ` ${t('coopConnected')}` })
+          ? el('span', {
+              class: 'coop-ok',
+              text: ` ${t('coopConnected')}${seat.rig ? ` · ${seat.rig}` : ''}`,
+            })
           : el(
               'div',
               {},
@@ -128,6 +208,11 @@ export function coopScreen(o: CoopScreenOpts): HTMLElement {
         el('p', { class: 'exp-daily-note', text: t('coopSendAnswer') }),
         tokenBox(o.answerToken, () => o.onCopy(o.answerToken ?? '')),
       );
+    }
+    // The guest's rig rides along in case the host starts an expedition.
+    const rig = rigSection(o);
+    if (rig) {
+      kids.push(el('p', { class: 'exp-daily-note', text: t('coopRigNote') }), rig);
     }
     kids.push(
       el(
