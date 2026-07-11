@@ -13,7 +13,7 @@ Branch `feat/coop-expedition`; one commit per step; merge --ff-only per mileston
 
 ## M2 — Per-pod expedition systems (solo-invariant)
 
-- [ ] [X3] Heat per-pod (stepHeat loop, PodState.heatWarn, heatWarning{player})
+- [x] [X3] Heat per-pod (stepHeat loop, PodState.heatWarn, heatWarning{player})
 - [ ] [X4] Chain per-pod (PodState.chain, acting-pod vault payout, chain events{player})
 - [ ] [X5] Relics per-pod (maxDepthFt watermark, pending slots array, relicOffer{player})
 - [ ] [X6] Critters + contracts multi-pod (nearest-pod AI, digger-keyed spawn, bay aggregation)

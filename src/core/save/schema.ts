@@ -159,6 +159,7 @@ function revivePod(sp: SavedPod): PodState {
     launchCount: 0,
     drilling: null,
     hp: sp.hp,
+    heatWarn: 0, // transient latch — a re-warning after load is harmless
     fuel: sp.fuel,
     cash: sp.cash,
     points: sp.points,
@@ -211,7 +212,7 @@ export function deserialize(f: SaveFile): GameState {
     contracts: f.contracts,
     outcome: 'active',
     challengeEndTick: 0,
-    heatWarnLevel: 0, // transient latch — a re-warning after load is harmless
+
     pendingRelicChoices: null, // transient — the milestone latch lives in story.fired
     victoryRewarded: false,
   };

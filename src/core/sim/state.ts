@@ -58,6 +58,8 @@ export interface PodState {
   nearBuilding: BuildingId | null;
   /** Expedition heat, 0–100+. Always 0 in story/challenge (stepHeat is expedition-gated). */
   heat: number;
+  /** Edge-trigger latch for heat warnings (transient — never saved). */
+  heatWarn: number;
   /** Expedition relic ids. Always empty outside expedition (ids narrowed in data/relics.ts). */
   relics: string[];
   /** Expedition module ids. Always empty outside expedition (ids narrowed in data/expedition.ts). */
@@ -196,7 +198,6 @@ export interface GameState {
   outcome: Outcome;
   challengeEndTick: number; // 0 unless challenge mode
   /** Latched heat-warning tier (0/1/2) — transient, resets on load. */
-  heatWarnLevel: number;
   /** Relic ids offered and awaiting a chooseRelic command — transient. */
   pendingRelicChoices: string[] | null;
   /** Set once when the run ends victorious — drops granted flag. */
@@ -341,6 +342,7 @@ export function createRun(opts: NewRunOptions = {}): GameState {
       lavaLatch: 0,
       nearBuilding: null,
       heat: 0,
+      heatWarn: 0,
       relics: [],
       // Daily runs ignore modules so result codes stay comparable across players.
       modules: exp && !exp.dateKey ? [...exp.modules] : [],
@@ -394,7 +396,6 @@ export function createRun(opts: NewRunOptions = {}): GameState {
     contracts: mode.kind === 'expedition' ? generateContracts(seed) : [],
     outcome: 'active',
     challengeEndTick: ch ? ch.timeLimitTicks : 0,
-    heatWarnLevel: 0,
     pendingRelicChoices: null,
     victoryRewarded: false,
   };

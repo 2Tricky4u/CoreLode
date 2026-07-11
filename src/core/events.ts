@@ -34,7 +34,7 @@ export type SimEvent =
   /** Fuel-failsafe assist fired: towed to the surface, cargo forfeited. */
   | { t: 'rescue'; cost: number; cargoLost: number; player?: number }
   /** Expedition heat crossed a warning threshold (70 / 90). */
-  | { t: 'heatWarning'; level: 1 | 2 }
+  | { t: 'heatWarning'; level: 1 | 2; player?: number }
   /** Expedition collect chain grew (emitted from ×2 up). */
   | { t: 'chain'; collectibleId: number; count: number }
   /** Expedition chain ended — banked into the sale-bonus vault or voided. */
