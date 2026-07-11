@@ -20,7 +20,7 @@ Branch `feat/coop-expedition`; one commit per step; merge --ff-only per mileston
 - [x] [X7] Save schema v5 (SavedPod.chain/maxDepthFt, v4 fixture, migration)
 - [x] [X8] createRun expedition multiplayer (players clamp, perPod rigs, daily coercion)
 - [x] [X9] True single life + twin-hash determinism suite (2 & 6 players)
-- [ ] M2 gate: full suite + build, both goldens frozen, merge
+- [x] M2 gate: full suite + build green (203 tests), both golden literal sets unchanged, merged
 
 ## M3 — Wire, lobby, App lifecycle
 
