@@ -304,6 +304,8 @@ export function challengeScreen(opts: {
 export function expeditionScreen(opts: {
   profile: ExpeditionProfile;
   hasSuspend: boolean;
+  /** Crew size when the suspended run is co-op (undefined for solo). */
+  suspendCrew?: number;
   /** Today's daily record line, already formatted (null → none yet). */
   dailyBest: string | null;
   onStart: () => void;
@@ -374,7 +376,11 @@ export function expeditionScreen(opts: {
       'div',
       { class: 'btn-col' },
       opts.hasSuspend
-        ? el('button', { class: 'btn primary', onclick: opts.onResume }, t('expResume'))
+        ? el(
+            'button',
+            { class: 'btn primary', onclick: opts.onResume },
+            `${t('expResume')}${opts.suspendCrew ? ` (CO-OP ×${opts.suspendCrew})` : ''}`,
+          )
         : null,
       el(
         'button',

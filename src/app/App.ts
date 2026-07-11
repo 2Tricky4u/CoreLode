@@ -407,13 +407,20 @@ export class App {
   // ---------- expedition (roguelike) ----------
   private async showExpedition(): Promise<void> {
     const profile = await storage.readExpeditionProfile();
-    const suspend = await storage.readSave('exp:0');
+    const suspend = (await storage.readSave('exp:0')) as SaveFile | undefined;
+    let suspendCrew = 0;
+    try {
+      if (suspend?.mode) suspendCrew = podCount(suspend.mode);
+    } catch {
+      /* unreadable slot — the Resume flow reports it properly */
+    }
     const today = dailyKey(new Date());
     const daily = (await storage.readDaily())[today];
     this.screens.show(
       expeditionScreen({
         profile,
         hasSuspend: Boolean(suspend),
+        suspendCrew: suspendCrew > 1 ? suspendCrew : undefined,
         dailyBest: daily
           ? `${Math.round(daily.bestDepthFt).toLocaleString('en-US')} ft · $${daily.bestCash.toLocaleString('en-US')} · ${daily.attempts}×`
           : null,
@@ -534,12 +541,15 @@ export class App {
   /** Single life: the suspend slot is consumed on resume (re-written at each building). */
   private async resumeExpedition(): Promise<void> {
     await this.loadSlot('exp:0');
-    await storage.deleteSave('exp:0');
+    // Solo consumes the slot now (single life); a CREW save must survive an
+    // abandoned lobby — it burns when startCoopSession actually uses it.
+    if (!this.coopPendingSave) await storage.deleteSave('exp:0');
   }
 
   private suspendExpedition(): void {
     const host = this.host;
     if (!host || host.state.mode.kind !== 'expedition') return;
+    if (this.localPlayer !== 0) return; // co-op: only the host owns the suspend slot
     void storage.writeSave('exp:0', serialize(host.state, Date.now()));
   }
 
@@ -555,8 +565,9 @@ export class App {
     await storage.writeExpeditionProfile(profile);
 
     // Daily record: keep the single best RUN (by depth) so result codes stay
-    // honest — one real run, never a franken-best across attempts.
-    const dateKey = s.mode.expedition?.dateKey;
+    // honest — one real run, never a franken-best across attempts. Crew runs
+    // are never recorded (the daily board is a solo leaderboard).
+    const dateKey = s.pods.length === 1 ? s.mode.expedition?.dateKey : undefined;
     if (dateKey) {
       const daily = await storage.readDaily();
       const prev = daily[dateKey];
@@ -573,7 +584,8 @@ export class App {
       await storage.writeDaily(daily);
     }
 
-    await storage.deleteSave('exp:0');
+    // Everyone banks the identical cores above; the suspend slot is the host's.
+    if (this.localPlayer === 0) await storage.deleteSave('exp:0');
     return cores;
   }
 
@@ -843,6 +855,8 @@ export class App {
       });
     }
     const state = pending ? deserialize(pending) : createRun({ seed, mode });
+    // A resumed crew expedition consumes the suspend slot only NOW (single life).
+    if (pending?.mode.kind === 'expedition') void storage.deleteSave('exp:0');
     this.coopPendingSave = null;
     const host = new LockstepHost(state, {
       role: 'host',
@@ -1112,14 +1126,16 @@ export class App {
         if (!local) break;
         this.hud.setPrompt(e.id ? t(BUILDINGS.find((b) => b.id === e.id)?.key ?? e.id) : null);
         break;
-      case 'enterBuilding':
+      case 'enterBuilding': {
+        const exp = host.state.mode.kind === 'expedition';
+        // Single life: expeditions suspend (crash-safe) at EVERY docking — any
+        // pod's, so the host's slot tracks the whole crew (host-only inside).
+        if (exp) this.suspendExpedition();
         if (!local) break;
         if (this.modals.isOpen) break; // already inside a menu
-        if (host.state.mode.kind === 'expedition') {
-          // Single life: expeditions suspend (crash-safe) instead of saving slots.
-          this.suspendExpedition();
+        if (exp) {
           if (e.id === 'saveStation') {
-            this.ui.toast(t('expSuspended'));
+            this.ui.toast(t(this.localPlayer === 0 ? 'expSuspended' : 'coopHostSuspends'));
             break;
           }
         } else if (this.fx.autosaveOnSurface) {
@@ -1127,6 +1143,7 @@ export class App {
         }
         this.openBuildingModal(e.id);
         break;
+      }
       case 'transmission':
         this.pumpPendingTransmission();
         break;

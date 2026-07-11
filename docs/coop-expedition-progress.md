@@ -26,7 +26,7 @@ Branch `feat/coop-expedition`; one commit per step; merge --ff-only per mileston
 
 - [x] [X10] Lobby cfg message + PROTO_VERSION 2 + validator
 - [x] [X11] Expedition lobby UI + bootstrap + tab dev mode (exp=1|daily)
-- [ ] [X12] Settle / suspend / resume (host-only suspend, deferred exp:0 delete, solo-only daily records)
+- [x] [X12] Settle / suspend / resume (host-only suspend, deferred exp:0 delete, solo-only daily records)
 - [ ] M3 gate: full suite + build + 2-tab smoke, merge
 
 ## M4 — HUD, rendering, spectator UX
