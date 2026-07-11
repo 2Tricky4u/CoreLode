@@ -38,6 +38,16 @@ and tuned against the Ruffle-hosted original (`docs/fidelity-checklist.md`).
 Quality-of-life extras (autosave, minimap, colorblind glyphs, seeded runs, speedrun timer)
 all default **OFF**; Purist Mode force-disables them.
 
+## Co-op (2–6 players, serverless)
+
+The story world, shared: one wallet, per-pod everything else, respawn-for-a-fee deaths,
+synchronized pause, and the boss fighting the whole crew. One player hosts over **WebRTC
+with manual paste-code signaling** — the site stays 100% static (GitHub Pages works
+as-is) and it runs on an offline LAN. Deterministic host-sequenced lockstep keeps all
+sims bit-identical, with a hash sentinel and one-click host resync if anything drifts.
+Full walkthrough, protocol notes, and caveats: `docs/coop.md`. Co-op is remake-only —
+a golden solo replay test guarantees the 2004 rules are untouched.
+
 ## Architecture
 
 - `src/core/` — the whole game as pure TypeScript (zero Phaser/DOM; CI-enforced by

@@ -74,6 +74,19 @@ All sprites and textures are generated procedurally — there are no hand-painte
 
 Art rules are in `tools/art/STYLE.md` (DB32 palette only, ≤4 shades per material, top-left single light source, selective outlines on hero sprites only, gas pockets must look identical to soil). The reference renders are `docs/art-preview.png` and `docs/art-scene.png`. Vision loop: `npm run atlas && npm run art:preview` → read PNGs → critique against STYLE.md → patch.
 
+### Co-op
+
+2–6 player shared-world story co-op, fully static hosting. `src/core/net/` is the pure
+protocol (messages, `HostSequencer`/`BundleLedger` lockstep bookkeeping, `coopStateHash`
+sentinel, exact-state `snapshot.ts` for resync); transports are `src/platform/net/`
+(`RtcChannel` manual paste-code WebRTC with `iceServers: []`, `LocalChannel` over
+BroadcastChannel for same-machine tabs — `?coop=host&room=dev&players=2` /
+`?coop=join&room=dev&seat=1`); the driver is `src/game/LockstepHost.ts` (implements
+`SimHost`, so GameScene/App don't care whether a run is solo or networked). Everyone
+executes only host-sequenced bundles; commands ride the input stream; presentation
+pauses are ignored in co-op ('user' pause is synchronized). Solo fidelity is enforced
+by `src/core/sim/golden.test.ts` — its literals must never change. See `docs/coop.md`.
+
 ### Save / persistence
 
 `SaveFile` (versioned, `src/core/save/schema.ts`) stores the full 36×600 world grid as RLE (`[tile, runLength, …]`) because earthquakes shift whole rows. Platform storage is `src/platform/storage.ts` (IndexedDB via idb-keyval). Every write keeps the previous copy at `<key>:prev` as a dual-write backup; loads fall back to it if validation fails.

@@ -56,3 +56,8 @@ marked [A]; manual items [M]. CAL items also update `docs/calibration.md`.
   (rescue/chain/heat/relic/contract/critter) and keeps their state fields inert.
 - [M] Expedition mode never leaks into story: no heat bar, chain meter, contracts panel,
   relic offers, magmites, or cores outside `mode.kind === 'expedition'`.
+- [A] Co-op is remake-only and cannot move solo: the golden replay test
+  (`src/core/sim/golden.test.ts`) freezes a 3,000-tick solo story run against hard-coded
+  state/world hashes; the co-op purity test keeps coop-kind events out of story runs.
+- [M] Co-op sanity loop: ≥3 clients (tabs or LAN), shop-while-others-dig, a death +
+  respawn, a quake, an arena visit, and a save → full-crew resume — no desync dialog.
