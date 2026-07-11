@@ -363,3 +363,15 @@
     opacity: 0.55;
   }
 }
+
+/* Touch screens: keep tap targets comfortable and lift the interact prompt
+   clear of the d-pad cluster pinned to the bottom corner. */
+@media (pointer: coarse) {
+  .hotbar-btn {
+    width: max(calc(var(--px) * 28px), 34px);
+    height: max(calc(var(--px) * 28px), 34px);
+  }
+  .interact-prompt {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + clamp(40px, 11vmin, 56px) * 2 + 30px);
+  }
+}
