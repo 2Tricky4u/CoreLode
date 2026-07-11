@@ -77,3 +77,19 @@ export {
   decodeDailyResult,
   type DailyResult,
 } from './daily';
+export {
+  PROTO_VERSION,
+  INPUT_DELAY_TICKS,
+  HASH_EVERY_TICKS,
+  encodeMsg,
+  decodeMsg,
+  type NetMessage,
+} from './net/messages';
+export {
+  HostSequencer,
+  BundleLedger,
+  coopStateHash,
+  type Bundle,
+  type PlayerInput,
+} from './net/lockstep';
+export { COOP } from './data/coop';
