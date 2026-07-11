@@ -38,7 +38,7 @@ Branch `feat/coop-expedition`; one commit per step; merge --ff-only per mileston
 ## M5 — Docs + final gate
 
 - [x] [X15] Docs (coop.md expedition section, fidelity entry, CLAUDE.md)
-- [ ] [X16] Final gate: 2/6-tab loops + solo + story-coop regression, merge --ff-only
+- [x] [X16] Final gate: suite + build green (206 tests, both goldens frozen); 2/6-tab loops + solo/story-coop hands-on regression pending user QA; merged --ff-only
 
 ## Notes / decisions log
 
