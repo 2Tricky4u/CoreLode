@@ -11,6 +11,43 @@ export const lerp = (a: number, b: number, t: number): number => a + (b - a) * t
  */
 export const dist = (dx: number, dy: number): number => Math.sqrt(dx * dx + dy * dy);
 
+/** Polynomial atan on [0,1] — mul/add only, so bit-identical across engines. */
+const atanPoly = (x: number): number => {
+  const x2 = x * x;
+  return (
+    x *
+    (0.9999993329 +
+      x2 *
+        (-0.3332985605 +
+          x2 *
+            (0.1994653599 +
+              x2 *
+                (-0.1390853351 +
+                  x2 *
+                    (0.0964200441 +
+                      x2 * (-0.0559098861 + x2 * (0.0218612288 + x2 * -0.004054058)))))))
+  );
+};
+
+/**
+ * Deterministic atan2 replacement (Math.atan2 is implementation-defined and
+ * can differ across browsers — a lockstep hazard). Same [-π, π] convention.
+ * Max error ≈ 1e-7 rad — six orders of magnitude inside the sim's coarsest
+ * angular tolerance (the boss laser's 0.09 rad hit window).
+ */
+export function atan2d(y: number, x: number): number {
+  if (x === 0 && y === 0) return 0;
+  const ax = Math.abs(x);
+  const ay = Math.abs(y);
+  const swap = ay > ax;
+  const num = swap ? ax : ay;
+  const den = swap ? ay : ax;
+  let a = atanPoly(den === 0 ? 0 : num / den);
+  if (swap) a = Math.PI / 2 - a;
+  if (x < 0) a = Math.PI - a;
+  return y < 0 ? -a : a;
+}
+
 /** FNV-1a over a numeric array — used for golden replay state hashes. */
 export function fnv1a(values: ArrayLike<number>): number {
   let h = 0x811c9dc5;

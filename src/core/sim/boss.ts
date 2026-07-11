@@ -9,7 +9,7 @@ import { HELL_FLOOR_ROW, TILE_PX, WORLD_H } from '../data/constants';
 import { bossDamageMult, bossFormHp } from '../data/difficulty';
 import { FORM1_DROPS, FORM2_DROPS, VICTORY_REWARDS } from '../data/minerals';
 import type { EventSink } from '../events';
-import { dist } from '../lib/math';
+import { atan2d, dist } from '../lib/math';
 import { solidAt } from '../world/world';
 import { applyDamage } from './physics';
 import { fireTransmission } from './scripted';
@@ -209,7 +209,7 @@ function applyAttack(
       const t = b.phaseTicks / attack.activeTicks;
       b.laserAngle =
         -Math.PI + Math.PI * t * (b.facing === 1 ? 1 : -1) * 1.0 - (b.facing === 1 ? 0 : Math.PI);
-      const podAngle = Math.atan2(p.y - b.y, p.x - b.x);
+      const podAngle = atan2d(p.y - b.y, p.x - b.x); // deterministic across engines
       let diff = Math.abs(podAngle - b.laserAngle);
       if (diff > Math.PI) diff = 2 * Math.PI - diff;
       if (diff < 0.09 && b.contactCooldown <= 0) {
