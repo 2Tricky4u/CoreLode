@@ -2,7 +2,17 @@
  * LockstepHost twin tests: real sims on both ends of an in-memory channel
  * pair — no browser, no WebRTC. The hashes must match on every peer.
  */
-import { DT_MS, EMPTY_INTENTS, type IntentFrame, coopStateHash, createRun } from '@core/index';
+import {
+  DT_MS,
+  EMPTY_INTENTS,
+  type IntentFrame,
+  coopStateHash,
+  createRun,
+  decodeSave,
+  deserialize,
+  encodeSave,
+  serialize,
+} from '@core/index';
 import type { NetChannel } from '@platform/net/channel';
 import { describe, expect, it } from 'vitest';
 import { LockstepHost } from './LockstepHost';
@@ -172,6 +182,36 @@ describe('LockstepHost', () => {
     expect(new Set(peers.map((p) => coopStateHash(p.state))).size).toBe(1);
     expect(host.state.tick).toBeGreaterThan(target - 5); // no permanent stall
     expect(desynced).toBe(false);
+  });
+
+  it('a saved crew world resumes mid-timeline and stays bit-identical', () => {
+    const first = makeSession(2, 99);
+    stepAll([first.host, ...first.guests], 120);
+    first.host.shutdown();
+    // Fresh handshake: both peers rebuild from the SAME shipped save-code.
+    const code = encodeSave(serialize(first.host.state, 0));
+    const [hostEnd, guestEnd] = pipe();
+    const host = new LockstepHost(deserialize(decodeSave(code)), {
+      role: 'host',
+      localPlayer: 0,
+      players: 2,
+      channels: [hostEnd],
+      sampleInput: script(0),
+    });
+    const guest = new LockstepHost(deserialize(decodeSave(code)), {
+      role: 'guest',
+      localPlayer: 1,
+      players: 2,
+      channels: [guestEnd],
+      sampleInput: script(1),
+    });
+    const t0 = host.state.tick;
+    expect(t0).toBeGreaterThan(100); // genuinely mid-run
+    stepAll([host, guest], 200);
+    expect(host.state.tick).toBeGreaterThan(t0 + 150); // the rebased timeline flows
+    const target = Math.max(host.state.tick, guest.state.tick);
+    for (const p of [host, guest]) while (p.state.tick < target) p.update(DT_MS);
+    expect(coopStateHash(guest.state)).toBe(coopStateHash(host.state));
   });
 
   it('a dropped guest is EMPTY-substituted and the host keeps running', () => {

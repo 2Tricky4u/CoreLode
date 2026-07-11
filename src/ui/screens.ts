@@ -132,7 +132,7 @@ export function saveSlotsScreen(opts: {
         'div',
         { class: 'slot' },
         el('span', {
-          text: `${key} · lvl ${meta.level} · $${meta.cash.toLocaleString('en-US')} · ${Math.round(meta.depthFt)} ft${teaser} · ${new Date(meta.updatedAt).toLocaleString()}`,
+          text: `${key}${meta.coopPlayers ? ` · CO-OP ×${meta.coopPlayers}` : ''} · lvl ${meta.level} · $${meta.cash.toLocaleString('en-US')} · ${Math.round(meta.depthFt)} ft${teaser} · ${new Date(meta.updatedAt).toLocaleString()}`,
         }),
         el(
           'span',

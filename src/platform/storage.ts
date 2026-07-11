@@ -16,6 +16,8 @@ export interface SlotMeta {
   depthFt: number;
   cash: number;
   level: number;
+  /** Set (to the crew size) when the slot is a co-op world. */
+  coopPlayers?: number;
   summary?: SlotSummary;
 }
 
@@ -79,6 +81,10 @@ export function listSaves(): Promise<SlotMeta[]> {
           // v4 pods[]; pre-migration raw saves may still carry a single `pod`
           cash: raw.pods?.[0]?.cash ?? (raw as { pod?: { cash?: number } }).pod?.cash ?? 0,
           level: raw.level ?? 1,
+          coopPlayers:
+            raw.mode?.kind === 'coop'
+              ? ((raw.mode as { players?: number }).players ?? 2)
+              : undefined,
           summary,
         });
       } catch {

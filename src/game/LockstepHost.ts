@@ -87,6 +87,8 @@ export class LockstepHost implements SimHost {
     this.channels = opts.channels;
     this.sampleInput = opts.sampleInput;
     this.seq = this.role === 'host' ? new HostSequencer(this.players) : null;
+    // Resumed sessions start mid-timeline: rebase everything at the loaded tick.
+    if (state.tick > 0) this.rebase();
     this.channels.forEach((ch, i) => {
       const guestPlayer = this.role === 'host' ? i + 1 : null;
       ch.onMessage = (text) => this.handleMessage(guestPlayer, text);

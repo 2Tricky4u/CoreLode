@@ -16,6 +16,7 @@ import {
   RELICS,
   SAVE_VERSION,
   SURFACE_ROW,
+  type SaveFile,
   type SettingsValues,
   type SimEvent,
   TILE_PX,
@@ -58,7 +59,7 @@ import { entropySeed, isTouchDevice } from '@platform/env';
 import { copyToClipboard, downloadText, pickTextFile } from '@platform/exporter';
 import { LocalChannel } from '@platform/net/LocalChannel';
 import { RtcChannel } from '@platform/net/RtcChannel';
-import type { NetChannel } from '@platform/net/channel';
+import { ChunkAssembler, type NetChannel, chunkSplit } from '@platform/net/channel';
 import * as storage from '@platform/storage';
 import { Hud } from '@ui/Hud';
 import { TouchControls } from '@ui/TouchControls';
@@ -106,6 +107,8 @@ export class App {
   /** Live lockstep session (null in solo) — for stall/drop lifecycle UX. */
   private lockstep: LockstepHost | null = null;
   private coopDropped = new Set<number>();
+  /** A loaded co-op SaveFile waiting in the host lobby for the crew to reconnect. */
+  private coopPendingSave: SaveFile | null = null;
   private coopByeOnUnload = (): void => this.lockstep?.shutdown();
   private settings: SettingsValues = defaultSettings();
   private lifetime: storage.LifetimeRecords = storage.defaultLifetime();
@@ -596,6 +599,7 @@ export class App {
 
   private showCoop(): void {
     this.teardownCoopLobby();
+    this.coopPendingSave = null;
     this.coopView = 'menu';
     this.coopStatus = '';
     this.renderCoop();
@@ -617,8 +621,13 @@ export class App {
           offerToken: s.offerToken,
           label: `Player ${i + 2}`,
         })),
-        canStart: this.coopSeats.length > 0 && this.coopSeats.every((s) => s.connected),
-        canAddSeat: this.coopSeats.length < 5 && this.coopSeats.every((s) => s.connected),
+        canStart:
+          this.coopSeats.length > 0 &&
+          this.coopSeats.every((s) => s.connected) &&
+          (!this.coopPendingSave || this.coopSeats.length === this.coopPendingPlayers() - 1),
+        canAddSeat:
+          this.coopSeats.length < (this.coopPendingSave ? this.coopPendingPlayers() - 1 : 5) &&
+          this.coopSeats.every((s) => s.connected),
         answerToken: this.coopAnswerToken,
         onHost: () => {
           this.coopView = 'host';
@@ -684,17 +693,38 @@ export class App {
     this.renderCoop();
   }
 
+  /** Crew size fixed by the pending save (0 when hosting a fresh world). */
+  private coopPendingPlayers(): number {
+    const mode = this.coopPendingSave?.mode;
+    return mode?.kind === 'coop' ? (mode.players ?? 2) : 0;
+  }
+
   private startCoopSession(): void {
     const channels = this.coopSeats.filter((s) => s.connected).map((s) => s.channel);
     if (channels.length === 0) return;
-    const players = channels.length + 1;
+    const pending = this.coopPendingSave;
+    if (pending && channels.length !== this.coopPendingPlayers() - 1) {
+      this.ui.toast(t('coopNeedCrew'));
+      return;
+    }
+    const players = pending ? this.coopPendingPlayers() : channels.length + 1;
     const seed = entropySeed();
     const mode = { kind: 'coop' as const, goldium: true, players };
-    channels.forEach((ch, i) => {
-      ch.send(encodeMsg({ m: 'join', player: i + 1, players }));
-      ch.send(encodeMsg({ m: 'start', seed, mode, level: 1 }));
-    });
-    const state = createRun({ seed, mode });
+    if (pending) {
+      const parts = chunkSplit(encodeSave(pending));
+      channels.forEach((ch, i) => {
+        ch.send(encodeMsg({ m: 'join', player: i + 1, players }));
+        ch.send(encodeMsg({ m: 'resume', chunks: parts.length }));
+        parts.forEach((data, k) => ch.send(encodeMsg({ m: 'chunk', i: k, n: parts.length, data })));
+      });
+    } else {
+      channels.forEach((ch, i) => {
+        ch.send(encodeMsg({ m: 'join', player: i + 1, players }));
+        ch.send(encodeMsg({ m: 'start', seed, mode, level: 1 }));
+      });
+    }
+    const state = pending ? deserialize(pending) : createRun({ seed, mode });
+    this.coopPendingSave = null;
     const host = new LockstepHost(state, {
       role: 'host',
       localPlayer: 0,
@@ -727,25 +757,34 @@ export class App {
     }
   }
 
-  /** Guest bootstrap shared by RTC and local-tab transports: wait join+start, go. */
+  /** Guest bootstrap shared by RTC and local-tab transports: join, then start or resume. */
   private guestAwaitAndBegin(ch: NetChannel): Promise<void> {
     return new Promise((res) => {
       let joined: { player: number; players: number } | null = null;
+      const parts = new ChunkAssembler();
+      const begin = (state: GameState) => {
+        if (!joined) return;
+        const host = new LockstepHost(state, {
+          role: 'guest',
+          localPlayer: joined.player,
+          players: joined.players,
+          channels: [ch],
+          sampleInput: this.coopSampler(),
+        });
+        this.wireLockstep(host);
+        this.beginCoopRun(host, joined.player);
+        res();
+      };
       ch.onMessage = (text) => {
         const msg = decodeMsg(text);
         if (msg?.m === 'join') joined = { player: msg.player, players: msg.players };
         if (msg?.m === 'start' && joined) {
-          const state = createRun({ seed: msg.seed, mode: msg.mode, level: msg.level });
-          const host = new LockstepHost(state, {
-            role: 'guest',
-            localPlayer: joined.player,
-            players: joined.players,
-            channels: [ch],
-            sampleInput: this.coopSampler(),
-          });
-          this.wireLockstep(host);
-          this.beginCoopRun(host, joined.player);
-          res();
+          begin(createRun({ seed: msg.seed, mode: msg.mode, level: msg.level }));
+        } else if (msg?.m === 'resume') {
+          parts.begin(msg.chunks);
+        } else if (msg?.m === 'chunk') {
+          const whole = parts.add(msg.i, msg.n, msg.data);
+          if (whole !== null) begin(deserialize(decodeSave(whole)));
         }
       };
     });
@@ -1329,6 +1368,10 @@ export class App {
   private async saveToSlot(slot: string, toast: boolean): Promise<void> {
     const host = this.host;
     if (!host) return;
+    if (host.state.mode.kind === 'coop' && this.localPlayer !== 0) {
+      this.ui.toast(t('coopHostSaves'));
+      return;
+    }
     await storage.writeSave(slot, serialize(host.state, Date.now()));
     this.lastManualSlot = slot;
     if (toast) {
@@ -1368,6 +1411,15 @@ export class App {
         save = migrateAndValidate(raw); // fall back to the dual-write backup
       }
       this.lastManualSlot = key.startsWith('manual') ? key : this.lastManualSlot;
+      if (save.mode.kind === 'coop') {
+        // A crew world resumes through the host lobby — everyone reconnects first.
+        this.coopPendingSave = save;
+        this.teardownCoopLobby();
+        this.coopView = 'host';
+        this.coopStatus = `${t('coopResumeLobby')} — ${t('coopNeedCrew')} (×${this.coopPendingPlayers()})`;
+        void this.addCoopSeat();
+        return;
+      }
       this.beginRun(deserialize(save));
     } catch (err) {
       this.ui.toast(`Load failed: ${(err as Error).message}`);
