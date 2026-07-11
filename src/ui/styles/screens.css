@@ -33,7 +33,7 @@
   opacity: 0.85;
 }
 .menu {
-  min-width: 260px;
+  min-width: min(260px, 84vw);
 }
 .menu .btn {
   font-size: 16px;
@@ -233,7 +233,8 @@
   display: flex;
   gap: 3px;
   flex: 0 0 auto;
-  min-width: 92px;
+  min-width: min(92px, 24vw);
+  flex-wrap: wrap;
 }
 kbd.key {
   display: inline-block;
@@ -269,14 +270,19 @@ kbd.key {
 }
 
 /* Co-op lobby */
+.coop-token-row .btn {
+  min-height: 40px; /* comfortable paste/copy tap target */
+}
 .coop-token-row {
   display: flex;
+  flex-wrap: wrap; /* phones: the copy/accept button drops under the textarea */
   gap: 6px;
   align-items: flex-start;
   margin: 4px 0 8px;
 }
 .coop-token {
-  flex: 1;
+  flex: 1 1 200px;
+  min-width: 0;
   font-family: monospace;
   font-size: 10px;
   background: #140c1c;

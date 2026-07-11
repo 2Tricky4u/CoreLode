@@ -29,7 +29,7 @@ Autonomous sessions: resume at the first unchecked step.
 - [x] [R9] Narrow-portrait breakpoint (max-width: 480px)
 - [x] [R10] Short-landscape breakpoint (max-height: 450px)
 - [x] [R11] Modal min-width fixes for 360px screens
-- [ ] [R12] Screens + co-op lobby phone layout
+- [x] [R12] Screens + co-op lobby phone layout
 - [ ] M3 gate: full matrix walk of every screen/modal/lobby, merge, push
 
 ## M4 — Fullscreen + PWA polish
