@@ -3,7 +3,7 @@ import { EMPTY_INTENTS } from '../intents';
 import { createRun } from '../sim/state';
 import { coopStateHash } from './lockstep';
 import { BundleLedger, HostSequencer } from './lockstep';
-import { INPUT_DELAY_TICKS, decodeMsg, encodeMsg } from './messages';
+import { INPUT_DELAY_TICKS, decodeMsg, encodeMsg, sanitizeRig } from './messages';
 
 const frameL = { ...EMPTY_INTENTS, left: true };
 const frameR = { ...EMPTY_INTENTS, right: true };
@@ -98,5 +98,28 @@ describe('coopStateHash + message codec', () => {
     expect(decodeMsg(encodeMsg(msg))).toEqual(msg);
     expect(decodeMsg('not json')).toBeNull();
     expect(decodeMsg('42')).toBeNull();
+  });
+});
+
+describe('cfg rig sanitizer', () => {
+  it('round-trips a cfg message', () => {
+    const msg = decodeMsg(encodeMsg({ m: 'cfg', loadout: 'heavyRig', modules: ['thermalFins'] }));
+    expect(msg?.m === 'cfg' && msg.loadout).toBe('heavyRig');
+    expect(msg?.m === 'cfg' && msg.modules).toEqual(['thermalFins']);
+  });
+
+  it('accepts valid rigs and normalizes types', () => {
+    expect(sanitizeRig('standard', [])).toEqual({ loadoutId: 'standard', modules: [] });
+    expect(sanitizeRig('prospector', ['surveyor', 'auxTank'])).toEqual({
+      loadoutId: 'prospector',
+      modules: ['surveyor', 'auxTank'],
+    });
+  });
+
+  it('rejects unknown loadouts, unknown modules, dupes and slot overflow', () => {
+    expect(sanitizeRig('megaRig', [])).toBeNull();
+    expect(sanitizeRig('standard', ['warpDrive'])).toBeNull();
+    expect(sanitizeRig('standard', ['auxTank', 'auxTank'])).toBeNull();
+    expect(sanitizeRig('standard', ['auxTank', 'surveyor', 'bulkhead'])).toBeNull();
   });
 });

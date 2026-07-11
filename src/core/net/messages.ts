@@ -4,10 +4,12 @@
  * into authoritative `bundle`s that every peer (host included) executes.
  */
 import type { Command } from '../commands';
+import { LOADOUTS, type LoadoutId, MODULES, MODULE_SLOTS, type ModuleId } from '../data/expedition';
 import type { IntentFrame } from '../intents';
 import type { ModeConfig } from '../sim/state';
 
-export const PROTO_VERSION = 1;
+/** v2: the lobby-only `cfg` rig message (expedition co-op). */
+export const PROTO_VERSION = 2;
 /** Local inputs are scheduled for tick T+D — latency headroom (~71 ms @ 42 Hz). */
 export const INPUT_DELAY_TICKS = 3;
 /** Hash sentinel cadence (once per second of sim time). */
@@ -18,6 +20,8 @@ export type NetMessage =
   | { m: 'hi'; proto: number; saveV: number }
   /** Host → guest: your seat and the session size. */
   | { m: 'join'; player: number; players: number }
+  /** Guest → host, lobby only: my expedition rig (re-sendable on change). */
+  | { m: 'cfg'; loadout: string; modules: string[] }
   /** Host → all: fresh run parameters (both sides call createRun identically). */
   | { m: 'start'; seed: number; mode: ModeConfig; level: number }
   /** Host → all: a chunked CLD1 save-code follows (resume). */
@@ -44,4 +48,26 @@ export function decodeMsg(text: string): NetMessage | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Validate a guest's rig for session start: known loadout, known modules,
+ * deduped, within the slot cap. Returns null on any violation (the host then
+ * falls back to a standard rig for that seat). OWNERSHIP is not verifiable
+ * remotely — unlocks are trusted; co-op is cooperative, not competitive.
+ */
+export function sanitizeRig(
+  loadout: string,
+  modules: string[],
+): { loadoutId: LoadoutId; modules: ModuleId[] } | null {
+  if (!LOADOUTS.some((l) => l.id === loadout)) return null;
+  const seen = new Set<string>();
+  const mods: ModuleId[] = [];
+  for (const m of modules) {
+    if (seen.has(m) || !MODULES.some((d) => d.id === m)) return null;
+    seen.add(m);
+    mods.push(m as ModuleId);
+  }
+  if (mods.length > MODULE_SLOTS) return null;
+  return { loadoutId: loadout as LoadoutId, modules: mods };
 }

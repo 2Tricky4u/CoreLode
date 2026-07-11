@@ -83,6 +83,7 @@ export {
 } from './daily';
 export {
   PROTO_VERSION,
+  sanitizeRig,
   INPUT_DELAY_TICKS,
   HASH_EVERY_TICKS,
   encodeMsg,
