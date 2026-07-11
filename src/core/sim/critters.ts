@@ -65,7 +65,7 @@ export function stepCritters(s: GameState, out: EventSink): void {
       }
     }
     if (dist(p.x - c.x, p.y - c.y) <= CRITTER.contactTiles * TILE_PX) {
-      applyDamage(s, CRITTER.damage * radiatorMult(p), 'critter', out);
+      applyDamage(s, p, CRITTER.damage * radiatorMult(p), 'critter', out);
       out.push({ t: 'critterKilled', x: c.x, y: c.y });
       continue; // pops on contact
     }

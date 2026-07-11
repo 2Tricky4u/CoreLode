@@ -17,7 +17,7 @@ Autonomous sessions resume at the first unchecked step; genuine design forks go 
 
 - [x] [N4] pods array + pod alias + wallet/podAlive helpers + invariant test
 - [x] [N5] Route all cash through wallet(s)
-- [ ] [N6] Per-pod parameterization of pod systems + player? on events
+- [x] [N6] Per-pod parameterization of pod systems + player? on events
 - [ ] [N7] tick(s, inputs: IntentFrame[], out) + per-pod pipeline loop
 - [ ] [N8] Save schema v4 (pods[]) + frozen v3 fixture + migration
 - [ ] M2 gate: full suite + build + manual solo smoke, merge

@@ -22,6 +22,7 @@ import { stepRelics } from './relics';
 import { stepScripted } from './scripted';
 import {
   type GameState,
+  type PodState,
   bayContentsCount,
   challengeDef,
   maxHull,
@@ -53,11 +54,11 @@ export function tick(s: GameState, input: IntentFrame, out: EventSink): void {
     p.hp = Math.min(maxHull(p), p.hp + BLUEPRINT_EFFECTS.hullRegenPerSecond);
 
   // 3. item use (edge intent)
-  if (input.useItem) tryUseItem(s, input.useItem, out);
+  if (input.useItem) tryUseItem(s, p, input.useItem, out);
 
   // 4. drilling (owns movement during a dig) then free movement
-  stepDrilling(s, input, out);
-  if (p.mode !== 'dig') stepPhysics(s, input, out);
+  stepDrilling(s, p, input, out);
+  if (p.mode !== 'dig') stepPhysics(s, p, input, out);
 
   // 4b. minimap fog-of-war bookkeeping — reveal around the pod when it enters
   //     a new tile (and once on the very first tick of a run).
@@ -83,9 +84,9 @@ export function tick(s: GameState, input: IntentFrame, out: EventSink): void {
     : null;
   if (here !== p.nearBuilding) {
     p.nearBuilding = here;
-    out.push({ t: 'buildingPrompt', id: here });
+    out.push({ t: 'buildingPrompt', id: here, player: s.pods.indexOf(p) });
   }
-  if (here && input.interact) out.push({ t: 'enterBuilding', id: here });
+  if (here && input.interact) out.push({ t: 'enterBuilding', id: here, player: s.pods.indexOf(p) });
 
   // 7. scripted events (transmissions, eggs, quakes)
   stepScripted(s, out);
@@ -100,15 +101,15 @@ export function tick(s: GameState, input: IntentFrame, out: EventSink): void {
   if (s.outcome === 'active') {
     if (p.hp <= 0) {
       s.outcome = 'destroyed';
-      out.push({ t: 'podExploded', cause: 'hull' });
+      out.push({ t: 'podExploded', cause: 'hull', player: s.pods.indexOf(p) });
     } else if (p.fuel <= 0 && p.mode !== 'ground') {
       // out of fuel airborne/digging → the pod is lost (authentic: explosion)
-      fuelEmergency(s, out);
+      fuelEmergency(s, p, out);
     } else if (p.fuel <= 0 && p.mode === 'ground' && podDepthFt(p) < -1) {
       // stranded underground with a dry tank → also lost
-      fuelEmergency(s, out);
+      fuelEmergency(s, p, out);
     }
-    if (p.fuel > 0 && p.fuel < 2) out.push({ t: 'fuelLow' });
+    if (p.fuel > 0 && p.fuel < 2) out.push({ t: 'fuelLow', player: s.pods.indexOf(p) });
   }
 
   // 10. challenge objectives / timer, expedition contracts
@@ -117,13 +118,13 @@ export function tick(s: GameState, input: IntentFrame, out: EventSink): void {
 }
 
 /** A dry tank is fatal — unless the run was created with the fuel-failsafe assist. */
-function fuelEmergency(s: GameState, out: EventSink): void {
+function fuelEmergency(s: GameState, p: PodState, out: EventSink): void {
   if (s.mode.assists?.fuelFailsafe) {
-    rescueTow(s, out);
+    rescueTow(s, p, out);
     return;
   }
   s.outcome = 'destroyed';
-  out.push({ t: 'podExploded', cause: 'fuel' });
+  out.push({ t: 'podExploded', cause: 'fuel', player: s.pods.indexOf(p) });
 }
 
 function stepChallenge(s: GameState, out: EventSink): void {

@@ -13,7 +13,7 @@ import type { IntentFrame } from '../intents';
 import { clamp } from '../lib/math';
 import { solidAt } from '../world/world';
 import { chainOnDamage } from './chain';
-import { type GameState, enginePower, fallDamageMult, podMass } from './state';
+import { type GameState, type PodState, enginePower, fallDamageMult, podMass } from './state';
 
 /** Pod AABB half-extents (px). Slightly smaller than a tile, like the original clip. */
 export const POD_HW = 19;
@@ -21,20 +21,21 @@ export const POD_HH = 21;
 
 export function applyDamage(
   s: GameState,
+  p: PodState,
   amount: number,
   cause: DamageCause,
   out: EventSink,
 ): void {
   if (amount <= 0 || s.outcome !== 'active') return;
   let dmg = amount;
-  if (s.pod.guardian) dmg *= GUARDIAN_DAMAGE_FACTOR;
+  if (p.guardian) dmg *= GUARDIAN_DAMAGE_FACTOR;
   dmg = Math.floor(dmg);
   if (dmg <= 0) return;
-  s.pod.hp -= dmg;
+  p.hp -= dmg;
   s.stats.damageTaken += dmg;
-  s.pod.lastDamage = { cause, atTick: s.tick }; // lets the app explain a death
+  p.lastDamage = { cause, atTick: s.tick }; // lets the app explain a death
   chainOnDamage(s, out); // a hit voids the running collect chain (expedition)
-  out.push({ t: 'damage', amount: dmg, cause });
+  out.push({ t: 'damage', amount: dmg, cause, player: s.pods.indexOf(p) });
 }
 
 const collides = (s: GameState, cx: number, cy: number): boolean => {
@@ -50,7 +51,7 @@ const collides = (s: GameState, cx: number, cy: number): boolean => {
 export const groundedAt = (s: GameState, cx: number, cy: number): boolean =>
   collides(s, cx, cy + 1) && !collides(s, cx, cy);
 
-export const podOverlapsSolid = (s: GameState): boolean => collides(s, s.pod.x, s.pod.y);
+export const podOverlapsSolid = (s: GameState, p: PodState): boolean => collides(s, p.x, p.y);
 
 /**
  * Push the pod out of any solid tile it is overlapping, along the shortest axis.
@@ -59,8 +60,7 @@ export const podOverlapsSolid = (s: GameState): boolean => collides(s, s.pod.x, 
  * and the sweep loops below (which only step from a known-free position) can never
  * free it, so it stays clipped through the terrain.
  */
-export function resolveOverlap(s: GameState): void {
-  const p = s.pod;
+export function resolveOverlap(s: GameState, p: PodState): void {
   if (!collides(s, p.x, p.y)) return;
   const MAX_PUSH = TILE_PX + POD_HH; // enough to clear any single tile
   for (let d = 1; d <= MAX_PUSH; d++) {
@@ -87,12 +87,11 @@ export function resolveOverlap(s: GameState): void {
   }
 }
 
-export function stepPhysics(s: GameState, input: IntentFrame, out: EventSink): void {
-  const p = s.pod;
+export function stepPhysics(s: GameState, p: PodState, input: IntentFrame, out: EventSink): void {
   if (p.mode === 'dig') return; // drilling.ts owns movement during a dig
 
   // Never start a step embedded in rock (quake burial, teleport into fill).
-  resolveOverlap(s);
+  resolveOverlap(s, p);
 
   const mass = podMass(p);
   const power = enginePower(p);
@@ -148,10 +147,10 @@ export function stepPhysics(s: GameState, input: IntentFrame, out: EventSink): v
       // landing (shock-absorber module scales the calibrated formula; ×1 in story)
       const dmg = Math.floor(fallDamage(p.yVel) * fallDamageMult(p));
       if (dmg > 0) {
-        applyDamage(s, dmg, 'fall', out);
-        out.push({ t: 'landed', impactVel: p.yVel, damage: dmg });
+        applyDamage(s, p, dmg, 'fall', out);
+        out.push({ t: 'landed', impactVel: p.yVel, damage: dmg, player: s.pods.indexOf(p) });
       } else if (p.yVel > 2) {
-        out.push({ t: 'landed', impactVel: p.yVel, damage: 0 });
+        out.push({ t: 'landed', impactVel: p.yVel, damage: 0, player: s.pods.indexOf(p) });
       }
       p.yVel *= PHYSICS.bounce;
       if (Math.abs(p.yVel) < 1) {

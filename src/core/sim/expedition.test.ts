@@ -367,7 +367,7 @@ describe('relics', () => {
     s.pod.relics.push('gasPhase');
     const hp = s.pod.hp;
     const out: EventSink = [];
-    applyGasPocket(s, 5, 200, out);
+    applyGasPocket(s, s.pod, 5, 200, out);
     expect(s.pod.hp).toBe(hp);
     expect(out.some((e) => e.t === 'damage')).toBe(false);
 
@@ -381,7 +381,7 @@ describe('relics', () => {
     sc.pod.bayContents[0] = bayCapacity(sc.pod); // hold full
     const pts = sc.pod.points;
     const out2: EventSink = [];
-    collectTile(sc, Tile.MineralFirst, out2); // Ferrite tile
+    collectTile(sc, sc.pod, Tile.MineralFirst, out2); // Ferrite tile
     expect(out2.some((e) => e.t === 'cargoFullLost')).toBe(false);
     expect(sc.pod.points).toBeGreaterThan(pts); // double points, none lost
   });

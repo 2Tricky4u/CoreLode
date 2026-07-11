@@ -184,9 +184,9 @@ describe('the pod can never rest inside unmined rock', () => {
     const tx = podTileX(s.pod);
     const ty = podTileY(s.pod);
     for (let y = ty - 1; y <= ty + 1; y++) setTile(s.world, tx, y, 3);
-    expect(podOverlapsSolid(s)).toBe(true);
+    expect(podOverlapsSolid(s, s.pod)).toBe(true);
     step(s, {}, 2);
-    expect(podOverlapsSolid(s)).toBe(false);
+    expect(podOverlapsSolid(s, s.pod)).toBe(false);
   });
 
   it('never ends a tick overlapping solid while driving hard into a wall', () => {
@@ -200,7 +200,7 @@ describe('the pod can never rest inside unmined rock', () => {
     }
     for (let i = 0; i < 120; i++) {
       step(s, { right: true, up: i % 3 === 0 });
-      expect(podOverlapsSolid(s), `overlap at tick ${i}`).toBe(false);
+      expect(podOverlapsSolid(s, s.pod), `overlap at tick ${i}`).toBe(false);
     }
   });
 });

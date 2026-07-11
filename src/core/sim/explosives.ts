@@ -66,7 +66,7 @@ function detonate(
         const podTx = Math.floor(s.pod.x / TILE_PX);
         const podTy = Math.floor(s.pod.y / TILE_PX);
         if (Math.abs(podTx - tx) <= radiusTiles + 1 && Math.abs(podTy - ty) <= radiusTiles + 1) {
-          applyGasPocket(s, tx, ty, out);
+          applyGasPocket(s, s.pod, tx, ty, out);
         } else {
           out.push({ t: 'gasIgnite', x: tx, y: ty });
         }

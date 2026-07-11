@@ -86,7 +86,7 @@ export function stepBoss(s: GameState, out: EventSink): void {
 
   // Contact damage.
   if (b.phase !== 'dead' && b.phase !== 'transition' && distTiles < 1.6 && b.contactCooldown <= 0) {
-    applyDamage(s, def.contactDamage * dmul, 'boss', out);
+    applyDamage(s, s.pod, def.contactDamage * dmul, 'boss', out);
     b.contactCooldown = def.contactRetriggerTicks;
   }
 
@@ -213,7 +213,7 @@ function applyAttack(
       let diff = Math.abs(podAngle - b.laserAngle);
       if (diff > Math.PI) diff = 2 * Math.PI - diff;
       if (diff < 0.09 && b.contactCooldown <= 0) {
-        applyDamage(s, attack.damage * dmul, 'boss', out);
+        applyDamage(s, s.pod, attack.damage * dmul, 'boss', out);
         p.xVel += attack.knockback.x * Math.sign(p.x - b.x);
         p.yVel += attack.knockback.y;
         p.mode = 'air';
@@ -226,7 +226,7 @@ function applyAttack(
       const range = attack.kind === 'staffSwing' ? (attack.rangeTiles ?? 3) : 6;
       const hitTick = Math.floor(attack.activeTicks / 2);
       if (b.phaseTicks === hitTick && distTiles <= range) {
-        applyDamage(s, attack.damage * dmul, 'boss', out);
+        applyDamage(s, s.pod, attack.damage * dmul, 'boss', out);
         p.xVel += attack.knockback.x * Math.sign(p.x - b.x || 1);
         p.yVel += attack.knockback.y;
         p.mode = 'air';
@@ -271,7 +271,7 @@ function stepProjectiles(s: GameState, dmul: number, out: EventSink): void {
     if (d < 30) {
       const def = formDef(s.boss?.form ?? 2);
       const fb = def.attacks.find((a) => a.kind === 'fireball');
-      applyDamage(s, (fb?.damage ?? 20) * dmul, 'boss', out);
+      applyDamage(s, s.pod, (fb?.damage ?? 20) * dmul, 'boss', out);
       pr.ttl = 0;
     }
     if (pr.ttl > 0) keep.push(pr);

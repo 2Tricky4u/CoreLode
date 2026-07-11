@@ -12,10 +12,9 @@ import { EXPEDITION } from '../data/expedition';
 import { ITEM_BY_ID, ITEM_EFFECTS, type ItemId } from '../data/items';
 import { PHYSICS } from '../data/physics';
 import type { EventSink } from '../events';
-import { type GameState, bayUsed, maxHull, tankCapacity, wallet } from './state';
+import { type GameState, type PodState, bayUsed, maxHull, tankCapacity, wallet } from './state';
 
-export function tryUseItem(s: GameState, id: ItemId, out: EventSink): void {
-  const p = s.pod;
+export function tryUseItem(s: GameState, p: PodState, id: ItemId, out: EventSink): void {
   const def = ITEM_BY_ID[id];
   if (!def) return;
   if (p.itemCooldown > 0 || p.itemLock > 0) return;
@@ -54,23 +53,23 @@ export function tryUseItem(s: GameState, id: ItemId, out: EventSink): void {
       consume();
       // Random drop height above the surface — "results may vary".
       const dropFt = s.rng.range(ITEM_EFFECTS.discountDropMinFt, ITEM_EFFECTS.discountDropMaxFt);
-      teleportPod(s, (SPAWN_COL + 0.5) * TILE_PX, SURFACE_ROW * TILE_PX - 21 - dropFt * PX_PER_FT);
-      out.push({ t: 'teleport', item: id });
+      teleportPod(p, (SPAWN_COL + 0.5) * TILE_PX, SURFACE_ROW * TILE_PX - 21 - dropFt * PX_PER_FT);
+      out.push({ t: 'teleport', item: id, player: s.pods.indexOf(p) });
       out.push({ t: 'sfx', key: dropFt > 30 ? 'teleportFail' : 'teleportUp' });
       break;
     }
     case 'priorityTransporter':
       consume();
-      teleportPod(s, (SPAWN_COL + 0.5) * TILE_PX, SURFACE_ROW * TILE_PX - 21);
-      s.pod.mode = 'ground';
-      out.push({ t: 'teleport', item: id });
+      teleportPod(p, (SPAWN_COL + 0.5) * TILE_PX, SURFACE_ROW * TILE_PX - 21);
+      p.mode = 'ground';
+      out.push({ t: 'teleport', item: id, player: s.pods.indexOf(p) });
       out.push({ t: 'sfx', key: 'teleportUp' });
       break;
     case 'coreTeleporter':
       // Hidden $1 dev item: straight to the planet's core (arena mouth).
       consume();
-      teleportPod(s, (BOSS.spawnCol - 8 + 0.5) * TILE_PX, (BOSS.arenaTopRow + 1) * TILE_PX);
-      out.push({ t: 'teleport', item: id });
+      teleportPod(p, (BOSS.spawnCol - 8 + 0.5) * TILE_PX, (BOSS.arenaTopRow + 1) * TILE_PX);
+      out.push({ t: 'teleport', item: id, player: s.pods.indexOf(p) });
       out.push({ t: 'sfx', key: 'teleportUp' });
       break;
   }
@@ -81,8 +80,7 @@ export function tryUseItem(s: GameState, id: ItemId, out: EventSink): void {
  * the surface — for a cut of your cash and the entire cargo hold. Survivable,
  * never free, and never usable as cheap transport.
  */
-export function rescueTow(s: GameState, out: EventSink): void {
-  const p = s.pod;
+export function rescueTow(s: GameState, p: PodState, out: EventSink): void {
   const exp = s.mode.kind === 'expedition';
   const cost = Math.floor(
     wallet(s).cash * (exp ? EXPEDITION.rescue.costPct : ASSIST.rescueCostPct),
@@ -92,15 +90,14 @@ export function rescueTow(s: GameState, out: EventSink): void {
   p.bayContents.fill(0);
   p.fuel = Math.min(tankCapacity(p), ASSIST.rescueFuelLiters);
   if (exp) p.heat = Math.min(100, p.heat + EXPEDITION.rescue.heatPenalty); // tow runs hot
-  teleportPod(s, (SPAWN_COL + 0.5) * TILE_PX, SURFACE_ROW * TILE_PX - 21);
+  teleportPod(p, (SPAWN_COL + 0.5) * TILE_PX, SURFACE_ROW * TILE_PX - 21);
   p.mode = 'ground';
   s.stats.rescues++;
-  out.push({ t: 'rescue', cost, cargoLost });
+  out.push({ t: 'rescue', cost, cargoLost, player: s.pods.indexOf(p) });
   out.push({ t: 'sfx', key: 'rescue' });
 }
 
-function teleportPod(s: GameState, x: number, y: number): void {
-  const p = s.pod;
+function teleportPod(p: PodState, x: number, y: number): void {
   p.x = x;
   p.y = y;
   p.prevX = x; // no interpolation streak across a teleport

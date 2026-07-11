@@ -26,7 +26,7 @@ export function stepHeat(s: GameState, out: EventSink): void {
   }
 
   // Overheat: the hull cooks at 2 HP/s (integer damage every half second).
-  if (p.heat >= H.max && s.tick % 21 === 0) applyDamage(s, 1, 'heat', out);
+  if (p.heat >= H.max && s.tick % 21 === 0) applyDamage(s, p, 1, 'heat', out);
 
   // Edge-triggered warnings, latched until the pod cools back down.
   if (p.heat < H.warnResetBelow) s.heatWarnLevel = 0;

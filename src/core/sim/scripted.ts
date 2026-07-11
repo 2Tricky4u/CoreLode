@@ -60,7 +60,7 @@ export function stepScripted(s: GameState, out: EventSink): void {
         }
         if (egg.spawnsGuardian && !s.pod.guardian) {
           s.pod.guardian = true;
-          out.push({ t: 'guardianSpawned' });
+          out.push({ t: 'guardianSpawned', player: 0 });
           out.push({ t: 'sfx', key: 'seraph' });
         }
         s.story.pendingTransmission = egg.id;
@@ -86,8 +86,8 @@ export function stepScripted(s: GameState, out: EventSink): void {
         s.stats.quakes++;
         // A shifted row can land on the pod: push it out of the rock first, and
         // only carve as a last resort if it is fully entombed.
-        resolveOverlap(s);
-        if (podOverlapsSolid(s)) {
+        resolveOverlap(s, s.pod);
+        if (podOverlapsSolid(s, s.pod)) {
           const tx = Math.floor(s.pod.x / TILE_PX);
           const ty = podTileY(s.pod);
           for (const [ox, oy] of [

@@ -16,16 +16,23 @@ export type DamageCause =
   | 'critter';
 
 export type SimEvent =
-  | { t: 'tileCleared'; x: number; y: number; tile: number; cause: 'drill' | 'blast' }
-  | { t: 'digStart'; x: number; y: number; dir: 'down' | 'left' | 'right' }
-  | { t: 'collected'; collectibleId: number }
-  | { t: 'cargoFullLost'; collectibleId: number }
-  | { t: 'points'; amount: number }
-  | { t: 'landed'; impactVel: number; damage: number }
-  | { t: 'damage'; amount: number; cause: DamageCause }
-  | { t: 'fuelLow' }
+  | {
+      t: 'tileCleared';
+      x: number;
+      y: number;
+      tile: number;
+      cause: 'drill' | 'blast';
+      player?: number;
+    }
+  | { t: 'digStart'; x: number; y: number; dir: 'down' | 'left' | 'right'; player?: number }
+  | { t: 'collected'; collectibleId: number; player?: number }
+  | { t: 'cargoFullLost'; collectibleId: number; player?: number }
+  | { t: 'points'; amount: number; player?: number }
+  | { t: 'landed'; impactVel: number; damage: number; player?: number }
+  | { t: 'damage'; amount: number; cause: DamageCause; player?: number }
+  | { t: 'fuelLow'; player?: number }
   /** Fuel-failsafe assist fired: towed to the surface, cargo forfeited. */
-  | { t: 'rescue'; cost: number; cargoLost: number }
+  | { t: 'rescue'; cost: number; cargoLost: number; player?: number }
   /** Expedition heat crossed a warning threshold (70 / 90). */
   | { t: 'heatWarning'; level: 1 | 2 }
   /** Expedition collect chain grew (emitted from ×2 up). */
@@ -39,19 +46,19 @@ export type SimEvent =
   /** A magmite woke up (expedition) / was destroyed. */
   | { t: 'critterSpawned'; x: number; y: number }
   | { t: 'critterKilled'; x: number; y: number }
-  | { t: 'podExploded'; cause: 'hull' | 'fuel' }
+  | { t: 'podExploded'; cause: 'hull' | 'fuel'; player?: number }
   | { t: 'explosion'; x: number; y: number; radiusTiles: number; item: ItemId }
   | { t: 'gasIgnite'; x: number; y: number }
-  | { t: 'teleport'; item: ItemId }
-  | { t: 'enterBuilding'; id: BuildingId }
+  | { t: 'teleport'; item: ItemId; player?: number }
+  | { t: 'enterBuilding'; id: BuildingId; player?: number }
   /** The pod is standing on a building (id) or has left one (null) — drives the interact prompt. */
-  | { t: 'buildingPrompt'; id: BuildingId | null }
-  | { t: 'transaction'; kind: string; amount: number }
+  | { t: 'buildingPrompt'; id: BuildingId | null; player?: number }
+  | { t: 'transaction'; kind: string; amount: number; player?: number }
   | { t: 'transmission'; id: string }
-  | { t: 'bonusCash'; amount: number }
-  | { t: 'guardianSpawned' }
+  | { t: 'bonusCash'; amount: number; player?: number }
+  | { t: 'guardianSpawned'; player?: number }
   | { t: 'quake'; rows: number[] }
-  | { t: 'blueprintFound'; id: BlueprintId }
+  | { t: 'blueprintFound'; id: BlueprintId; player?: number }
   | { t: 'bossActivated'; form: 1 | 2 }
   | { t: 'bossAttack'; form: 1 | 2; kind: BossAttackKind }
   | { t: 'bossDamaged'; amount: number; hp: number }

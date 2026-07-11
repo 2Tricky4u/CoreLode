@@ -11,6 +11,7 @@ import type { EventSink } from '../events';
 import { applyDamage } from './physics';
 import {
   type GameState,
+  type PodState,
   heatGainMult,
   podDepthFt,
   radiatorMult,
@@ -20,9 +21,8 @@ import {
 
 export const LAVA_HIT_DAMAGE = 29;
 
-export function applyLavaHit(s: GameState, out: EventSink): void {
-  const p = s.pod;
-  applyDamage(s, LAVA_HIT_DAMAGE * radiatorMult(p), 'lava', out);
+export function applyLavaHit(s: GameState, p: PodState, out: EventSink): void {
+  applyDamage(s, p, LAVA_HIT_DAMAGE * radiatorMult(p), 'lava', out);
   if (s.mode.kind === 'expedition')
     p.heat = Math.min(EXPEDITION.heat.max, p.heat + EXPEDITION.heat.perLavaHit * heatGainMult(p));
   out.push({ t: 'sfx', key: 'lavaSizzle' });
@@ -36,14 +36,19 @@ export function gasDamageAtDepth(depthFt: number): number {
   return Math.max(0, Math.floor(-(depthFt + 3000) / 15));
 }
 
-export function applyGasPocket(s: GameState, x: number, y: number, out: EventSink): void {
-  const p = s.pod;
+export function applyGasPocket(
+  s: GameState,
+  p: PodState,
+  x: number,
+  y: number,
+  out: EventSink,
+): void {
   if (p.relics.includes('gasPhase')) {
     // Gas Phase relic: the pocket vents harmlessly around a phased hull.
     out.push({ t: 'sfx', key: 'gasHiss' });
     return;
   }
-  applyDamage(s, gasDamageAtDepth(podDepthFt(p)) * radiatorMult(p), 'gas', out);
+  applyDamage(s, p, gasDamageAtDepth(podDepthFt(p)) * radiatorMult(p), 'gas', out);
   out.push({ t: 'gasIgnite', x, y });
   out.push({ t: 'sfx', key: 'gasHiss' });
   if (p.blueprints.includes('siphonTank')) {
