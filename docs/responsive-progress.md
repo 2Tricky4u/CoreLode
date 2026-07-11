@@ -26,7 +26,7 @@ Autonomous sessions: resume at the first unchecked step.
 ## M3 — Global responsive pass
 
 - [x] [R8] Safe-area foundations (.hud/.screen/toast padding)
-- [ ] [R9] Narrow-portrait breakpoint (max-width: 480px)
+- [x] [R9] Narrow-portrait breakpoint (max-width: 480px)
 - [ ] [R10] Short-landscape breakpoint (max-height: 450px)
 - [ ] [R11] Modal min-width fixes for 360px screens
 - [ ] [R12] Screens + co-op lobby phone layout

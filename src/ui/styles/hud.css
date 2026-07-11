@@ -377,3 +377,43 @@
     bottom: calc(env(safe-area-inset-bottom, 0px) + clamp(40px, 11vmin, 56px) * 2 + 30px);
   }
 }
+
+/* Narrow portrait (phones): compact the three HUD columns so bars, depth and
+   cash coexist on a ~360px row, and tuck the side panels in. */
+@media (max-width: 480px) {
+  .hud-left {
+    width: min(calc(var(--px) * 170px), 44vw);
+  }
+  .hud {
+    gap: calc(var(--px) * 4px);
+  }
+  .hud-depth,
+  .hud-cash {
+    font-size: calc(var(--px) * 14px);
+  }
+  .hud-points {
+    display: none; /* score is on the ending/records screens; depth wins the space */
+  }
+  .hud-minimap {
+    top: calc(var(--px) * 52px + env(safe-area-inset-top, 0px));
+    right: calc(4px + env(safe-area-inset-right, 0px));
+  }
+  .hud-team {
+    top: calc(var(--px) * 52px + env(safe-area-inset-top, 0px));
+    right: calc(var(--px) * 62px + env(safe-area-inset-right, 0px));
+  }
+  .hud-contracts {
+    top: calc(var(--px) * 76px + env(safe-area-inset-top, 0px));
+    left: calc(4px + env(safe-area-inset-left, 0px));
+    max-width: 46vw;
+  }
+  .stratum-banner {
+    font-size: calc(var(--px) * 13px);
+    letter-spacing: 0.12em;
+  }
+  .hud-waiting {
+    font-size: calc(var(--px) * 9px);
+    max-width: 86vw;
+    text-align: center;
+  }
+}
