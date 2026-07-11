@@ -1,4 +1,4 @@
-import { decodeToken, encodeToken } from '@core/save/codec';
+import { decodeToken, encodeToken } from '@core/index';
 import type { NetChannel } from './channel';
 
 /**

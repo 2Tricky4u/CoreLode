@@ -30,11 +30,13 @@ import {
   dailySeed,
   decodeDailyResult,
   decodeMsg,
+  decodeSave,
   defaultSettings,
   deserialize,
   effectiveSettings,
   encodeDailyResult,
   encodeMsg,
+  encodeSave,
   getTile,
   maxHull,
   podDepthFt,
@@ -44,7 +46,6 @@ import {
   setTile,
   tankCapacity,
 } from '@core/index';
-import { decodeSave, encodeSave } from '@core/save/codec';
 import { migrateAndValidate } from '@core/save/migrate';
 import { GameHost, type SimHost } from '@game/GameHost';
 import { LockstepHost } from '@game/LockstepHost';
@@ -69,6 +70,7 @@ import { helpScreen } from '@ui/help';
 import {
   ModalManager,
   openBuilding,
+  openChoice,
   openGameOver,
   openInventory,
   openMessage,
@@ -755,9 +757,25 @@ export class App {
     this.hud.setDroppedSeats(this.coopDropped);
     // Leaving the page must not strand the peers on a silent stall.
     window.addEventListener('pagehide', this.coopByeOnUnload);
-    host.onDesync = (player) => {
-      this.ui.toast(`SYNC LOST with player ${player + 1} — see console`, 6000);
-      console.error(`[coop] desync detected for player ${player}`);
+    host.onDesync = (player, mine, theirs) => {
+      console.error(
+        `[coop] desync: P${player + 1} hash ${theirs} vs host hash ${mine} @tick ${host.state.tick}`,
+      );
+      if (this.modals.isOpen) return; // one dialog at a time — the sentinel re-fires anyway
+      openChoice(
+        this.modals,
+        t('coopDesyncTitle'),
+        t('coopDesyncBody'),
+        t('coopResync'),
+        () => host.resync(),
+        t('coopIgnore'),
+      );
+    };
+    host.onResynced = () => {
+      // The whole world may have shifted under the renderer — repaint it all.
+      const scene = this.phaser?.scene?.getScene('game') as GameScene | null;
+      if (this.phaser?.scene?.isActive('game')) scene?.repaintWorld();
+      this.ui.toast(t('coopResynced'), 4000);
     };
     host.onDisconnect = (player) => {
       if (player === null) {

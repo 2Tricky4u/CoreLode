@@ -415,6 +415,44 @@ export function openTransmission(
   if (bonus > 0) textNode.dataset.bonus = `+$${bonus}`;
 }
 
+/** Two-button choice dialog — primary action vs. dismiss. */
+export function openChoice(
+  m: ModalManager,
+  title: string,
+  bodyText: string,
+  primaryLabel: string,
+  onPrimary: () => void,
+  dismissLabel: string,
+): void {
+  m.open(
+    dialog(
+      title,
+      el('div', { class: 'dialog-body' }, el('p', { text: bodyText })),
+      el(
+        'div',
+        { class: 'btn-col' },
+        el(
+          'button',
+          {
+            class: 'btn primary',
+            onclick: () => {
+              m.close();
+              onPrimary();
+            },
+          },
+          primaryLabel,
+        ),
+        el(
+          'button',
+          { class: 'btn', 'data-cancel': 'true', onclick: () => m.close() },
+          dismissLabel,
+        ),
+      ),
+      't-choice',
+    ),
+  );
+}
+
 /** One-button message dialog (e.g. "host disconnected — session over"). */
 export function openMessage(
   m: ModalManager,

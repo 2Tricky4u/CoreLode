@@ -53,7 +53,7 @@ Autonomous sessions resume at the first unchecked step; genuine design forks go 
 
 ## M6 — Resilience + deploy + docs
 
-- [ ] [N26] Desync recovery (halt + host resync via chunked SaveFile)
+- [x] [N26] Desync recovery (halt + host resync via chunked SaveFile)
 - [ ] [N27] Co-op save/resume (host-only SaveMate, coop slot badge, lobby preload)
 - [ ] [N28] GitHub Pages deploy workflow (.github/workflows/pages.yml, BASE_PATH)
 - [ ] [N29] Docs: docs/coop.md, README, fidelity-checklist, CLAUDE.md notes

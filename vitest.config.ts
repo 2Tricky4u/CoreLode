@@ -8,6 +8,11 @@ export default defineConfig({
     alias: {
       '@core': r('./src/core'),
       '@content': r('./src/content'),
+      '@game': r('./src/game'),
+      '@input': r('./src/input'),
+      '@ui': r('./src/ui'),
+      '@platform': r('./src/platform'),
+      '@app': r('./src/app'),
     },
   },
   test: {

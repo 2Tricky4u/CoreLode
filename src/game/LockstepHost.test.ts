@@ -150,6 +150,30 @@ describe('LockstepHost', () => {
     expect(desynced).toBe(1);
   });
 
+  it('resync re-ships the host state and the session reconverges', () => {
+    const { host, guests } = makeSession(3);
+    const peers = [host, ...guests];
+    stepAll(peers, 60);
+    guests[0].state.pods[1].cash += 999; // corrupt one guest sim
+    guests[0].state.rng.state ^= 0xdead; // …including its rng cursor
+    let resynced = 0;
+    for (const g of guests) g.onResynced = () => resynced++;
+    host.resync();
+    expect(resynced).toBe(guests.length); // every guest adopted the host state
+    expect(coopStateHash(guests[0].state)).toBe(coopStateHash(host.state));
+    // The rebased timeline keeps flowing and stays bit-identical.
+    let desynced = false;
+    host.onDesync = () => {
+      desynced = true;
+    };
+    stepAll(peers, 200);
+    const target = Math.max(...peers.map((p) => p.state.tick));
+    for (const p of peers) while (p.state.tick < target) p.update(DT_MS);
+    expect(new Set(peers.map((p) => coopStateHash(p.state))).size).toBe(1);
+    expect(host.state.tick).toBeGreaterThan(target - 5); // no permanent stall
+    expect(desynced).toBe(false);
+  });
+
   it('a dropped guest is EMPTY-substituted and the host keeps running', () => {
     const { host, guests, hostChannels } = makeSession(3);
     stepAll([host, ...guests], 20);

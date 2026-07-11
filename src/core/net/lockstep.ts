@@ -31,8 +31,17 @@ export class HostSequencer {
   private buf = new Map<number, Array<PlayerInput | null>>();
   private dropped = new Set<number>();
   private nextOut = 0;
+  /** Ticks below this emit EMPTY (no input can be scheduled for them). */
+  private warmupEnd = INPUT_DELAY_TICKS;
 
   constructor(readonly players: number) {}
+
+  /** Restart the timeline at startTick after a resync; dropped players persist. */
+  rebase(startTick: number): void {
+    this.buf.clear();
+    this.nextOut = startTick;
+    this.warmupEnd = startTick + INPUT_DELAY_TICKS;
+  }
 
   /** Store a player's input for tick t (ignores stale ticks already emitted). */
   put(player: number, t: number, frame: IntentFrame, cmds: Command[]): void {
@@ -57,7 +66,7 @@ export class HostSequencer {
   /** Players whose input is holding up the next bundle (empty when flowing). */
   lateFor(): number[] {
     const t = this.nextOut;
-    if (t < INPUT_DELAY_TICKS) return [];
+    if (t < this.warmupEnd) return [];
     const row = this.buf.get(t);
     const late: number[] = [];
     for (let i = 0; i < this.players; i++) {
@@ -70,7 +79,7 @@ export class HostSequencer {
   /** True when the NEXT bundle (in strict tick order) can be emitted. */
   ready(): boolean {
     const t = this.nextOut;
-    if (t < INPUT_DELAY_TICKS) return true; // pre-seeded EMPTY warm-up ticks
+    if (t < this.warmupEnd) return true; // pre-seeded EMPTY warm-up ticks
     const row = this.buf.get(t);
     if (!row) return this.playersAllDropped();
     for (let i = 0; i < this.players; i++) if (!this.has(row, i)) return false;
@@ -91,7 +100,7 @@ export class HostSequencer {
     const frames: IntentFrame[] = [];
     const cmds: Command[][] = [];
     for (let i = 0; i < this.players; i++) {
-      const cell = t < INPUT_DELAY_TICKS ? null : (row?.[i] ?? null);
+      const cell = t < this.warmupEnd ? null : (row?.[i] ?? null);
       frames.push(cell?.frame ?? EMPTY_INTENTS);
       cmds.push(cell?.cmds ?? []);
     }
@@ -126,10 +135,10 @@ export class BundleLedger {
     return this.nextExec;
   }
 
-  /** Reset after a resync (state re-shipped at a fresh session origin). */
-  reset(): void {
+  /** Reset after a resync — the timeline restarts at startTick. */
+  reset(startTick = 0): void {
     this.buf.clear();
-    this.nextExec = 0;
+    this.nextExec = startTick;
   }
 }
 

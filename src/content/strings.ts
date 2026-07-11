@@ -364,6 +364,12 @@ export const STRINGS: Record<string, string> = {
   coopWaitingFor: 'Waiting for',
   coopHostName: 'HOST',
   coopDroppedToast: 'disconnected — their pod idles until they return',
+  coopDesyncTitle: 'SYNC LOST',
+  coopDesyncBody:
+    "A crew member's world drifted from the host's. Resync ships the host world to everyone.",
+  coopResync: 'Resync crew',
+  coopIgnore: 'Ignore',
+  coopResynced: 'World re-synced from the host',
   hudDown: 'DOWN',
   coopDownToast: 'is down! Respawn fee',
   coopBackToast: 'is back on the surface',

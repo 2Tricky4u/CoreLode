@@ -25,10 +25,12 @@ import {
   applyCommand,
   coopStateHash,
   decodeMsg,
+  decodeSnapshot,
   encodeMsg,
+  encodeSnapshot,
   tick,
 } from '@core/index';
-import type { NetChannel } from '@platform/net/channel';
+import { ChunkAssembler, type NetChannel, chunkSplit } from '@platform/net/channel';
 import type { EventListener, SimHost } from './GameHost';
 
 export interface LockstepOptions {
@@ -49,8 +51,10 @@ export class LockstepHost implements SimHost {
   timeScale = 1; // fixed in networked play; kept for SimHost compatibility
   beforeTick: (() => void) | null = null; // dev hooks are disabled in co-op
 
-  /** Called when a guest's state hash diverges from the host's. */
-  onDesync: ((player: number) => void) | null = null;
+  /** Called when a guest's state hash diverges from the host's (hashes for the log). */
+  onDesync: ((player: number, mine: number, theirs: number) => void) | null = null;
+  /** GUEST: the host re-shipped its state after a desync — repaint everything. */
+  onResynced: (() => void) | null = null;
   /** A peer vanished: the player index (host side) or null = the host is gone. */
   onDisconnect: ((player: number | null) => void) | null = null;
 
@@ -72,6 +76,8 @@ export class LockstepHost implements SimHost {
   /** Host: my sentinel hashes awaiting guest reports (tick → hash). */
   private myHashes = new Map<number, number>();
   private pendingGuestHashes: Array<{ player: number; t: number; h: number }> = [];
+  /** GUEST: assembling a mid-session resync payload from the host. */
+  private resyncParts: ChunkAssembler | null = null;
 
   constructor(state: GameState, opts: LockstepOptions) {
     this.state = state;
@@ -198,7 +204,7 @@ export class LockstepHost implements SimHost {
     this.pendingGuestHashes = this.pendingGuestHashes.filter(({ player, t, h }) => {
       const mine = this.myHashes.get(t);
       if (mine === undefined) return true; // host hasn't reached t yet — keep waiting
-      if (mine !== h) this.onDesync?.(player);
+      if (mine !== h) this.onDesync?.(player, mine, h);
       return false;
     });
   }
@@ -226,6 +232,23 @@ export class LockstepHost implements SimHost {
         break;
       case 'dropped':
         if (this.role === 'guest') this.onDisconnect?.(msg.player);
+        break;
+      case 'resume':
+        // Mid-session resync header (lobby-time resume is handled by the app,
+        // before this driver owns the channel).
+        if (this.role === 'guest') {
+          this.resyncParts = new ChunkAssembler();
+          this.resyncParts.begin(msg.chunks);
+        }
+        break;
+      case 'chunk':
+        if (this.role === 'guest' && this.resyncParts) {
+          const whole = this.resyncParts.add(msg.i, msg.n, msg.data);
+          if (whole !== null) {
+            this.resyncParts = null;
+            this.adoptState(whole);
+          }
+        }
         break;
       case 'bye':
         this.handleClose(fromGuest);
@@ -258,6 +281,53 @@ export class LockstepHost implements SimHost {
 
   private dispatch(): void {
     for (const e of this.events) for (const fn of this.listeners) fn(e);
+  }
+
+  /**
+   * HOST: recover from a desync — halt everyone, re-ship the authoritative
+   * state as a chunked exact snapshot, and restart the input timeline at its tick.
+   * Guests adopt the state on arrival; the sequencer's D-tick warm-up gives
+   * them EMPTY frames while their first rebased inputs travel back.
+   */
+  resync(): void {
+    if (this.role !== 'host') return;
+    this.setSyncPause(true, true);
+    const parts = chunkSplit(encodeSnapshot(this.state));
+    for (const ch of this.channels) {
+      ch.send(encodeMsg({ m: 'resume', chunks: parts.length }));
+      parts.forEach((data, i) => ch.send(encodeMsg({ m: 'chunk', i, n: parts.length, data })));
+    }
+    this.rebase();
+    this.setSyncPause(false, true);
+  }
+
+  /** GUEST: replace the local sim with the host's shipped state, in place. */
+  private adoptState(code: string): void {
+    try {
+      const fresh = decodeSnapshot(code);
+      console.warn(
+        `[coop] resync: adopting host state @tick ${fresh.tick} ` +
+          `(local was @tick ${this.state.tick}, hash ${coopStateHash(this.state)})`,
+      );
+      // Same outer object — every view holding a GameState reference stays valid.
+      Object.assign(this.state, fresh);
+      this.rebase();
+      this.onResynced?.();
+    } catch (err) {
+      console.error('[coop] resync payload failed to load', err);
+    }
+  }
+
+  /** Restart the lockstep timeline at the current state tick (both roles). */
+  private rebase(): void {
+    const t = this.state.tick;
+    this.seq?.rebase(t);
+    this.ledger.reset(t);
+    this.sendCursor = t + INPUT_DELAY_TICKS;
+    this.acc = 0;
+    this.pendingCmds = [];
+    this.myHashes.clear();
+    this.pendingGuestHashes = [];
   }
 
   /** Leave the session cleanly. */
