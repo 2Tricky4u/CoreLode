@@ -429,6 +429,8 @@
   }
   .minimap-canvas {
     height: min(calc(var(--px) * 200px), 55vh);
+    width: auto;
+    aspect-ratio: 54 / 200; /* keep the strip's design proportions when clamped */
   }
   .hud-minimap,
   .hud-team {
