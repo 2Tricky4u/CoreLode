@@ -1,14 +1,22 @@
 .touch-controls {
+  --tc-scale: 1;
+  /* Compact on phones (≈11% of the short edge), never larger than the old 56px. */
+  --tc-btn: calc(clamp(40px, 11vmin, 56px) * var(--tc-scale));
   position: absolute;
-  bottom: 12px;
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
   z-index: 15;
-  opacity: 0.75;
+  /* Dim at rest so the pad doesn't hide the play field; presses light up. */
+  opacity: 0.45;
+  transition: opacity 120ms ease;
+}
+.touch-controls:active {
+  opacity: 0.9;
 }
 .touch-controls.layout-right {
-  right: 14px;
+  right: calc(12px + env(safe-area-inset-right, 0px));
 }
 .touch-controls.layout-left {
-  left: 14px;
+  left: calc(12px + env(safe-area-inset-left, 0px));
 }
 .tc-pad {
   display: flex;
@@ -21,14 +29,15 @@
   gap: 4px;
 }
 .tc-btn {
-  width: 56px;
-  height: 56px;
+  width: var(--tc-btn);
+  height: var(--tc-btn);
   border-radius: 8px;
   background: var(--c-panel);
   border: 2px solid var(--c-panel2);
   color: var(--c-text);
-  font-size: 20px;
+  font-size: calc(var(--tc-btn) * 0.36);
   touch-action: none;
+  -webkit-tap-highlight-color: transparent;
 }
 .tc-btn:active {
   background: var(--c-accent);
