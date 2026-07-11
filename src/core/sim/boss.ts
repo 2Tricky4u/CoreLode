@@ -104,7 +104,7 @@ export function stepBoss(s: GameState, out: EventSink): void {
     if (b.attackCooldowns[k] > 0) b.attackCooldowns[k]--;
   }
 
-  // Contact damage — every living pod in range shares one cooldown window.
+  // Contact damage — every living pod in range shares one cooldown interval.
   if (b.phase !== 'dead' && b.phase !== 'transition' && b.contactCooldown <= 0) {
     let hit = false;
     for (const q of s.pods) {
