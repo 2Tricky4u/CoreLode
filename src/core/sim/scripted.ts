@@ -39,7 +39,7 @@ export function stepScripted(s: GameState, out: EventSink): void {
   // would get stale, their cash bonuses would warp the roguelike economy, and
   // the intro's "go refuel" errand would be a lie (expeditions start fueled).
   // Quakes below stay live in expedition — they are terrain, not narrative.
-  if (s.mode.kind === 'story') {
+  if (s.mode.kind === 'story' || s.mode.kind === 'coop') {
     // Intro transmission (the 'start' sentinel) — first tick of a fresh run.
     fireTransmission(s, 'tx-start', out);
 

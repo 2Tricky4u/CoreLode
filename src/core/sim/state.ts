@@ -3,6 +3,7 @@ import type { BossAttackKind } from '../data/boss';
 import { type BuildingId, SPAWN_COL } from '../data/buildings';
 import { CHALLENGES, type ChallengeDef, type Objective } from '../data/challenges';
 import { SURFACE_ROW, TILE_PX, WORLD_W } from '../data/constants';
+import { COOP } from '../data/coop';
 import { type ExpeditionConfig, LOADOUTS, MODULE_EFFECTS } from '../data/expedition';
 import type { ItemId } from '../data/items';
 import { COLLECTIBLES } from '../data/minerals';
@@ -120,9 +121,11 @@ export interface StoryState {
 }
 
 export interface ModeConfig {
-  kind: 'story' | 'challenge' | 'expedition';
+  kind: 'story' | 'challenge' | 'expedition' | 'coop';
   challengeId?: string;
   goldium: boolean; // Goldium features on (blueprints buried, challenges menu)
+  /** Co-op player count (2–6); ignored outside kind 'coop'. */
+  players?: number;
   /** Expedition run parameters (loadout, modules, optional daily key). */
   expedition?: ExpeditionConfig;
   /**
@@ -296,43 +299,53 @@ export function createRun(opts: NewRunOptions = {}): GameState {
     ...(loadout?.upgrades ?? {}),
   };
 
-  const pod: PodState = {
-    x: (SPAWN_COL + 0.5) * TILE_PX,
-    y: SURFACE_ROW * TILE_PX - TILE_PX / 2, // standing on the turf row
-    prevX: 0,
-    prevY: 0,
-    xVel: 0,
-    yVel: 0,
-    facing: 1,
-    mode: 'ground',
-    launchCount: 0,
-    drilling: null,
-    hp: 0, // set below from hull tier
-    fuel: 6, // verbatim: the intro asks you to go refuel
-    cash: ch ? ch.loadout.cash : (opts.carry?.cash ?? 20),
-    points: opts.carry?.points ?? 0,
-    upgrades,
-    blueprints: opts.carry?.blueprints ?? [],
-    bayContents: new Array(COLLECTIBLES.length).fill(0),
-    inventory: { ...(opts.carry?.inventory ?? {}), ...(ch?.loadout.items ?? {}) },
-    itemCooldown: 0,
-    itemLock: 0,
-    guardian: false,
-    lavaLatch: 0,
-    nearBuilding: null,
-    heat: 0,
-    relics: [],
-    // Daily runs ignore modules so result codes stay comparable across players.
-    modules: exp && !exp.dateKey ? [...exp.modules] : [],
-    lastDamage: null,
-    respawnAtTick: 0,
+  const makePod = (player: number): PodState => {
+    const p: PodState = {
+      x: (SPAWN_COL + player * COOP.spawnColStride + 0.5) * TILE_PX,
+      y: SURFACE_ROW * TILE_PX - TILE_PX / 2, // standing on the turf row
+      prevX: 0,
+      prevY: 0,
+      xVel: 0,
+      yVel: 0,
+      facing: 1,
+      mode: 'ground',
+      launchCount: 0,
+      drilling: null,
+      hp: 0, // set below from hull tier
+      fuel: 6, // verbatim: the intro asks you to go refuel
+      // Co-op: the shared wallet lives on pod 0 — extra pods start broke.
+      cash: player > 0 ? 0 : ch ? ch.loadout.cash : (opts.carry?.cash ?? 20),
+      points: player > 0 ? 0 : (opts.carry?.points ?? 0),
+      upgrades: player > 0 ? { ...upgrades } : upgrades,
+      blueprints: player > 0 ? [] : (opts.carry?.blueprints ?? []),
+      bayContents: new Array(COLLECTIBLES.length).fill(0),
+      inventory:
+        player > 0 ? {} : { ...(opts.carry?.inventory ?? {}), ...(ch?.loadout.items ?? {}) },
+      itemCooldown: 0,
+      itemLock: 0,
+      guardian: false,
+      lavaLatch: 0,
+      nearBuilding: null,
+      heat: 0,
+      relics: [],
+      // Daily runs ignore modules so result codes stay comparable across players.
+      modules: exp && !exp.dateKey ? [...exp.modules] : [],
+      lastDamage: null,
+      respawnAtTick: 0,
+    };
+    p.hp = maxHull(p);
+    p.fuel = Math.min(p.fuel, tankCapacity(p));
+    // Challenges and expeditions start fueled — no scripted refuel errand there.
+    if (ch || mode.kind === 'expedition') p.fuel = tankCapacity(p);
+    p.prevX = p.x;
+    p.prevY = p.y;
+    return p;
   };
-  pod.hp = maxHull(pod);
-  pod.fuel = Math.min(pod.fuel, tankCapacity(pod));
-  // Challenges and expeditions start fueled — no scripted refuel errand there.
-  if (ch || mode.kind === 'expedition') pod.fuel = tankCapacity(pod);
-  pod.prevX = pod.x;
-  pod.prevY = pod.y;
+
+  const players =
+    mode.kind === 'coop' ? Math.max(2, Math.min(COOP.maxPlayers, mode.players ?? 2)) : 1;
+  if (mode.kind === 'coop') mode.players = players; // clamp persists into the save
+  const pods = Array.from({ length: players }, (_, i) => makePod(i));
 
   return {
     seed,
@@ -341,8 +354,8 @@ export function createRun(opts: NewRunOptions = {}): GameState {
     tick: 0,
     rng: new Rng(hash32(seed, 0x51b, level)),
     world,
-    pods: [pod],
-    pod,
+    pods,
+    pod: pods[0],
     boss: null,
     projectiles: [],
     charges: [],

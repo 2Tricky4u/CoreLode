@@ -24,7 +24,7 @@ Autonomous sessions resume at the first unchecked step; genuine design forks go 
 
 ## M3 — Co-op sim rules
 
-- [ ] [N9] kind 'coop' + N-pod createRun + story gates + COOP constants
+- [x] [N9] kind 'coop' + N-pod createRun + story gates + COOP constants
 - [ ] [N10] applyCommand(s, cmd, player, out)
 - [ ] [N11] Death → respawn-with-fee; all-down wipe; podDown/podRespawned events
 - [ ] [N12] Boss + explosives co-op rules (Charge.owner, nearest-living targeting)
