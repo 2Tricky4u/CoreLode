@@ -417,3 +417,36 @@
     text-align: center;
   }
 }
+
+/* Short landscape (phone rotated): the vertical budget is ~360px, so the
+   minimap strip must shrink and the side panels hug the top corners. */
+@media (max-height: 450px) {
+  .hud {
+    padding-top: calc(var(--px) * 3px + env(safe-area-inset-top, 0px));
+  }
+  .hud-left {
+    gap: calc(var(--px) * 2px);
+  }
+  .minimap-canvas {
+    height: min(calc(var(--px) * 200px), 55vh);
+  }
+  .hud-minimap,
+  .hud-team {
+    top: calc(var(--px) * 46px + env(safe-area-inset-top, 0px));
+  }
+  .hud-contracts {
+    top: calc(var(--px) * 52px + env(safe-area-inset-top, 0px));
+  }
+  .stratum-banner {
+    top: 16%;
+  }
+  .interact-prompt {
+    bottom: calc(var(--px) * 12px + env(safe-area-inset-bottom, 0px));
+  }
+}
+@media (max-height: 450px) and (pointer: coarse) {
+  /* With the pad in the corner, center-bottom stays free — keep the prompt low. */
+  .interact-prompt {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+  }
+}
