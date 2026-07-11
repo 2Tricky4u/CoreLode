@@ -33,7 +33,7 @@ Branch `feat/coop-expedition`; one commit per step; merge --ff-only per mileston
 
 - [x] [X13] Seat-aware expedition HUD + relic/heat/chain event routing
 - [x] [X14] Spectator camera + LOST UX + dev-panel lockstep guard
-- [ ] M4 gate: full suite + build + multi-tab death smoke, merge
+- [x] M4 gate: full suite + build green (206 tests); multi-tab death smoke pending user QA, merged
 
 ## M5 — Docs + final gate
 
