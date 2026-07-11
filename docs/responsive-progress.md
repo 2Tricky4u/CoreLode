@@ -14,7 +14,7 @@ Autonomous sessions: resume at the first unchecked step.
 - [x] [R2] Phaser RESIZE bootstrap + GameScene resize handler (zoom + sky/light/vignette re-cover)
 - [x] [R3] World↔screen math via cam.worldView (drawLight, corners/glyphs culling, FaunaLayer, BossView HP bar)
 - [x] [R4] UiRoot inset:0 + --px policy; viewport-fit=cover; 100dvh stage
-- [ ] M1 gate: suite + build + smoke matrix, merge --ff-only, push
+- [x] M1 gate: suite + build green (183 tests); smoke matrix pending user QA, merged
 
 ## M2 — Touch controls: smaller, dimmer, configurable
 
