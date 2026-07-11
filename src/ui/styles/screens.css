@@ -9,6 +9,9 @@
   justify-content: center;
   background: radial-gradient(ellipse at 50% 30%, #45283c 0%, #140c1c 70%);
   overflow-y: auto;
+  /* Keep panels clear of notches and home indicators on phones. */
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
 }
 .title-screen {
   text-align: center;

@@ -11,7 +11,9 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: calc(var(--px) * 5px) calc(var(--px) * 8px);
+  padding: calc(var(--px) * 5px + env(safe-area-inset-top, 0px))
+    calc(var(--px) * 8px + env(safe-area-inset-right, 0px)) calc(var(--px) * 5px)
+    calc(var(--px) * 8px + env(safe-area-inset-left, 0px));
   gap: calc(var(--px) * 10px);
   background: linear-gradient(#140c1cee, #140c1c00);
   pointer-events: none;

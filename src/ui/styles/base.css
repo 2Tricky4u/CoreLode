@@ -130,7 +130,7 @@ button.btn.disabled {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding-top: 8vh;
+  padding-top: calc(8vh + env(safe-area-inset-top, 0px));
   gap: 6px;
   z-index: 40;
 }
