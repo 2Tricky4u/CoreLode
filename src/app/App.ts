@@ -56,11 +56,13 @@ import { BIND_ACTIONS, type BindAction } from '@input/bindings';
 import { entropySeed, isTouchDevice } from '@platform/env';
 import { copyToClipboard, downloadText, pickTextFile } from '@platform/exporter';
 import { LocalChannel } from '@platform/net/LocalChannel';
+import { RtcChannel } from '@platform/net/RtcChannel';
 import type { NetChannel } from '@platform/net/channel';
 import * as storage from '@platform/storage';
 import { Hud } from '@ui/Hud';
 import { TouchControls } from '@ui/TouchControls';
 import { UiRoot } from '@ui/UiRoot';
+import { coopScreen } from '@ui/coopScreen';
 import { openDevPanel } from '@ui/devPanel';
 import { showFatal } from '@ui/fatal';
 import { helpScreen } from '@ui/help';
@@ -240,6 +242,7 @@ export class App {
         onNew: () => this.newStoryRun(),
         onContinue: () => void this.loadMostRecent(),
         onExpedition: () => void this.showExpedition(),
+        onCoop: () => this.showCoop(),
         onLoad: () => void this.showSaveSlots(),
         onChallenges: () => void this.showChallenges(),
         onSettings: () => this.showSettings(() => this.showTitle()),
@@ -578,6 +581,169 @@ export class App {
     return () => (this.input.gameFocus ? this.input.sample() : EMPTY_INTENTS);
   }
 
+  // ---------- co-op lobby (WebRTC paste-code handshake) ----------
+  private coopSeats: Array<{ channel: RtcChannel; offerToken: string; connected: boolean }> = [];
+  private coopView: 'menu' | 'host' | 'join' = 'menu';
+  private coopStatus = '';
+  private coopAnswerToken: string | null = null;
+
+  private showCoop(): void {
+    this.teardownCoopLobby();
+    this.coopView = 'menu';
+    this.coopStatus = '';
+    this.renderCoop();
+  }
+
+  private teardownCoopLobby(): void {
+    for (const seat of this.coopSeats) seat.channel.close();
+    this.coopSeats = [];
+    this.coopAnswerToken = null;
+  }
+
+  private renderCoop(): void {
+    this.screens.show(
+      coopScreen({
+        view: this.coopView,
+        status: this.coopStatus,
+        seats: this.coopSeats.map((s, i) => ({
+          status: s.connected ? 'connected' : 'waiting',
+          offerToken: s.offerToken,
+          label: `Player ${i + 2}`,
+        })),
+        canStart: this.coopSeats.length > 0 && this.coopSeats.every((s) => s.connected),
+        canAddSeat: this.coopSeats.length < 5 && this.coopSeats.every((s) => s.connected),
+        answerToken: this.coopAnswerToken,
+        onHost: () => {
+          this.coopView = 'host';
+          void this.addCoopSeat();
+        },
+        onJoin: () => {
+          this.coopView = 'join';
+          this.renderCoop();
+        },
+        onAddSeat: () => void this.addCoopSeat(),
+        onAnswerPaste: (i, text) => void this.acceptCoopAnswer(i, text),
+        onOfferPaste: (text) => void this.joinCoop(text),
+        onCopy: (token) => void copyToClipboard(token).then((ok) => ok && this.ui.toast('Copied.')),
+        onStart: () => this.startCoopSession(),
+        onBack: () => {
+          this.teardownCoopLobby();
+          void this.showTitle();
+        },
+      }),
+    );
+  }
+
+  private async addCoopSeat(): Promise<void> {
+    this.coopStatus = 'Minting invite code…';
+    this.renderCoop();
+    try {
+      const { channel, offerToken } = await RtcChannel.host();
+      const seat = { channel, offerToken, connected: false };
+      // Version handshake: the guest sends hi when its channel opens.
+      channel.onMessage = (text) => {
+        const msg = decodeMsg(text);
+        if (msg?.m !== 'hi') return;
+        if (msg.proto !== PROTO_VERSION || msg.saveV !== SAVE_VERSION) {
+          this.ui.toast(t('coopVersionMismatch'), 6000);
+          channel.close();
+          this.coopSeats = this.coopSeats.filter((x) => x !== seat);
+        } else {
+          channel.send(encodeMsg({ m: 'hi', proto: PROTO_VERSION, saveV: SAVE_VERSION }));
+          seat.connected = true;
+        }
+        this.renderCoop();
+      };
+      this.coopSeats.push(seat);
+      this.coopStatus = '';
+    } catch {
+      this.coopStatus = 'WebRTC unavailable in this browser.';
+    }
+    this.renderCoop();
+  }
+
+  private async acceptCoopAnswer(i: number, text: string): Promise<void> {
+    const seat = this.coopSeats[i];
+    if (!seat) return;
+    try {
+      await seat.channel.acceptAnswer(text);
+      this.coopStatus = 'Connecting…';
+      this.renderCoop();
+      await seat.channel.waitOpen(); // hi arrives via the handler set in addCoopSeat
+      this.coopStatus = '';
+    } catch {
+      this.ui.toast(t('coopBadToken'));
+    }
+    this.renderCoop();
+  }
+
+  private startCoopSession(): void {
+    const channels = this.coopSeats.filter((s) => s.connected).map((s) => s.channel);
+    if (channels.length === 0) return;
+    const players = channels.length + 1;
+    const seed = entropySeed();
+    const mode = { kind: 'coop' as const, goldium: true, players };
+    channels.forEach((ch, i) => {
+      ch.send(encodeMsg({ m: 'join', player: i + 1, players }));
+      ch.send(encodeMsg({ m: 'start', seed, mode, level: 1 }));
+    });
+    const state = createRun({ seed, mode });
+    const host = new LockstepHost(state, {
+      role: 'host',
+      localPlayer: 0,
+      players,
+      channels,
+      sampleInput: this.coopSampler(),
+    });
+    this.wireLockstep(host);
+    this.coopSeats = []; // channels now belong to the session
+    this.beginCoopRun(host, 0);
+  }
+
+  private async joinCoop(offerToken: string): Promise<void> {
+    try {
+      this.coopStatus = 'Connecting…';
+      this.renderCoop();
+      const { channel, answerToken } = await RtcChannel.join(offerToken);
+      this.coopAnswerToken = answerToken;
+      this.coopStatus = t('coopWaiting');
+      void copyToClipboard(answerToken);
+      this.renderCoop();
+      await channel.waitOpen();
+      channel.send(encodeMsg({ m: 'hi', proto: PROTO_VERSION, saveV: SAVE_VERSION }));
+      await this.guestAwaitAndBegin(channel);
+    } catch {
+      this.coopStatus = '';
+      this.coopAnswerToken = null;
+      this.ui.toast(t('coopBadToken'));
+      this.renderCoop();
+    }
+  }
+
+  /** Guest bootstrap shared by RTC and local-tab transports: wait join+start, go. */
+  private guestAwaitAndBegin(ch: NetChannel): Promise<void> {
+    return new Promise((res) => {
+      let joined: { player: number; players: number } | null = null;
+      ch.onMessage = (text) => {
+        const msg = decodeMsg(text);
+        if (msg?.m === 'join') joined = { player: msg.player, players: msg.players };
+        if (msg?.m === 'start' && joined) {
+          const state = createRun({ seed: msg.seed, mode: msg.mode, level: msg.level });
+          const host = new LockstepHost(state, {
+            role: 'guest',
+            localPlayer: joined.player,
+            players: joined.players,
+            channels: [ch],
+            sampleInput: this.coopSampler(),
+          });
+          this.wireLockstep(host);
+          this.beginCoopRun(host, joined.player);
+          res();
+        }
+      };
+    });
+  }
+
   private wireLockstep(host: LockstepHost): void {
     host.onDesync = (player) => {
       this.ui.toast(`SYNC LOST with player ${player + 1} — see console`, 6000);
@@ -631,31 +797,9 @@ export class App {
       const seat = Math.max(1, Math.min(5, Number(params.get('seat') ?? 1)));
       const ch = new LocalChannel(room, seat, 'guest');
       this.ui.toast(`Joining local co-op '${room}' as seat ${seat}…`, 8000);
-      const session = await new Promise<
-        { player: number; players: number } & {
-          seed: number;
-          mode: GameState['mode'];
-          level: number;
-        }
-      >((res) => {
-        let joined: { player: number; players: number } | null = null;
-        ch.onMessage = (text) => {
-          const msg = decodeMsg(text);
-          if (msg?.m === 'join') joined = { player: msg.player, players: msg.players };
-          if (msg?.m === 'start' && joined) res({ ...joined, ...msg });
-        };
-        ch.send(encodeMsg({ m: 'hi', proto: PROTO_VERSION, saveV: SAVE_VERSION }));
-      });
-      const state = createRun({ seed: session.seed, mode: session.mode, level: session.level });
-      const host = new LockstepHost(state, {
-        role: 'guest',
-        localPlayer: session.player,
-        players: session.players,
-        channels: [ch],
-        sampleInput: this.coopSampler(),
-      });
-      this.wireLockstep(host);
-      this.beginCoopRun(host, session.player);
+      const begin = this.guestAwaitAndBegin(ch);
+      ch.send(encodeMsg({ m: 'hi', proto: PROTO_VERSION, saveV: SAVE_VERSION }));
+      await begin;
     }
   }
 

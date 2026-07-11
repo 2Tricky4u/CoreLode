@@ -51,6 +51,7 @@ export function titleScreen(opts: {
   onNew: () => void;
   onContinue: () => void;
   onExpedition: () => void;
+  onCoop: () => void;
   onLoad: () => void;
   onChallenges: () => void;
   onSettings: () => void;
@@ -89,6 +90,7 @@ export function titleScreen(opts: {
         : null,
       el('button', { class: 'btn primary', onclick: opts.onNew }, t('newGame')),
       el('button', { class: 'btn', onclick: opts.onExpedition }, t('expedition')),
+      el('button', { class: 'btn', onclick: opts.onCoop }, t('coop')),
       el('button', { class: 'btn', onclick: opts.onLoad }, t('uiLoad')),
       el('button', { class: 'btn', onclick: opts.onChallenges }, t('challenges')),
       el('button', { class: 'btn', onclick: opts.onHelp }, 'Controls & Guide'),

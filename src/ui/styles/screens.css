@@ -264,3 +264,35 @@ kbd.key {
   margin-top: 5px;
   line-height: 1.45;
 }
+
+/* Co-op lobby */
+.coop-token-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin: 4px 0 8px;
+}
+.coop-token {
+  flex: 1;
+  font-family: monospace;
+  font-size: 10px;
+  background: #140c1c;
+  color: var(--c-text);
+  border: 1px solid var(--c-panel2);
+  padding: 4px;
+  resize: vertical;
+  word-break: break-all;
+}
+.coop-seat {
+  border-left: 2px solid var(--c-panel2);
+  padding-left: 8px;
+  margin: 8px 0;
+}
+.coop-ok {
+  color: #99e550;
+}
+.coop-status {
+  font-size: 12px;
+  opacity: 0.8;
+  min-height: 1em;
+}
