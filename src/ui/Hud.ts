@@ -105,6 +105,8 @@ export class Hud {
   private stratumTimer: ReturnType<typeof setTimeout> | null = null;
   private teamNode: HTMLElement;
   private teamRows: TeamRow[] = [];
+  private droppedSeats: ReadonlySet<number> = new Set();
+  private waitingNode: HTMLElement;
   private minimapNode: HTMLElement;
   private minimapCanvas: HTMLCanvasElement;
   private minimapCtx: CanvasRenderingContext2D | null;
@@ -163,6 +165,7 @@ export class Hud {
     this.stratumNode = el('div', { class: 'stratum-banner' });
 
     this.teamNode = el('div', { class: 'hud-team hidden' });
+    this.waitingNode = el('div', { class: 'hud-waiting hidden', text: '' });
 
     this.minimapCanvas = el('canvas', { class: 'minimap-canvas' });
     this.minimapCanvas.width = MAP_W;
@@ -202,6 +205,7 @@ export class Hud {
       ),
       el('div', { class: 'hud-right' }, this.cashText, hotbar),
       this.teamNode,
+      this.waitingNode,
       this.minimapNode,
       this.contractsNode,
       this.objectiveNode,
@@ -236,6 +240,17 @@ export class Hud {
     }
     const key = this.promptNode.querySelector('.prompt-key');
     if (key) key.textContent = interactLabel();
+  }
+
+  /** Network-stall overlay: pass the message to show, or null to hide. */
+  setWaiting(text: string | null): void {
+    this.waitingNode.classList.toggle('hidden', text === null);
+    if (text !== null) this.waitingNode.textContent = text;
+  }
+
+  /** Seats whose peer dropped — badged OFFLINE in the teammate list. */
+  setDroppedSeats(seats: ReadonlySet<number>): void {
+    this.droppedSeats = seats;
   }
 
   setMinimap(on: boolean): void {
@@ -384,16 +399,20 @@ export class Hud {
       this.teamNode.append(node);
       this.teamRows.push({ node, hp, fuel, info });
     }
-    mates.forEach(({ q }, r) => {
+    mates.forEach(({ q, i }, r) => {
       const row = this.teamRows[r];
       if (!row) return;
       const down = !podAlive(q);
+      const dropped = this.droppedSeats.has(i);
       row.node.classList.toggle('down', down);
+      row.node.classList.toggle('dropped', dropped);
       row.hp.style.width = `${Math.max(0, Math.min(100, (q.hp / maxHull(q)) * 100))}%`;
       row.fuel.style.width = `${Math.max(0, Math.min(100, (q.fuel / tankCapacity(q)) * 100))}%`;
-      row.info.textContent = down
-        ? `${t('hudDown')} ${Math.max(0, Math.ceil((q.respawnAtTick - s.tick) / 42))}s`
-        : `${Math.min(0, Math.round(podDepthFt(q)))} ft`;
+      row.info.textContent = dropped
+        ? t('hudOffline')
+        : down
+          ? `${t('hudDown')} ${Math.max(0, Math.ceil((q.respawnAtTick - s.tick) / 42))}s`
+          : `${Math.min(0, Math.round(podDepthFt(q)))} ft`;
     });
   }
 

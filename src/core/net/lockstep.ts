@@ -54,6 +54,19 @@ export class HostSequencer {
     return row[player] !== null || this.dropped.has(player);
   }
 
+  /** Players whose input is holding up the next bundle (empty when flowing). */
+  lateFor(): number[] {
+    const t = this.nextOut;
+    if (t < INPUT_DELAY_TICKS) return [];
+    const row = this.buf.get(t);
+    const late: number[] = [];
+    for (let i = 0; i < this.players; i++) {
+      if (this.dropped.has(i)) continue;
+      if (!row || row[i] === null) late.push(i);
+    }
+    return late;
+  }
+
   /** True when the NEXT bundle (in strict tick order) can be emitted. */
   ready(): boolean {
     const t = this.nextOut;

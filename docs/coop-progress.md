@@ -48,7 +48,7 @@ Autonomous sessions resume at the first unchecked step; genuine design forks go 
 - [x] [N22] Session bootstrap end-to-end (start + version handshake; chunked SaveFile resume lands in N27)
 - [x] [N23] Rendering: PodView per pod + tints, local camera, per-pod FX
 - [x] [N24] HUD: local player bars, SHARED wallet, teammate list, minimap dots
-- [ ] [N25] Connection lifecycle UX (waiting overlay, drop handling, bye)
+- [x] [N25] Connection lifecycle UX (waiting overlay, drop handling, bye)
 - [ ] M5 gate: full suite + build + ≥3-client LAN playthrough, merge
 
 ## M6 — Resilience + deploy + docs

@@ -71,6 +71,7 @@ import {
   openBuilding,
   openGameOver,
   openInventory,
+  openMessage,
   openPause,
   openRelicChoice,
   openTransmission,
@@ -100,6 +101,10 @@ export class App {
   private audio = new AudioBus();
   private touch: TouchControls;
   private host: SimHost | null = null;
+  /** Live lockstep session (null in solo) — for stall/drop lifecycle UX. */
+  private lockstep: LockstepHost | null = null;
+  private coopDropped = new Set<number>();
+  private coopByeOnUnload = (): void => this.lockstep?.shutdown();
   private settings: SettingsValues = defaultSettings();
   private lifetime: storage.LifetimeRecords = storage.defaultLifetime();
   private binds: storage.StoredBinds = {};
@@ -745,13 +750,31 @@ export class App {
   }
 
   private wireLockstep(host: LockstepHost): void {
+    this.lockstep = host;
+    this.coopDropped = new Set();
+    this.hud.setDroppedSeats(this.coopDropped);
+    // Leaving the page must not strand the peers on a silent stall.
+    window.addEventListener('pagehide', this.coopByeOnUnload);
     host.onDesync = (player) => {
       this.ui.toast(`SYNC LOST with player ${player + 1} — see console`, 6000);
       console.error(`[coop] desync detected for player ${player}`);
     };
     host.onDisconnect = (player) => {
-      if (player === null) this.ui.toast('HOST DISCONNECTED — session over', 6000);
-      else this.ui.toast(`Player ${player + 1} disconnected`, 5000);
+      if (player === null) {
+        // The host is gone — the session cannot continue on any guest.
+        this.modals.closeAll();
+        openMessage(
+          this.modals,
+          t('coopTitle'),
+          t('coopHostGone'),
+          t('backToTitle'),
+          () => void this.showTitle(),
+        );
+      } else if (!this.coopDropped.has(player)) {
+        // 'bye' and the transport close can both report the same drop — badge once.
+        this.coopDropped.add(player);
+        this.ui.toast(`P${player + 1} ${t('coopDroppedToast')}`, 5000);
+      }
     };
   }
 
@@ -840,6 +863,18 @@ export class App {
       const hudLoop = () => {
         if (!this.host) return;
         this.hud.update(this.host.state, this.localPlayer);
+        // Lockstep stall overlay: name who we're waiting on after half a second.
+        const ls = this.lockstep;
+        if (ls) {
+          if (ls.stalledMs > 500) {
+            const late = ls.latePlayers().filter((pl) => !this.coopDropped.has(pl));
+            const who =
+              late.length > 0 ? late.map((pl) => `P${pl + 1}`).join(', ') : t('coopHostName');
+            this.hud.setWaiting(`${t('coopWaitingFor')} ${who}…`);
+          } else {
+            this.hud.setWaiting(null);
+          }
+        }
         this.hudTimer = requestAnimationFrame(hudLoop);
       };
       this.hudTimer = requestAnimationFrame(hudLoop);
@@ -854,6 +889,14 @@ export class App {
 
   private stopRun(): void {
     if (this.hudTimer) cancelAnimationFrame(this.hudTimer);
+    if (this.lockstep) {
+      this.lockstep.shutdown();
+      this.lockstep = null;
+      window.removeEventListener('pagehide', this.coopByeOnUnload);
+      this.coopDropped = new Set();
+      this.hud.setDroppedSeats(this.coopDropped);
+      this.hud.setWaiting(null);
+    }
     if (this.phaser?.scene?.isActive('game')) this.phaser.scene.stop('game');
     this.audio.stopLoops();
     this.audio.stopMusic();

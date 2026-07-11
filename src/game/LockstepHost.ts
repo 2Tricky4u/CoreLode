@@ -122,6 +122,12 @@ export class LockstepHost implements SimHost {
     return this.stalledSinceMs;
   }
 
+  /** Which players the stall is waiting on. Host: late guests; guest: [] (the host). */
+  latePlayers(): number[] {
+    if (this.seq) return this.seq.lateFor().filter((p) => p !== this.localPlayer);
+    return [];
+  }
+
   update(dtMs: number): void {
     if (this.syncPaused || this.state.outcome !== 'active') return;
     this.acc += Math.min(dtMs, 250);

@@ -415,6 +415,39 @@ export function openTransmission(
   if (bonus > 0) textNode.dataset.bonus = `+$${bonus}`;
 }
 
+/** One-button message dialog (e.g. "host disconnected — session over"). */
+export function openMessage(
+  m: ModalManager,
+  title: string,
+  bodyText: string,
+  buttonLabel: string,
+  onClose: () => void,
+): void {
+  m.open(
+    dialog(
+      title,
+      el('div', { class: 'dialog-body' }, el('p', { text: bodyText })),
+      el(
+        'div',
+        { class: 'btn-col' },
+        el(
+          'button',
+          {
+            class: 'btn primary',
+            'data-cancel': 'true',
+            onclick: () => {
+              m.closeAll();
+              onClose();
+            },
+          },
+          buttonLabel,
+        ),
+      ),
+      't-message',
+    ),
+  );
+}
+
 export function openPause(
   m: ModalManager,
   onResume: () => void,

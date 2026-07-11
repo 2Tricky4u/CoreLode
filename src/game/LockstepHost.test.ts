@@ -128,6 +128,9 @@ describe('LockstepHost', () => {
     stepAll([host, ...guests], 30);
     expect(guests[0].state.tick).toBeLessThanOrEqual(guestTick + 4); // guest starved
     expect(guests[0].stalledMs).toBeGreaterThan(0);
+    // The starved guest stops sending inputs, so the host names it as late.
+    expect(host.latePlayers()).toEqual([1]);
+    expect(guests[0].latePlayers()).toEqual([]); // guests just wait on the host
     hostChannels[0].release();
     stepAll([host, ...guests], 60);
     const target = Math.max(host.state.tick, guests[0].state.tick);

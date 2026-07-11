@@ -329,3 +329,37 @@
   text-align: right;
   opacity: 0.85;
 }
+
+/* Lockstep stall overlay — center-screen, above the play field. */
+.hud-waiting {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: calc(var(--px) * 4px) calc(var(--px) * 8px);
+  background: #140c1cd9;
+  border: 1px solid var(--c-panel2);
+  font-size: calc(var(--px) * 10px);
+  color: var(--c-text);
+  text-shadow: 1px 1px 0 #000;
+  pointer-events: none;
+  animation: waiting-pulse 1.2s ease-in-out infinite;
+}
+.hud-waiting.hidden {
+  display: none;
+}
+.team-row.dropped {
+  opacity: 0.55;
+}
+.team-row.dropped .team-info {
+  color: #9badb7;
+}
+@keyframes waiting-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
