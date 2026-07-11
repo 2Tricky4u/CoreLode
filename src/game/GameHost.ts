@@ -56,7 +56,7 @@ export class GameHost {
   /** Apply a shop/UI command (allowed while paused) and fan out its events. */
   command(cmd: Command): void {
     this.events.length = 0;
-    applyCommand(this.state, cmd, this.events);
+    applyCommand(this.state, cmd, 0, this.events);
     this.dispatch();
   }
 

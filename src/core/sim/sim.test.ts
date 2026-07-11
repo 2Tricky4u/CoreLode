@@ -211,7 +211,7 @@ describe('economy commands', () => {
     s.level = 2;
     s.pod.bayContents[8] = 1; // diamond 100k → 50k at lvl2
     const out: EventSink = [];
-    applyCommand(s, { c: 'sellAllCargo' }, out);
+    applyCommand(s, { c: 'sellAllCargo' }, 0, out);
     expect(s.pod.cash).toBe(20 + 50_000);
     expect(bayUsed(s.pod)).toBe(0);
   });
@@ -219,11 +219,11 @@ describe('economy commands', () => {
   it('upgrade purchase respects funds; hull buy fully repairs', () => {
     const s = run();
     const out: EventSink = [];
-    applyCommand(s, { c: 'buyUpgrade', category: 'hull' }, out); // $750 > $20 → refused
+    applyCommand(s, { c: 'buyUpgrade', category: 'hull' }, 0, out); // $750 > $20 → refused
     expect(s.pod.upgrades.hull).toBe(0);
     s.pod.cash = 1_000;
     s.pod.hp = 3;
-    applyCommand(s, { c: 'buyUpgrade', category: 'hull' }, out);
+    applyCommand(s, { c: 'buyUpgrade', category: 'hull' }, 0, out);
     expect(s.pod.upgrades.hull).toBe(1);
     expect(s.pod.hp).toBe(17); // new max, free repair
     expect(s.pod.cash).toBe(250);
@@ -233,13 +233,13 @@ describe('economy commands', () => {
     const s = run();
     s.pod.cash = 3;
     const out: EventSink = [];
-    applyCommand(s, { c: 'refuel', liters: 'full' }, out);
+    applyCommand(s, { c: 'refuel', liters: 'full' }, 0, out);
     expect(s.pod.fuel).toBeLessThanOrEqual(10);
     expect(s.pod.fuel).toBeGreaterThan(6);
     expect(s.pod.cash).toBeLessThanOrEqual(3);
     s.pod.cash = 150;
     s.pod.hp = 1;
-    applyCommand(s, { c: 'repair', hp: 'full' }, out);
+    applyCommand(s, { c: 'repair', hp: 'full' }, 0, out);
     expect(s.pod.hp).toBe(10);
     expect(s.pod.cash).toBe(150 - 9 * 15);
   });

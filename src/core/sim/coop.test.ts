@@ -1,5 +1,6 @@
 /** Co-op mode: N-pod runs, shared wallet, purity, determinism. */
 import { describe, expect, it } from 'vitest';
+import { applyCommand } from '../commands';
 import { SPAWN_COL } from '../data/buildings';
 import { TILE_PX } from '../data/constants';
 import { COOP } from '../data/coop';
@@ -84,6 +85,32 @@ describe('co-op run setup', () => {
     stepN(s, [{}, {}], 10);
     expect(s.pods[0].hp).toBe(hpBefore[0]);
     expect(s.pods[1].hp).toBe(hpBefore[1]);
+  });
+});
+
+describe('co-op commands act on the right pod, cash on the wallet', () => {
+  it("selling player 1's cargo credits the shared wallet", () => {
+    const s = coopRun(2);
+    s.pods[1].bayContents[0] = 10; // 10 × Ferrite ($30) = $300
+    applyCommand(s, { c: 'sellAllCargo' }, 1, []);
+    expect(s.pods[1].bayContents[0]).toBe(0);
+    expect(wallet(s).cash).toBe(320); // $20 start + $300
+    expect(s.pods[1].cash).toBe(0); // never touches their own pocket
+  });
+
+  it("player 1's upgrade debits the wallet and lands on their pod", () => {
+    const s = coopRun(2);
+    wallet(s).cash = 1_000;
+    applyCommand(s, { c: 'buyUpgrade', category: 'hull' }, 1, []); // $750 tier 1
+    expect(wallet(s).cash).toBe(250);
+    expect(s.pods[1].upgrades.hull).toBe(1);
+    expect(s.pods[0].upgrades.hull).toBe(0);
+  });
+
+  it('an out-of-range player index is ignored', () => {
+    const s = coopRun(2);
+    applyCommand(s, { c: 'refuel', liters: 5 }, 5, []);
+    expect(wallet(s).cash).toBe(20);
   });
 });
 

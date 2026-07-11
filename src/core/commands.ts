@@ -25,13 +25,19 @@ export type Command =
   | { c: 'repair'; hp: number | 'full' }
   | { c: 'jettison'; collectibleId: number };
 
-export function applyCommand(s: GameState, cmd: Command, out: EventSink): void {
-  const p = s.pod;
+/**
+ * Apply a shop/UI command for `player` (acting pod = s.pods[player]). Solo and
+ * challenge callers pass 0. In lockstep co-op, commands ride the input stream
+ * and both peers apply them at the same tick in (tick, player) order.
+ */
+export function applyCommand(s: GameState, cmd: Command, player: number, out: EventSink): void {
+  const p = s.pods[player];
+  if (!p) return; // out-of-range player index — ignore (defensive vs. bad peers)
   switch (cmd.c) {
     case 'chooseRelic': {
       // Only a currently-offered relic may be taken (deterministic command stream).
       if (!s.pendingRelicChoices?.includes(cmd.id)) return;
-      s.pod.relics.push(cmd.id);
+      p.relics.push(cmd.id);
       s.pendingRelicChoices = null;
       out.push({ t: 'sfx', key: 'schematic' });
       break;

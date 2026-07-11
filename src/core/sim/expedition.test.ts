@@ -134,7 +134,7 @@ describe('expedition heat', () => {
     step(s, {}, 3);
     s.pod.heat = 50;
     s.pod.fuel = 1;
-    applyCommand(s, { c: 'refuel', liters: 5 }, []);
+    applyCommand(s, { c: 'refuel', liters: 5 }, 0, []);
     expect(s.pod.heat).toBe(0);
   });
 
@@ -208,7 +208,7 @@ describe('collect chains', () => {
     s.chain = { id: 0, count: 0, bankPct: 50, lastCollectTick: 0 };
     const cash = s.pod.cash;
     const out: EventSink = [];
-    applyCommand(s, { c: 'sellAllCargo' }, out);
+    applyCommand(s, { c: 'sellAllCargo' }, 0, out);
     expect(s.pod.cash).toBe(cash + 300 + 150); // sale + 50% vault
     expect(s.chain?.bankPct).toBe(0);
     expect(out.some((e) => e.t === 'transaction' && e.kind === 'chainBonus')).toBe(true);
@@ -219,7 +219,7 @@ describe('collect chains', () => {
     s.pod.bayContents[0] = 10;
     s.chain = { id: 0, count: 0, bankPct: 50, lastCollectTick: 0 }; // hostile setup
     const cash = s.pod.cash;
-    applyCommand(s, { c: 'sellAllCargo' }, []);
+    applyCommand(s, { c: 'sellAllCargo' }, 0, []);
     expect(s.pod.cash).toBe(cash + 300); // no bonus, byte-authentic
   });
 
@@ -353,10 +353,10 @@ describe('relics', () => {
     const offered = s.pendingRelicChoices ?? [];
     const notOffered = RELICS.map((r) => r.id).find((r) => !offered.includes(r));
     if (notOffered) {
-      applyCommand(s, { c: 'chooseRelic', id: notOffered }, []);
+      applyCommand(s, { c: 'chooseRelic', id: notOffered }, 0, []);
       expect(s.pod.relics).toEqual([]);
     }
-    applyCommand(s, { c: 'chooseRelic', id: offered[0] }, []);
+    applyCommand(s, { c: 'chooseRelic', id: offered[0] }, 0, []);
     expect(s.pod.relics).toEqual([offered[0]]);
     expect(s.pendingRelicChoices).toBeNull();
   });
