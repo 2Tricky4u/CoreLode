@@ -12,7 +12,7 @@ import { earthquake } from '../world/world';
 import { solidAt } from '../world/world';
 import { setTile } from '../world/world';
 import { podOverlapsSolid, resolveOverlap } from './physics';
-import { type GameState, podDepthFt, podTileY, wallet } from './state';
+import { type GameState, podAlive, podDepthFt, podTileY, wallet } from './state';
 
 export function fireTransmission(s: GameState, id: string, out: EventSink): void {
   if (s.story.fired.includes(id)) return;
@@ -29,9 +29,19 @@ export function fireTransmission(s: GameState, id: string, out: EventSink): void
 }
 
 export function stepScripted(s: GameState, out: EventSink): void {
-  const depth = podDepthFt(s.pod);
-  if (depth < s.story.maxDepthFt) s.story.maxDepthFt = depth;
-  if (depth > s.story.maxAltFt) s.story.maxAltFt = depth;
+  // Watermarks span every living pod; remember who set the altitude mark this
+  // tick so sky-egg rewards (the Seraph) go to the pod that actually flew there.
+  let altSetter = 0;
+  for (let i = 0; i < s.pods.length; i++) {
+    const q = s.pods[i];
+    if (!podAlive(q)) continue;
+    const depth = podDepthFt(q);
+    if (depth < s.story.maxDepthFt) s.story.maxDepthFt = depth;
+    if (depth > s.story.maxAltFt) {
+      s.story.maxAltFt = depth;
+      altSetter = i;
+    }
+  }
 
   if (s.mode.kind === 'challenge') return; // no story in challenges
 
@@ -58,9 +68,10 @@ export function stepScripted(s: GameState, out: EventSink): void {
           wallet(s).cash += egg.bonus;
           out.push({ t: 'bonusCash', amount: egg.bonus });
         }
-        if (egg.spawnsGuardian && !s.pod.guardian) {
-          s.pod.guardian = true;
-          out.push({ t: 'guardianSpawned', player: 0 });
+        const climber = s.pods[altSetter];
+        if (egg.spawnsGuardian && climber && !climber.guardian) {
+          climber.guardian = true;
+          out.push({ t: 'guardianSpawned', player: altSetter });
           out.push({ t: 'sfx', key: 'seraph' });
         }
         s.story.pendingTransmission = egg.id;
@@ -84,17 +95,20 @@ export function stepScripted(s: GameState, out: EventSink): void {
         s.rng.int(QUAKE.maxIntervalTicks - QUAKE.minIntervalTicks);
       if (rows.length > 0) {
         s.stats.quakes++;
-        // A shifted row can land on the pod: push it out of the rock first, and
-        // only carve as a last resort if it is fully entombed.
-        resolveOverlap(s, s.pod);
-        if (podOverlapsSolid(s, s.pod)) {
-          const tx = Math.floor(s.pod.x / TILE_PX);
-          const ty = podTileY(s.pod);
-          for (const [ox, oy] of [
-            [0, 0],
-            [0, -1],
-          ]) {
-            if (solidAt(s.world, tx + ox, ty + oy)) setTile(s.world, tx + ox, ty + oy, Tile.Air);
+        // A shifted row can land on a pod: push each one out of the rock first,
+        // and only carve as a last resort if it is fully entombed.
+        for (const q of s.pods) {
+          if (!podAlive(q)) continue;
+          resolveOverlap(s, q);
+          if (podOverlapsSolid(s, q)) {
+            const tx = Math.floor(q.x / TILE_PX);
+            const ty = podTileY(q);
+            for (const [ox, oy] of [
+              [0, 0],
+              [0, -1],
+            ]) {
+              if (solidAt(s.world, tx + ox, ty + oy)) setTile(s.world, tx + ox, ty + oy, Tile.Air);
+            }
           }
         }
         out.push({ t: 'quake', rows });

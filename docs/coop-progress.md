@@ -28,7 +28,7 @@ Autonomous sessions resume at the first unchecked step; genuine design forks go 
 - [x] [N10] applyCommand(s, cmd, player, out)
 - [x] [N11] Death → respawn-with-fee; all-down wipe; podDown/podRespawned events
 - [x] [N12] Boss + explosives co-op rules (Charge.owner, nearest-living targeting)
-- [ ] [N13] Quake entombment for all pods; guardian to triggering pod; pass-through test
+- [x] [N13] Quake entombment for all pods; guardian to triggering pod; pass-through test
 - [ ] [N14] Co-op determinism + purity suite (2 and 6 players)
 - [ ] M3 gate: full suite + build, merge
 

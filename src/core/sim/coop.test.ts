@@ -7,6 +7,7 @@ import { TILE_PX } from '../data/constants';
 import { COOP } from '../data/coop';
 import type { EventSink } from '../events';
 import { EMPTY_INTENTS, type IntentFrame } from '../intents';
+import { podOverlapsSolid } from './physics';
 import { type GameState, createRun, wallet } from './state';
 import { tick } from './tick';
 
@@ -165,6 +166,35 @@ describe('co-op death and respawn', () => {
     const out = stepN(s, [{}, {}]);
     expect(out.some((e) => e.t === 'podDown' && e.player === 0 && e.cause === 'fuel')).toBe(true);
     expect(s.outcome).toBe('active');
+  });
+});
+
+describe('co-op quake safety and watermarks', () => {
+  it('a quake never entombs any pod', () => {
+    const s = coopRun(2);
+    stepN(s, [{}, {}], 3);
+    // Park both pods underground in carved pockets, then force a quake.
+    for (let i = 0; i < 2; i++) {
+      const p = s.pods[i];
+      p.x = (5 + i * 20) * TILE_PX + TILE_PX / 2;
+      p.y = 60 * TILE_PX + TILE_PX / 2;
+      p.prevX = p.x;
+      p.prevY = p.y;
+      p.fuel = 100;
+    }
+    s.story.maxDepthFt = -1_001; // open the quake gate
+    s.story.nextQuakeTick = s.tick + 1;
+    stepN(s, [{}, {}], 3);
+    expect(podOverlapsSolid(s, s.pods[0])).toBe(false);
+    expect(podOverlapsSolid(s, s.pods[1])).toBe(false);
+  });
+
+  it('the deepest pod drives the shared depth watermark', () => {
+    const s = coopRun(2);
+    stepN(s, [{}, {}], 3);
+    s.pods[1].y += 600 * 4; // player 1 dives to −600 ft
+    stepN(s, [{}, {}]);
+    expect(s.story.maxDepthFt).toBeLessThan(-500);
   });
 });
 
