@@ -35,21 +35,20 @@ select {
 #stage {
   position: relative;
   width: 100vw;
-  height: 100vh;
+  height: 100vh; /* fallback for browsers without dvh */
+  height: 100dvh; /* tracks the mobile URL bar showing/hiding */
 }
 #game {
   position: absolute;
   inset: 0;
 }
-/* Let Phaser's ScaleManager own the canvas box (FIT + CENTER_BOTH letterboxing).
-   Forcing width/height:100% here would stretch it and break the aspect ratio. */
+/* Phaser Scale.RESIZE keeps the canvas at the parent (= viewport) size. */
 #game canvas {
   display: block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
-/* Pinned at runtime (UiRoot.applyRect) to exactly the canvas rectangle, so the
-   HUD lives inside the playfield and only the letterbox bars widen. */
+/* Full-bleed overlay: the canvas is the viewport, so the HUD spans it too. */
 #ui {
   position: absolute;
   inset: 0;

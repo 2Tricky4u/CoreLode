@@ -13,7 +13,7 @@ Autonomous sessions: resume at the first unchecked step.
 - [x] [R1] viewportPolicy.ts pure module (zoomForViewport / uiScaleForViewport / coverScreenRect) + tests
 - [x] [R2] Phaser RESIZE bootstrap + GameScene resize handler (zoom + sky/light/vignette re-cover)
 - [x] [R3] World↔screen math via cam.worldView (drawLight, corners/glyphs culling, FaunaLayer, BossView HP bar)
-- [ ] [R4] UiRoot inset:0 + --px policy; viewport-fit=cover; 100dvh stage
+- [x] [R4] UiRoot inset:0 + --px policy; viewport-fit=cover; 100dvh stage
 - [ ] M1 gate: suite + build + smoke matrix, merge --ff-only, push
 
 ## M2 — Touch controls: smaller, dimmer, configurable
