@@ -11,7 +11,7 @@ import { dist } from '../lib/math';
 import { Tile, isBlastable, isGas } from '../world/tiles';
 import { getTile, setTile } from '../world/world';
 import { applyGasPocket } from './hazards';
-import type { GameState } from './state';
+import { type GameState, podAlive } from './state';
 
 export function stepCharges(s: GameState, out: EventSink): void {
   if (s.charges.length === 0) return;
@@ -34,6 +34,7 @@ export function stepCharges(s: GameState, out: EventSink): void {
         ? ITEM_EFFECTS.plastiqueRadiusTiles
         : ITEM_EFFECTS.dynamiteRadiusTiles) + relicBonus,
       c.item,
+      c.owner,
       out,
     );
   }
@@ -46,6 +47,7 @@ function detonate(
   py: number,
   radiusTiles: number,
   item: 'dynamite' | 'plastique',
+  owner: number,
   out: EventSink,
 ): void {
   const cx = Math.floor(px / TILE_PX);
@@ -62,14 +64,18 @@ function detonate(
       if (tile >= Tile.BoulderFirst && tile <= Tile.BoulderLast) s.stats.stonesDestroyed++;
       out.push({ t: 'tileCleared', x: tx, y: ty, tile, cause: 'blast' });
       if (isGas(tile)) {
-        // Igniting a pocket hurts if the pod is near the blast zone.
-        const podTx = Math.floor(s.pod.x / TILE_PX);
-        const podTy = Math.floor(s.pod.y / TILE_PX);
-        if (Math.abs(podTx - tx) <= radiusTiles + 1 && Math.abs(podTy - ty) <= radiusTiles + 1) {
-          applyGasPocket(s, s.pod, tx, ty, out);
-        } else {
-          out.push({ t: 'gasIgnite', x: tx, y: ty });
+        // Igniting a pocket hurts every living pod near the blast zone.
+        let anyHit = false;
+        for (const q of s.pods) {
+          if (!podAlive(q)) continue;
+          const podTx = Math.floor(q.x / TILE_PX);
+          const podTy = Math.floor(q.y / TILE_PX);
+          if (Math.abs(podTx - tx) <= radiusTiles + 1 && Math.abs(podTy - ty) <= radiusTiles + 1) {
+            applyGasPocket(s, q, tx, ty, out);
+            anyHit = true;
+          }
         }
+        if (!anyHit) out.push({ t: 'gasIgnite', x: tx, y: ty });
       }
     }
   }
@@ -99,6 +105,7 @@ function detonate(
     }
     if (dmg > 0) {
       b.hp -= dmg;
+      b.lastHitBy = owner; // drops attribution (co-op)
       out.push({ t: 'bossDamaged', amount: dmg, hp: Math.max(0, b.hp) });
       out.push({ t: 'sfx', key: 'bossHurt' });
     }

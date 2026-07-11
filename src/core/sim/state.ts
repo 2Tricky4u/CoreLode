@@ -85,6 +85,8 @@ export interface BossState {
   attackCooldowns: Record<string, number>;
   contactCooldown: number;
   laserAngle: number;
+  /** Player whose charge last damaged the boss (drops attribution in co-op). */
+  lastHitBy: number;
 }
 
 export interface Projectile {
@@ -103,6 +105,8 @@ export interface Charge {
   x: number; // px
   y: number;
   fuse: number; // ticks
+  /** Player who placed it (drops attribution in co-op). Transient — never saved. */
+  owner: number;
 }
 
 /** Expedition magmite — transient like projectiles (never serialized). */

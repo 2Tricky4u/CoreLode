@@ -1,6 +1,7 @@
 /** Co-op mode: N-pod runs, shared wallet, purity, determinism. */
 import { describe, expect, it } from 'vitest';
 import { applyCommand } from '../commands';
+import { BOSS } from '../data/boss';
 import { SPAWN_COL } from '../data/buildings';
 import { TILE_PX } from '../data/constants';
 import { COOP } from '../data/coop';
@@ -164,6 +165,52 @@ describe('co-op death and respawn', () => {
     const out = stepN(s, [{}, {}]);
     expect(out.some((e) => e.t === 'podDown' && e.player === 0 && e.cause === 'fuel')).toBe(true);
     expect(s.outcome).toBe('active');
+  });
+});
+
+describe('co-op boss rules', () => {
+  const enterArena = (s: GameState, player: number, colOff = -6): void => {
+    const p = s.pods[player];
+    p.x = (BOSS.spawnCol + colOff) * TILE_PX;
+    p.y = (BOSS.arenaTopRow + 2) * TILE_PX;
+    p.prevX = p.x;
+    p.prevY = p.y;
+    p.fuel = 100;
+    p.upgrades.fuelTank = 6;
+  };
+
+  it('spawns when ANY pod enters and resets only when none remain', () => {
+    const s = coopRun(2);
+    enterArena(s, 1); // player 1 goes down alone
+    stepN(s, [{}, {}]);
+    expect(s.boss?.form).toBe(1);
+    enterArena(s, 0); // player 0 joins
+    stepN(s, [{}, {}]);
+    expect(s.boss).not.toBeNull();
+    s.pods[1].y = (BOSS.arenaTopRow - 30) * TILE_PX; // player 1 leaves
+    stepN(s, [{}, {}]);
+    expect(s.boss).not.toBeNull(); // player 0 still inside
+    s.pods[0].y = (BOSS.arenaTopRow - 30) * TILE_PX; // last one leaves
+    const out = stepN(s, [{}, {}]);
+    expect(out.some((e) => e.t === 'bossReset')).toBe(true);
+    expect(s.boss).toBeNull();
+  });
+
+  it('grants drops to the player whose charge landed the kill', () => {
+    const s = coopRun(2);
+    enterArena(s, 0);
+    enterArena(s, 1, -9); // both in, player 1 further away
+    stepN(s, [{}, {}]);
+    const b = s.boss;
+    expect(b).not.toBeNull();
+    if (!b) return;
+    b.hp = 1;
+    // Player 1's plastique at the boss' feet lands the kill.
+    s.charges.push({ item: 'plastique', x: b.x, y: b.y, fuse: 1, owner: 1 });
+    stepN(s, [{}, {}]);
+    expect(b.lastHitBy).toBe(1);
+    expect(s.pods[1].bayContents[14]).toBe(1); // form-1 first drop → the bomber
+    expect(s.pods[0].bayContents[14]).toBe(0);
   });
 });
 

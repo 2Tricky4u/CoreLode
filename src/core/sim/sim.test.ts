@@ -276,12 +276,12 @@ describe('boss', () => {
     s.pod.inventory.plastique = 99;
     s.pod.mode = 'ground';
     // place a charge right at the boss
-    s.charges.push({ item: 'plastique', x: b.x, y: b.y, fuse: 1 });
+    s.charges.push({ item: 'plastique', x: b.x, y: b.y, fuse: 1, owner: 0 });
     const out = step(s);
     expect(out.some((e) => e.t === 'bossDamaged' && e.amount === 240)).toBe(true);
     // kill form 1
     b.hp = 1;
-    s.charges.push({ item: 'plastique', x: b.x, y: b.y, fuse: 1 });
+    s.charges.push({ item: 'plastique', x: b.x, y: b.y, fuse: 1, owner: 0 });
     const out2 = step(s);
     expect(out2.some((e) => e.t === 'bossFormDown' && e.form === 1)).toBe(true);
     expect(s.pod.bayContents[14]).toBe(1); // suit drop
@@ -290,7 +290,7 @@ describe('boss', () => {
     expect(s.boss?.form).toBe(2);
     expect(s.boss?.hp).toBe(2_000);
     s.boss!.hp = 1;
-    s.charges.push({ item: 'plastique', x: s.boss!.x, y: s.boss!.y, fuse: 1 });
+    s.charges.push({ item: 'plastique', x: s.boss!.x, y: s.boss!.y, fuse: 1, owner: 0 });
     const out3 = step(s);
     expect(out3.some((e) => e.t === 'victory')).toBe(true);
     expect(s.outcome).toBe('victory');

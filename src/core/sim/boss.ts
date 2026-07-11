@@ -13,12 +13,28 @@ import { atan2d, dist } from '../lib/math';
 import { solidAt } from '../world/world';
 import { applyDamage } from './physics';
 import { fireTransmission } from './scripted';
-import type { BossState, GameState } from './state';
+import { type BossState, type GameState, type PodState, podAlive } from './state';
 
 const formDef = (form: 1 | 2): BossFormDef => BOSS.forms[form - 1];
 
-export const inArena = (s: GameState): boolean =>
-  Math.floor(s.pod.y / TILE_PX) >= BOSS.arenaTopRow - 1;
+const podInArena = (p: PodState): boolean => Math.floor(p.y / TILE_PX) >= BOSS.arenaTopRow - 1;
+
+export const inArena = (s: GameState): boolean => s.pods.some((p) => podAlive(p) && podInArena(p));
+
+/** Nearest living pod in the arena (lower index breaks ties) — the boss's target. */
+function bossTarget(s: GameState, b: BossState): PodState {
+  let best: PodState | null = null;
+  let bestD = Number.POSITIVE_INFINITY;
+  for (const p of s.pods) {
+    if (!podAlive(p) || !podInArena(p)) continue;
+    const d = dist(p.x - b.x, p.y - b.y);
+    if (d < bestD) {
+      best = p;
+      bestD = d;
+    }
+  }
+  return best ?? s.pod; // unreachable while inArena(s) holds, but keep it total
+}
 
 function spawnBoss(s: GameState, form: 1 | 2): BossState {
   // The original's spawn y (px 29532, row ~590) anchored the sprite's TOP —
@@ -39,14 +55,18 @@ function spawnBoss(s: GameState, form: 1 | 2): BossState {
     attackCooldowns: {},
     contactCooldown: 0,
     laserAngle: 0,
+    lastHitBy: 0,
   };
 }
 
-/** Grant a set of collectible drops straight into the bay (they always fit — trophies). */
+/** Grant drops to the player whose charge landed the kill (fallback: first living pod). */
 function grantDrops(s: GameState, ids: readonly number[], out: EventSink): void {
+  const owner = s.pods[s.boss?.lastHitBy ?? 0];
+  const target = owner && podAlive(owner) ? owner : (s.pods.find((q) => podAlive(q)) ?? s.pod);
+  const player = s.pods.indexOf(target);
   for (const id of ids) {
-    s.pod.bayContents[id]++;
-    out.push({ t: 'collected', collectibleId: id });
+    target.bayContents[id]++;
+    out.push({ t: 'collected', collectibleId: id, player });
   }
 }
 
@@ -74,7 +94,7 @@ export function stepBoss(s: GameState, out: EventSink): void {
 
   const def = formDef(b.form);
   const dmul = bossDamageMult(s.level);
-  const p = s.pod;
+  const p = bossTarget(s, b); // nearest living pod in the arena
   const dx = p.x - b.x;
   const distTiles = dist(dx, p.y - b.y) / TILE_PX;
 
@@ -84,10 +104,17 @@ export function stepBoss(s: GameState, out: EventSink): void {
     if (b.attackCooldowns[k] > 0) b.attackCooldowns[k]--;
   }
 
-  // Contact damage.
-  if (b.phase !== 'dead' && b.phase !== 'transition' && distTiles < 1.6 && b.contactCooldown <= 0) {
-    applyDamage(s, s.pod, def.contactDamage * dmul, 'boss', out);
-    b.contactCooldown = def.contactRetriggerTicks;
+  // Contact damage — every living pod in range shares one cooldown window.
+  if (b.phase !== 'dead' && b.phase !== 'transition' && b.contactCooldown <= 0) {
+    let hit = false;
+    for (const q of s.pods) {
+      if (!podAlive(q)) continue;
+      if (dist(q.x - b.x, q.y - b.y) / TILE_PX < 1.6) {
+        applyDamage(s, q, def.contactDamage * dmul, 'boss', out);
+        hit = true;
+      }
+    }
+    if (hit) b.contactCooldown = def.contactRetriggerTicks;
   }
 
   switch (b.phase) {
@@ -199,25 +226,31 @@ function applyAttack(
   b: BossState,
   attack: BossAttackDef,
   dmul: number,
-  distTiles: number,
+  _distTiles: number,
   out: EventSink,
 ): void {
-  const p = s.pod;
   switch (attack.kind) {
     case 'laserSweep': {
       // Sweep an arc; hits regardless of terrain (authentic "through the ceiling").
       const t = b.phaseTicks / attack.activeTicks;
       b.laserAngle =
         -Math.PI + Math.PI * t * (b.facing === 1 ? 1 : -1) * 1.0 - (b.facing === 1 ? 0 : Math.PI);
-      const podAngle = atan2d(p.y - b.y, p.x - b.x); // deterministic across engines
-      let diff = Math.abs(podAngle - b.laserAngle);
-      if (diff > Math.PI) diff = 2 * Math.PI - diff;
-      if (diff < 0.09 && b.contactCooldown <= 0) {
-        applyDamage(s, s.pod, attack.damage * dmul, 'boss', out);
-        p.xVel += attack.knockback.x * Math.sign(p.x - b.x);
-        p.yVel += attack.knockback.y;
-        p.mode = 'air';
-        b.contactCooldown = 30;
+      if (b.contactCooldown <= 0) {
+        let hit = false;
+        for (const q of s.pods) {
+          if (!podAlive(q)) continue;
+          const podAngle = atan2d(q.y - b.y, q.x - b.x); // deterministic across engines
+          let diff = Math.abs(podAngle - b.laserAngle);
+          if (diff > Math.PI) diff = 2 * Math.PI - diff;
+          if (diff < 0.09) {
+            applyDamage(s, q, attack.damage * dmul, 'boss', out);
+            q.xVel += attack.knockback.x * Math.sign(q.x - b.x);
+            q.yVel += attack.knockback.y;
+            q.mode = 'air';
+            hit = true;
+          }
+        }
+        if (hit) b.contactCooldown = 30;
       }
       break;
     }
@@ -225,12 +258,16 @@ function applyAttack(
     case 'clawSweep': {
       const range = attack.kind === 'staffSwing' ? (attack.rangeTiles ?? 3) : 6;
       const hitTick = Math.floor(attack.activeTicks / 2);
-      if (b.phaseTicks === hitTick && distTiles <= range) {
-        applyDamage(s, s.pod, attack.damage * dmul, 'boss', out);
-        p.xVel += attack.knockback.x * Math.sign(p.x - b.x || 1);
-        p.yVel += attack.knockback.y;
-        p.mode = 'air';
-        if (attack.itemLockTicks) p.itemLock = Math.max(p.itemLock, attack.itemLockTicks);
+      if (b.phaseTicks === hitTick) {
+        for (const q of s.pods) {
+          if (!podAlive(q)) continue;
+          if (dist(q.x - b.x, q.y - b.y) / TILE_PX > range) continue;
+          applyDamage(s, q, attack.damage * dmul, 'boss', out);
+          q.xVel += attack.knockback.x * Math.sign(q.x - b.x || 1);
+          q.yVel += attack.knockback.y;
+          q.mode = 'air';
+          if (attack.itemLockTicks) q.itemLock = Math.max(q.itemLock, attack.itemLockTicks);
+        }
       }
       break;
     }
@@ -267,12 +304,15 @@ function stepProjectiles(s: GameState, dmul: number, out: EventSink): void {
     ) {
       pr.xVel = -pr.xVel;
     }
-    const d = dist(s.pod.x - pr.x, s.pod.y - pr.y);
-    if (d < 30) {
-      const def = formDef(s.boss?.form ?? 2);
-      const fb = def.attacks.find((a) => a.kind === 'fireball');
-      applyDamage(s, s.pod, (fb?.damage ?? 20) * dmul, 'boss', out);
-      pr.ttl = 0;
+    for (const q of s.pods) {
+      if (!podAlive(q)) continue;
+      if (dist(q.x - pr.x, q.y - pr.y) < 30) {
+        const def = formDef(s.boss?.form ?? 2);
+        const fb = def.attacks.find((a) => a.kind === 'fireball');
+        applyDamage(s, q, (fb?.damage ?? 20) * dmul, 'boss', out);
+        pr.ttl = 0;
+        break; // one pod eats the fireball
+      }
     }
     if (pr.ttl > 0) keep.push(pr);
   }

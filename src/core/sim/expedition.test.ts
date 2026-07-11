@@ -390,7 +390,7 @@ describe('relics', () => {
     const s = expRun();
     step(s, {}, 3);
     s.pod.relics.push('chainDetonate');
-    s.charges.push({ item: 'dynamite', x: s.pod.x, y: s.pod.y + 200, fuse: 1 });
+    s.charges.push({ item: 'dynamite', x: s.pod.x, y: s.pod.y + 200, fuse: 1, owner: 0 });
     const out = step(s);
     const boom = out.find((e) => e.t === 'explosion');
     expect(boom?.t === 'explosion' && boom.radiusTiles).toBe(2); // dynamite 1 + relic 1
@@ -441,7 +441,7 @@ describe('magmite critters', () => {
     const s = expRun(11);
     step(s, {}, 3);
     s.critters.push({ x: s.pod.x + TILE_PX, y: s.pod.y + 200, moveCooldown: 99 });
-    s.charges.push({ item: 'dynamite', x: s.pod.x, y: s.pod.y + 200, fuse: 1 });
+    s.charges.push({ item: 'dynamite', x: s.pod.x, y: s.pod.y + 200, fuse: 1, owner: 0 });
     const out = step(s);
     expect(out.some((e) => e.t === 'critterKilled')).toBe(true);
     expect(s.critters).toEqual([]);

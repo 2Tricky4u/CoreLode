@@ -46,7 +46,13 @@ export function tryUseItem(s: GameState, p: PodState, id: ItemId, out: EventSink
     case 'dynamite':
     case 'plastique':
       consume();
-      s.charges.push({ item: id, x: p.x, y: p.y, fuse: ITEM_EFFECTS.explosionFuseFrames });
+      s.charges.push({
+        item: id,
+        x: p.x,
+        y: p.y,
+        fuse: ITEM_EFFECTS.explosionFuseFrames,
+        owner: s.pods.indexOf(p),
+      });
       out.push({ t: 'sfx', key: 'fuseLight' });
       break;
     case 'discountTeleporter': {
