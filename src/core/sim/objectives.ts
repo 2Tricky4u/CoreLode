@@ -12,11 +12,12 @@ export function objectiveMet(s: GameState, o: Objective): boolean {
       return wallet(s).cash >= o.amount;
     case 'reachDepthFt':
       return s.story.maxDepthFt <= o.ft;
-    case 'collectMineral':
-      return (
-        bayContentsCount(s.pod, o.collectibleId) + (s.stats.soldCount[o.collectibleId] ?? 0) >=
-        o.count
-      );
+    case 'collectMineral': {
+      // Team total: every pod's bay counts (identical to the old code at 1 pod).
+      let held = 0;
+      for (const p of s.pods) held += bayContentsCount(p, o.collectibleId);
+      return held + (s.stats.soldCount[o.collectibleId] ?? 0) >= o.count;
+    }
     case 'destroyStones':
       return s.stats.stonesDestroyed >= o.count;
     case 'collectNoDamage':

@@ -84,7 +84,7 @@ function breakTile(s: GameState, p: PodState, tx: number, ty: number, out: Event
   if (s.mode.kind === 'expedition')
     p.heat = Math.min(EXPEDITION.heat.max, p.heat + EXPEDITION.heat.perTileDug * heatGainMult(p));
   out.push({ t: 'tileCleared', x: tx, y: ty, tile, cause: 'drill', player: s.pods.indexOf(p) });
-  maybeSpawnCritter(s, tx, ty, out); // expedition-gated inside
+  maybeSpawnCritter(s, p, tx, ty, out); // expedition-gated inside
 
   // Ore Magnet relic: minerals adjacent to a drilled tile pop out and collect.
   if (p.relics.includes('oreMagnet')) {

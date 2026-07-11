@@ -11,7 +11,7 @@ import { dist } from '../lib/math';
 import { Tile } from '../world/tiles';
 import { getTile } from '../world/world';
 import { applyDamage } from './physics';
-import { type GameState, podDepthFt, radiatorMult } from './state';
+import { type GameState, type PodState, podAlive, podDepthFt, radiatorMult } from './state';
 
 export const CRITTER = {
   maxAlive: 3,
@@ -23,22 +23,44 @@ export const CRITTER = {
 } as const;
 
 /** Called per drilled tile (expedition-gated — the story rng stream is never touched). */
-export function maybeSpawnCritter(s: GameState, tx: number, ty: number, out: EventSink): void {
+export function maybeSpawnCritter(
+  s: GameState,
+  p: PodState,
+  tx: number,
+  ty: number,
+  out: EventSink,
+): void {
   if (s.mode.kind !== 'expedition') return;
   if (s.critters.length >= CRITTER.maxAlive) return;
-  if (podDepthFt(s.pod) > CRITTER.minDepthFt) return;
+  if (podDepthFt(p) > CRITTER.minDepthFt) return; // the DIGGING pod's depth
   if (s.rng.int(CRITTER.spawnChance) !== 0) return;
   const c = { x: (tx + 0.5) * TILE_PX, y: (ty + 0.5) * TILE_PX, moveCooldown: CRITTER.hopTicks };
   s.critters.push(c);
-  out.push({ t: 'critterSpawned', x: c.x, y: c.y });
+  out.push({ t: 'critterSpawned', x: c.x, y: c.y, player: s.pods.indexOf(p) });
   out.push({ t: 'sfx', key: 'critter' });
+}
+
+/** Nearest living pod (lower index wins ties) — mirrors the boss targeting rule. */
+function nearestPod(s: GameState, x: number, y: number): PodState | null {
+  let best: PodState | null = null;
+  let bestD = Number.POSITIVE_INFINITY;
+  for (const q of s.pods) {
+    if (!podAlive(q)) continue;
+    const d = dist(q.x - x, q.y - y);
+    if (d < bestD) {
+      bestD = d;
+      best = q;
+    }
+  }
+  return best;
 }
 
 export function stepCritters(s: GameState, out: EventSink): void {
   if (s.mode.kind !== 'expedition' || s.critters.length === 0) return;
-  const p = s.pod;
   const survivors: typeof s.critters = [];
   for (const c of s.critters) {
+    const p = nearestPod(s, c.x, c.y);
+    if (!p) break; // no living pods — the run is over anyway
     if (--c.moveCooldown <= 0) {
       c.moveCooldown = CRITTER.hopTicks;
       const tx = Math.floor(c.x / TILE_PX);
@@ -64,11 +86,19 @@ export function stepCritters(s: GameState, out: EventSink): void {
         }
       }
     }
-    if (dist(p.x - c.x, p.y - c.y) <= CRITTER.contactTiles * TILE_PX) {
-      applyDamage(s, p, CRITTER.damage * radiatorMult(p), 'critter', out);
-      out.push({ t: 'critterKilled', x: c.x, y: c.y });
-      continue; // pops on contact
+    // Contact pops on the first touching pod, index-ascending.
+    let popped = false;
+    for (let i = 0; i < s.pods.length; i++) {
+      const q = s.pods[i];
+      if (!podAlive(q)) continue;
+      if (dist(q.x - c.x, q.y - c.y) <= CRITTER.contactTiles * TILE_PX) {
+        applyDamage(s, q, CRITTER.damage * radiatorMult(q), 'critter', out);
+        out.push({ t: 'critterKilled', x: c.x, y: c.y, player: i });
+        popped = true;
+        break;
+      }
     }
+    if (popped) continue;
     survivors.push(c);
   }
   s.critters = survivors;

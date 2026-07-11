@@ -11,6 +11,7 @@ import type { SimEvent } from '../events';
 import { EMPTY_INTENTS } from '../intents';
 import { Tile } from '../world/tiles';
 import { chainOnCollect, chainOnDamage } from './chain';
+import { CRITTER, stepCritters } from './critters';
 import { type GameState, createRun } from './state';
 import { tick } from './tick';
 
@@ -161,5 +162,43 @@ describe('expedition co-op: per-pod relic offers', () => {
     expect(s.pods[1].relics).toEqual([theirs[0]]);
     expect(s.pendingRelicChoices[1]).toBeNull();
     expect(s.pendingRelicChoices[0]).toEqual(mine); // untouched
+  });
+});
+
+describe('expedition co-op: critters and contracts', () => {
+  it('a magmite hops toward the NEARER pod and bites it', () => {
+    const s = expeditionDuo();
+    // Open a corridor and stand the two pods at either end, critter off-center.
+    const row = DEEP_ROW;
+    for (let col = 10; col <= 20; col++) s.world.tiles[row * WORLD_W + col] = Tile.Air;
+    placePod(s, 0, row, 10);
+    placePod(s, 1, row, 18);
+    s.critters.push({ x: 16.5 * TILE_PX, y: (row + 0.5) * TILE_PX, moveCooldown: 1 });
+    const hp0 = s.pods[0].hp;
+    const hp1 = s.pods[1].hp;
+    const out: SimEvent[] = [];
+    for (let i = 0; i < 8 * CRITTER.hopTicks; i++) stepCritters(s, out);
+    const bite = out.find((e) => e.t === 'critterKilled');
+    expect(bite?.t === 'critterKilled' && bite.player).toBe(1); // the nearer pod
+    expect(s.pods[1].hp).toBeLessThan(hp1);
+    expect(s.pods[0].hp).toBe(hp0);
+    expect(s.critters.length).toBe(0); // popped on contact
+  });
+
+  it('a collectMineral contract completes from split hauls across two bays', () => {
+    const s = expeditionDuo();
+    const contract = s.contracts.find((c) => c.objective.kind === 'collectMineral');
+    expect(contract).toBeDefined();
+    if (!contract || contract.objective.kind !== 'collectMineral') return;
+    const { collectibleId, count } = contract.objective;
+    const cash = s.pods[0].cash;
+    // Split the haul so NEITHER bay alone meets the goal.
+    const half = Math.floor(count / 2);
+    s.pods[0].bayContents[collectibleId] = half;
+    s.pods[1].bayContents[collectibleId] = count - half;
+    const ev = stepN(s, 1);
+    expect(contract.done).toBe(true);
+    expect(ev.some((e) => e.t === 'contractDone')).toBe(true);
+    expect(s.pods[0].cash).toBe(cash + contract.rewardCash); // paid to the shared wallet
   });
 });

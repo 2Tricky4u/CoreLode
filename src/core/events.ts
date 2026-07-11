@@ -44,8 +44,8 @@ export type SimEvent =
   /** Depth milestone reached — pick one of these relics (chooseRelic command). */
   | { t: 'relicOffer'; choices: string[]; player?: number }
   /** A magmite woke up (expedition) / was destroyed. */
-  | { t: 'critterSpawned'; x: number; y: number }
-  | { t: 'critterKilled'; x: number; y: number }
+  | { t: 'critterSpawned'; x: number; y: number; player?: number }
+  | { t: 'critterKilled'; x: number; y: number; player?: number }
   | { t: 'podExploded'; cause: 'hull' | 'fuel'; player?: number }
   /** Co-op: a pod went down (respawns later); fee already charged to the wallet. */
   | { t: 'podDown'; player: number; cause: 'hull' | 'fuel'; fee: number }

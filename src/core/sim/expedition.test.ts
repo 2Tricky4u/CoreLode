@@ -402,12 +402,12 @@ describe('magmite critters', () => {
     const s = expRun(11);
     step(s, {}, 3);
     s.pod.y += 3_500 * 4; // below the −3000 ft gate
-    for (let i = 0; i < 400; i++) maybeSpawnCritter(s, 10, 300, []);
+    for (let i = 0; i < 400; i++) maybeSpawnCritter(s, s.pod, 10, 300, []);
     expect(s.critters.length).toBe(CRITTER.maxAlive);
 
     const story = createRun({ seed: 11, mode: { kind: 'story', goldium: true } });
     story.pod.y += 3_500 * 4;
-    for (let i = 0; i < 400; i++) maybeSpawnCritter(story, 10, 300, []);
+    for (let i = 0; i < 400; i++) maybeSpawnCritter(story, story.pod, 10, 300, []);
     expect(story.critters).toEqual([]);
   });
 
