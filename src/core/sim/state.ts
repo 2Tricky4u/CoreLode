@@ -60,6 +60,8 @@ export interface PodState {
   heat: number;
   /** Edge-trigger latch for heat warnings (transient — never saved). */
   heatWarn: number;
+  /** Expedition collect chain — this pod's running combo and banked vault. */
+  chain: ChainState | null;
   /** Expedition relic ids. Always empty outside expedition (ids narrowed in data/relics.ts). */
   relics: string[];
   /** Expedition module ids. Always empty outside expedition (ids narrowed in data/expedition.ts). */
@@ -192,7 +194,6 @@ export interface GameState {
   story: StoryState;
   stats: RunStats;
   /** Active collect chain (tracker runs in all modes; only expedition pays it out). */
-  chain: ChainState | null;
   /** Expedition contracts; always empty in story/challenge. */
   contracts: ContractState[];
   outcome: Outcome;
@@ -343,6 +344,7 @@ export function createRun(opts: NewRunOptions = {}): GameState {
       nearBuilding: null,
       heat: 0,
       heatWarn: 0,
+      chain: null,
       relics: [],
       // Daily runs ignore modules so result codes stay comparable across players.
       modules: exp && !exp.dateKey ? [...exp.modules] : [],
@@ -392,7 +394,6 @@ export function createRun(opts: NewRunOptions = {}): GameState {
       bestChain: 0,
       rescues: 0,
     },
-    chain: null,
     contracts: mode.kind === 'expedition' ? generateContracts(seed) : [],
     outcome: 'active',
     challengeEndTick: ch ? ch.timeLimitTicks : 0,

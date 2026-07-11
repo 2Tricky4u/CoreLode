@@ -65,7 +65,7 @@ export function collectTile(s: GameState, p: PodState, tile: number, out: EventS
       p.bayContents[ci]++;
       s.stats.collectedTotal++;
       out.push({ t: 'collected', collectibleId: ci, player: s.pods.indexOf(p) });
-      chainOnCollect(s, ci, out); // expedition-only inside
+      chainOnCollect(s, p, ci, out); // expedition-only inside
     } else if (p.relics.includes('scavenger')) {
       // Scavenger relic: overflow ore is vaporized for double points, not lost.
       p.points += pts;

@@ -320,11 +320,12 @@ export class Hud {
         );
       }
     }
-    const chainVisible = exp && ((s.chain?.count ?? 0) >= 2 || (s.chain?.bankPct ?? 0) > 0);
+    const chain = p.chain;
+    const chainVisible = exp && ((chain?.count ?? 0) >= 2 || (chain?.bankPct ?? 0) > 0);
     this.chainNode.classList.toggle('hidden', !chainVisible);
-    if (chainVisible && s.chain) {
-      const run = s.chain.count >= 2 ? `×${s.chain.count}` : '—';
-      this.chainNode.textContent = `CHAIN ${run} · VAULT +${s.chain.bankPct}%`;
+    if (chainVisible && chain) {
+      const run = chain.count >= 2 ? `×${chain.count}` : '—';
+      this.chainNode.textContent = `CHAIN ${run} · VAULT +${chain.bankPct}%`;
     }
     this.cargoFill.style.width = `${Math.min(100, (bayUsed(p) / bayCapacity(p)) * 100)}%`;
     // Co-op: the wallet is the whole crew's — always pod 0's cash field.

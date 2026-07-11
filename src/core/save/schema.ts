@@ -138,7 +138,8 @@ export function serialize(s: GameState, updatedAt: number): SaveFile {
       nextQuakeTick: s.story.nextQuakeTick,
     },
     stats: { ...s.stats, soldCount: [...s.stats.soldCount] },
-    chain: s.chain ? { ...s.chain } : null,
+    // v4 file shape: the file-level chain field carries pod 0's chain until v5.
+    chain: s.pods[0].chain ? { ...s.pods[0].chain } : null,
     contracts: s.contracts.map((c) => ({ ...c, objective: { ...c.objective } })),
   };
 }
@@ -160,6 +161,7 @@ function revivePod(sp: SavedPod): PodState {
     drilling: null,
     hp: sp.hp,
     heatWarn: 0, // transient latch — a re-warning after load is harmless
+    chain: null, // v4 saves carry pod 0's chain at file level; deserialize re-attaches
     fuel: sp.fuel,
     cash: sp.cash,
     points: sp.points,
@@ -182,6 +184,8 @@ function revivePod(sp: SavedPod): PodState {
 
 export function deserialize(f: SaveFile): GameState {
   const pods = f.pods.map(revivePod);
+  // v4 file shape: the file-level chain field is pod 0's (schema v5 moves it per-pod).
+  pods[0].chain = f.chain ? { ...f.chain } : null;
   return {
     seed: f.seed,
     level: f.level,
@@ -208,7 +212,7 @@ export function deserialize(f: SaveFile): GameState {
       nextQuakeTick: f.story.nextQuakeTick,
     },
     stats: f.stats,
-    chain: f.chain,
+
     contracts: f.contracts,
     outcome: 'active',
     challengeEndTick: 0,

@@ -34,7 +34,7 @@ export function applyDamage(
   p.hp -= dmg;
   s.stats.damageTaken += dmg;
   p.lastDamage = { cause, atTick: s.tick }; // lets the app explain a death
-  chainOnDamage(s, out); // a hit voids the running collect chain (expedition)
+  chainOnDamage(s, p, out); // a hit voids the victim's collect chain (expedition)
   out.push({ t: 'damage', amount: dmg, cause, player: s.pods.indexOf(p) });
 }
 

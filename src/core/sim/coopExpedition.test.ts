@@ -4,11 +4,13 @@
  * goldenExpedition.test.ts and must never move.
  */
 import { describe, expect, it } from 'vitest';
+import { applyCommand } from '../commands';
 import { SURFACE_ROW, TILE_PX, WORLD_W } from '../data/constants';
 import { EXPEDITION } from '../data/expedition';
 import type { SimEvent } from '../events';
 import { EMPTY_INTENTS } from '../intents';
 import { Tile } from '../world/tiles';
+import { chainOnCollect, chainOnDamage } from './chain';
 import { type GameState, createRun } from './state';
 import { tick } from './tick';
 
@@ -73,5 +75,42 @@ describe('expedition co-op: per-pod heat', () => {
     expect(s.pods[0].hp).toBe(10); // stock hull untouched
     expect(s.pods[0].heatWarn).toBe(0);
     expect(s.pods[1].heatWarn).toBe(2);
+  });
+});
+
+describe('expedition co-op: per-pod chains', () => {
+  it('each pod builds its own chain; damage voids only the victim', () => {
+    const s = expeditionDuo();
+    const out: SimEvent[] = [];
+    for (let i = 0; i < 4; i++) chainOnCollect(s, s.pods[0], 2, out);
+    for (let i = 0; i < 6; i++) chainOnCollect(s, s.pods[1], 5, out);
+    expect(s.pods[0].chain?.count).toBe(4);
+    expect(s.pods[1].chain?.count).toBe(6);
+    expect(s.stats.bestChain).toBe(6); // team best
+    const chains = out.filter((e) => e.t === 'chain');
+    expect(chains.some((e) => e.t === 'chain' && e.player === 0 && e.count === 4)).toBe(true);
+    expect(chains.some((e) => e.t === 'chain' && e.player === 1 && e.count === 6)).toBe(true);
+
+    const hit: SimEvent[] = [];
+    chainOnDamage(s, s.pods[1], hit);
+    expect(s.pods[1].chain?.count).toBe(0); // victim voided
+    expect(s.pods[0].chain?.count).toBe(4); // teammate untouched
+    expect(hit.some((e) => e.t === 'chainBroken' && e.player === 1 && !e.banked)).toBe(true);
+  });
+
+  it('each pod banks its own vault into the shared wallet at its own sale', () => {
+    const s = expeditionDuo();
+    s.pods[0].chain = { id: 0, count: 0, bankPct: 50, lastCollectTick: 0 };
+    s.pods[1].chain = { id: 0, count: 0, bankPct: 10, lastCollectTick: 0 };
+    s.pods[0].bayContents[0] = 10; // $300 of Ironium each
+    s.pods[1].bayContents[0] = 10;
+    const cash = s.pods[0].cash; // pod 0 IS the shared wallet
+    applyCommand(s, { c: 'sellAllCargo' }, 1, []);
+    expect(s.pods[0].cash).toBe(cash + 300 + 30); // pod 1's sale + ITS 10% vault
+    expect(s.pods[1].chain?.bankPct).toBe(0);
+    expect(s.pods[0].chain?.bankPct).toBe(50); // pod 0's vault untouched
+    applyCommand(s, { c: 'sellAllCargo' }, 0, []);
+    expect(s.pods[0].cash).toBe(cash + 330 + 300 + 150); // pod 0's sale + ITS 50% vault
+    expect(s.pods[0].chain?.bankPct).toBe(0);
   });
 });

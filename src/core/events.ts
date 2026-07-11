@@ -36,9 +36,9 @@ export type SimEvent =
   /** Expedition heat crossed a warning threshold (70 / 90). */
   | { t: 'heatWarning'; level: 1 | 2; player?: number }
   /** Expedition collect chain grew (emitted from ×2 up). */
-  | { t: 'chain'; collectibleId: number; count: number }
+  | { t: 'chain'; collectibleId: number; count: number; player?: number }
   /** Expedition chain ended — banked into the sale-bonus vault or voided. */
-  | { t: 'chainBroken'; count: number; banked: boolean }
+  | { t: 'chainBroken'; count: number; banked: boolean; player?: number }
   /** An expedition contract completed and paid out. */
   | { t: 'contractDone'; index: number; rewardCash: number }
   /** Depth milestone reached — pick one of these relics (chooseRelic command). */
