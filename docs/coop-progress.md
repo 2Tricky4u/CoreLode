@@ -55,7 +55,7 @@ Autonomous sessions resume at the first unchecked step; genuine design forks go 
 
 - [x] [N26] Desync recovery (halt + host resync via chunked SaveFile)
 - [x] [N27] Co-op save/resume (host-only SaveMate, coop slot badge, lobby preload)
-- [ ] [N28] GitHub Pages deploy workflow (.github/workflows/pages.yml, BASE_PATH)
+- [x] [N28] GitHub Pages deploy workflow (.github/workflows/pages.yml, BASE_PATH)
 - [ ] [N29] Docs: docs/coop.md, README, fidelity-checklist, CLAUDE.md notes
 - [ ] [N30] Final gate: 6-tab loop + LAN loop + solo regression, merge
 
