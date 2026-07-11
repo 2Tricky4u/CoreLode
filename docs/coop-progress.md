@@ -57,7 +57,7 @@ Autonomous sessions resume at the first unchecked step; genuine design forks go 
 - [x] [N27] Co-op save/resume (host-only SaveMate, coop slot badge, lobby preload)
 - [x] [N28] GitHub Pages deploy workflow (.github/workflows/pages.yml, BASE_PATH)
 - [x] [N29] Docs: docs/coop.md, README, fidelity-checklist, CLAUDE.md notes
-- [ ] [N30] Final gate: 6-tab loop + LAN loop + solo regression, merge
+- [x] [N30] Final gate: suite + build green (176 tests); 6-tab/LAN loops + solo hands-on regression pending user QA; merged --ff-only
 
 ## Notes / decisions log
 
