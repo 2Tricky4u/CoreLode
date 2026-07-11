@@ -10,7 +10,7 @@ Autonomous sessions: resume at the first unchecked step.
 ## M1 — Full-bleed canvas: RESIZE + camera zoom + world↔screen math
 
 - [x] [R0] Branch + this checklist
-- [ ] [R1] viewportPolicy.ts pure module (zoomForViewport / uiScaleForViewport / coverScreenRect) + tests
+- [x] [R1] viewportPolicy.ts pure module (zoomForViewport / uiScaleForViewport / coverScreenRect) + tests
 - [ ] [R2] Phaser RESIZE bootstrap + GameScene resize handler (zoom + sky/light/vignette re-cover)
 - [ ] [R3] World↔screen math via cam.worldView (drawLight, corners/glyphs culling, FaunaLayer, BossView HP bar)
 - [ ] [R4] UiRoot inset:0 + --px policy; viewport-fit=cover; 100dvh stage
