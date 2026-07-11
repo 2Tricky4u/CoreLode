@@ -9,7 +9,14 @@ import { BLUEPRINT_EFFECTS } from '../data/blueprints';
 import { EXPEDITION } from '../data/expedition';
 import type { EventSink } from '../events';
 import { applyDamage } from './physics';
-import { type GameState, heatGainMult, podDepthFt, radiatorMult, tankCapacity } from './state';
+import {
+  type GameState,
+  heatGainMult,
+  podDepthFt,
+  radiatorMult,
+  tankCapacity,
+  wallet,
+} from './state';
 
 export const LAVA_HIT_DAMAGE = 29;
 
@@ -20,7 +27,7 @@ export function applyLavaHit(s: GameState, out: EventSink): void {
     p.heat = Math.min(EXPEDITION.heat.max, p.heat + EXPEDITION.heat.perLavaHit * heatGainMult(p));
   out.push({ t: 'sfx', key: 'lavaSizzle' });
   if (p.blueprints.includes('magmaTap')) {
-    p.cash += BLUEPRINT_EFFECTS.lavaCashPerHit;
+    wallet(s).cash += BLUEPRINT_EFFECTS.lavaCashPerHit;
     out.push({ t: 'bonusCash', amount: BLUEPRINT_EFFECTS.lavaCashPerHit });
   }
 }

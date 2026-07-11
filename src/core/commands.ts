@@ -14,7 +14,7 @@ import {
   type UpgradeCategory,
 } from './data/upgrades';
 import type { EventSink } from './events';
-import { type GameState, bayUsed, maxHull, podMass, tankCapacity } from './sim/state';
+import { type GameState, bayUsed, maxHull, podMass, tankCapacity, wallet } from './sim/state';
 
 export type Command =
   | { c: 'chooseRelic'; id: string }
@@ -41,11 +41,11 @@ export function applyCommand(s: GameState, cmd: Command, out: EventSink): void {
       const next = p.upgrades[cmd.category] + 1;
       if (next >= tiers.length) return;
       const price = tiers[next].price;
-      if (p.cash < price) {
+      if (wallet(s).cash < price) {
         out.push({ t: 'sfx', key: 'error' });
         return;
       }
-      p.cash -= price;
+      wallet(s).cash -= price;
       p.upgrades[cmd.category] = next;
       if (cmd.category === 'hull') p.hp = maxHull(p); // free full repair with a new hull
       if (cmd.category === 'fuelTank') p.fuel = Math.min(p.fuel, tankCapacity(p));
@@ -57,11 +57,11 @@ export function applyCommand(s: GameState, cmd: Command, out: EventSink): void {
       const def = ITEM_BY_ID[cmd.item];
       const qty = Math.max(1, Math.floor(cmd.qty));
       const price = def.price * qty;
-      if (p.cash < price) {
+      if (wallet(s).cash < price) {
         out.push({ t: 'sfx', key: 'error' });
         return;
       }
-      p.cash -= price;
+      wallet(s).cash -= price;
       p.inventory[cmd.item] = (p.inventory[cmd.item] ?? 0) + qty;
       out.push({ t: 'transaction', kind: `item:${cmd.item}`, amount: -price });
       out.push({ t: 'sfx', key: 'buy' });
@@ -79,7 +79,7 @@ export function applyCommand(s: GameState, cmd: Command, out: EventSink): void {
         s.stats.soldCount[i] = (s.stats.soldCount[i] ?? 0) + n;
         p.bayContents[i] = 0;
       }
-      p.cash += total;
+      wallet(s).cash += total;
       if (mass > s.stats.biggestSaleMass) s.stats.biggestSaleMass = mass;
       out.push({ t: 'transaction', kind: 'sell', amount: total });
       // Expedition chain vault pays out on top of the sale, then resets.
@@ -87,7 +87,7 @@ export function applyCommand(s: GameState, cmd: Command, out: EventSink): void {
       if (s.mode.kind === 'expedition' && s.chain && s.chain.bankPct > 0) {
         const bonus = Math.floor((total * s.chain.bankPct) / 100);
         if (bonus > 0) {
-          p.cash += bonus;
+          wallet(s).cash += bonus;
           out.push({ t: 'transaction', kind: 'chainBonus', amount: bonus });
         }
         s.chain.bankPct = 0;
@@ -99,13 +99,13 @@ export function applyCommand(s: GameState, cmd: Command, out: EventSink): void {
       const cap = tankCapacity(p);
       const want = cmd.liters === 'full' ? cap - p.fuel : Math.min(cmd.liters, cap - p.fuel);
       if (want <= 0) return;
-      const affordable = Math.min(want, p.cash / FUEL_PRICE_PER_L);
+      const affordable = Math.min(want, wallet(s).cash / FUEL_PRICE_PER_L);
       if (affordable <= 0) {
         out.push({ t: 'sfx', key: 'error' });
         return;
       }
       const cost = Math.ceil(affordable * FUEL_PRICE_PER_L);
-      p.cash -= cost;
+      wallet(s).cash -= cost;
       p.fuel = Math.min(cap, p.fuel + affordable);
       if (s.mode.kind === 'expedition') p.heat = 0; // coolant comes with the fuel line
       out.push({ t: 'transaction', kind: 'fuel', amount: -cost });
@@ -116,13 +116,13 @@ export function applyCommand(s: GameState, cmd: Command, out: EventSink): void {
       const missing = maxHull(p) - p.hp;
       const want = cmd.hp === 'full' ? missing : Math.min(cmd.hp, missing);
       if (want <= 0) return;
-      const affordable = Math.min(want, Math.floor(p.cash / REPAIR_COST_PER_HP));
+      const affordable = Math.min(want, Math.floor(wallet(s).cash / REPAIR_COST_PER_HP));
       if (affordable <= 0) {
         out.push({ t: 'sfx', key: 'error' });
         return;
       }
       const cost = affordable * REPAIR_COST_PER_HP;
-      p.cash -= cost;
+      wallet(s).cash -= cost;
       p.hp += affordable;
       out.push({ t: 'transaction', kind: 'repair', amount: -cost });
       out.push({ t: 'sfx', key: 'nano' });

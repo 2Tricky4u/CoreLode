@@ -7,7 +7,7 @@ import { COLLECTIBLES } from '../data/minerals';
 import type { EventSink } from '../events';
 import { Rng, hash32 } from '../lib/rng';
 import { objectiveMet } from './objectives';
-import type { ContractState, GameState } from './state';
+import { type ContractState, type GameState, wallet } from './state';
 
 export function generateContracts(seed: number): ContractState[] {
   const rng = new Rng(hash32(seed, 0xc047));
@@ -32,7 +32,7 @@ export function stepContracts(s: GameState, out: EventSink): void {
     const c = s.contracts[i];
     if (c.done || !objectiveMet(s, c.objective)) continue;
     c.done = true;
-    s.pod.cash += c.rewardCash;
+    wallet(s).cash += c.rewardCash;
     out.push({ t: 'contractDone', index: i, rewardCash: c.rewardCash });
   }
 }

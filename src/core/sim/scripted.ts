@@ -12,7 +12,7 @@ import { earthquake } from '../world/world';
 import { solidAt } from '../world/world';
 import { setTile } from '../world/world';
 import { podOverlapsSolid, resolveOverlap } from './physics';
-import { type GameState, podDepthFt, podTileY } from './state';
+import { type GameState, podDepthFt, podTileY, wallet } from './state';
 
 export function fireTransmission(s: GameState, id: string, out: EventSink): void {
   if (s.story.fired.includes(id)) return;
@@ -20,7 +20,7 @@ export function fireTransmission(s: GameState, id: string, out: EventSink): void
   if (!def) return;
   s.story.fired.push(id);
   if (def.bonus > 0) {
-    s.pod.cash += def.bonus;
+    wallet(s).cash += def.bonus;
     out.push({ t: 'bonusCash', amount: def.bonus });
   }
   s.story.pendingTransmission = id;
@@ -55,7 +55,7 @@ export function stepScripted(s: GameState, out: EventSink): void {
       if (s.story.maxAltFt >= egg.altitudeFt) {
         s.story.fired.push(egg.id);
         if (egg.bonus > 0) {
-          s.pod.cash += egg.bonus;
+          wallet(s).cash += egg.bonus;
           out.push({ t: 'bonusCash', amount: egg.bonus });
         }
         if (egg.spawnsGuardian && !s.pod.guardian) {

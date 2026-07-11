@@ -12,7 +12,7 @@ import { EXPEDITION } from '../data/expedition';
 import { ITEM_BY_ID, ITEM_EFFECTS, type ItemId } from '../data/items';
 import { PHYSICS } from '../data/physics';
 import type { EventSink } from '../events';
-import { type GameState, bayUsed, maxHull, tankCapacity } from './state';
+import { type GameState, bayUsed, maxHull, tankCapacity, wallet } from './state';
 
 export function tryUseItem(s: GameState, id: ItemId, out: EventSink): void {
   const p = s.pod;
@@ -84,9 +84,11 @@ export function tryUseItem(s: GameState, id: ItemId, out: EventSink): void {
 export function rescueTow(s: GameState, out: EventSink): void {
   const p = s.pod;
   const exp = s.mode.kind === 'expedition';
-  const cost = Math.floor(p.cash * (exp ? EXPEDITION.rescue.costPct : ASSIST.rescueCostPct));
+  const cost = Math.floor(
+    wallet(s).cash * (exp ? EXPEDITION.rescue.costPct : ASSIST.rescueCostPct),
+  );
   const cargoLost = bayUsed(p);
-  p.cash -= cost;
+  wallet(s).cash -= cost;
   p.bayContents.fill(0);
   p.fuel = Math.min(tankCapacity(p), ASSIST.rescueFuelLiters);
   if (exp) p.heat = Math.min(100, p.heat + EXPEDITION.rescue.heatPenalty); // tow runs hot

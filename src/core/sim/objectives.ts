@@ -4,12 +4,12 @@
  * suite guards parity.
  */
 import type { Objective } from '../data/challenges';
-import { type GameState, bayContentsCount } from './state';
+import { type GameState, bayContentsCount, wallet } from './state';
 
 export function objectiveMet(s: GameState, o: Objective): boolean {
   switch (o.kind) {
     case 'earnCash':
-      return s.pod.cash >= o.amount;
+      return wallet(s).cash >= o.amount;
     case 'reachDepthFt':
       return s.story.maxDepthFt <= o.ft;
     case 'collectMineral':
