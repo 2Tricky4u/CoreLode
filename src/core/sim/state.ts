@@ -63,6 +63,11 @@ export interface PodState {
   modules: string[];
   /** Most recent damage taken — lets the app explain a death cause. */
   lastDamage: { cause: DamageCause; atTick: number } | null;
+  /**
+   * Co-op: tick at which this pod respawns; 0 = alive (mirrors the
+   * story.nextQuakeTick convention). Solo pods stay 0 forever.
+   */
+  respawnAtTick: number;
 }
 
 export interface BossState {
@@ -164,6 +169,12 @@ export interface GameState {
   tick: number;
   rng: Rng;
   world: WorldState;
+  /**
+   * All pods, index = player. INVARIANT: `pod === pods[0]` (same reference —
+   * core never reassigns either; all mutations are in-place). Solo systems
+   * keep reading `pod`; multi-pod systems iterate `pods` index-ascending.
+   */
+  pods: PodState[];
   pod: PodState;
   boss: BossState | null;
   projectiles: Projectile[];
@@ -218,6 +229,11 @@ export const fallDamageMult = (p: PodState): number =>
 export const digFuelMult = (p: PodState): number =>
   hasModule(p, 'sparkPlug') ? MODULE_EFFECTS.sparkPlugDigFuelMult : 1;
 export const hasSurveyor = (p: PodState): boolean => hasModule(p, 'surveyor');
+
+/** The shared co-op cash account lives on pod 0 (solo: wallet(s) === s.pod). */
+export const wallet = (s: GameState): PodState => s.pods[0];
+/** Co-op: a pod waiting to respawn is skipped by every per-pod system. */
+export const podAlive = (p: PodState): boolean => p.respawnAtTick === 0;
 
 export const podMass = (p: PodState): number => {
   let m = PHYSICS.baseMass;
@@ -309,6 +325,7 @@ export function createRun(opts: NewRunOptions = {}): GameState {
     // Daily runs ignore modules so result codes stay comparable across players.
     modules: exp && !exp.dateKey ? [...exp.modules] : [],
     lastDamage: null,
+    respawnAtTick: 0,
   };
   pod.hp = maxHull(pod);
   pod.fuel = Math.min(pod.fuel, tankCapacity(pod));
@@ -324,6 +341,7 @@ export function createRun(opts: NewRunOptions = {}): GameState {
     tick: 0,
     rng: new Rng(hash32(seed, 0x51b, level)),
     world,
+    pods: [pod],
     pod,
     boss: null,
     projectiles: [],

@@ -11,7 +11,14 @@ import { COLLECTIBLES } from '../data/minerals';
 import type { UpgradeCategory } from '../data/upgrades';
 import type { DamageCause } from '../events';
 import { Rng } from '../lib/rng';
-import type { ChainState, ContractState, GameState, ModeConfig, RunStats } from '../sim/state';
+import type {
+  ChainState,
+  ContractState,
+  GameState,
+  ModeConfig,
+  PodState,
+  RunStats,
+} from '../sim/state';
 
 export const SAVE_VERSION = 3;
 
@@ -136,6 +143,36 @@ export function deserialize(f: SaveFile): GameState {
   const bay = new Array(COLLECTIBLES.length).fill(0);
   for (let i = 0; i < Math.min(bay.length, f.pod.bayContents.length); i++)
     bay[i] = f.pod.bayContents[i];
+  const pod: PodState = {
+    x: f.pod.x,
+    y: f.pod.y,
+    prevX: f.pod.x,
+    prevY: f.pod.y,
+    xVel: 0,
+    yVel: 0,
+    facing: f.pod.facing,
+    mode: 'air', // settles to ground on the first tick
+    launchCount: 0,
+    drilling: null,
+    hp: f.pod.hp,
+    fuel: f.pod.fuel,
+    cash: f.pod.cash,
+    points: f.pod.points,
+    upgrades: f.pod.upgrades,
+    blueprints: f.pod.blueprints,
+    bayContents: bay,
+    inventory: f.pod.inventory,
+    itemCooldown: 0,
+    itemLock: 0,
+    guardian: f.pod.guardian,
+    lavaLatch: 0,
+    nearBuilding: null,
+    heat: f.pod.heat,
+    relics: f.pod.relics,
+    modules: f.pod.modules,
+    lastDamage: f.pod.lastDamage,
+    respawnAtTick: 0,
+  };
   return {
     seed: f.seed,
     level: f.level,
@@ -147,35 +184,8 @@ export function deserialize(f: SaveFile): GameState {
       slate: f.slate,
       discovered: rleDecodeBytes(f.discoveredRle),
     },
-    pod: {
-      x: f.pod.x,
-      y: f.pod.y,
-      prevX: f.pod.x,
-      prevY: f.pod.y,
-      xVel: 0,
-      yVel: 0,
-      facing: f.pod.facing,
-      mode: 'air', // settles to ground on the first tick
-      launchCount: 0,
-      drilling: null,
-      hp: f.pod.hp,
-      fuel: f.pod.fuel,
-      cash: f.pod.cash,
-      points: f.pod.points,
-      upgrades: f.pod.upgrades,
-      blueprints: f.pod.blueprints,
-      bayContents: bay,
-      inventory: f.pod.inventory,
-      itemCooldown: 0,
-      itemLock: 0,
-      guardian: f.pod.guardian,
-      lavaLatch: 0,
-      nearBuilding: null,
-      heat: f.pod.heat,
-      relics: f.pod.relics,
-      modules: f.pod.modules,
-      lastDamage: f.pod.lastDamage,
-    },
+    pods: [pod],
+    pod,
     boss: null,
     projectiles: [],
     charges: [],

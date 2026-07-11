@@ -386,6 +386,17 @@ describe('fuel failsafe assist (rescue tow)', () => {
   });
 });
 
+describe('pods array alias invariant', () => {
+  it('s.pod is always the same reference as s.pods[0]', () => {
+    const s = run(77);
+    expect(s.pod).toBe(s.pods[0]);
+    step(s, { down: true }, 1_000);
+    expect(s.pod).toBe(s.pods[0]);
+    expect(s.pods).toHaveLength(1);
+    expect(s.pod.respawnAtTick).toBe(0); // solo pods never enter the respawn state
+  });
+});
+
 describe('minimap fog of war', () => {
   it('starts with sky and surface revealed, depths fogged', () => {
     const s = run();
