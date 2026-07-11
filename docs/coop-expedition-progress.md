@@ -9,7 +9,7 @@ Branch `feat/coop-expedition`; one commit per step; merge --ff-only per mileston
 
 - [x] [X1] Golden solo expedition replay (goldenExpedition.test.ts, frozen literals)
 - [x] [X2] podCount/isCoopRun helpers + coop-behavior gate flips (behavioral no-op)
-- [ ] M1 gate: full suite + build, merge
+- [x] M1 gate: full suite + build green (187 tests), merged
 
 ## M2 — Per-pod expedition systems (solo-invariant)
 
