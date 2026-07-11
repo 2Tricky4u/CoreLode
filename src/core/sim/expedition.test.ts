@@ -39,7 +39,7 @@ const expRun = (seed = 99): GameState =>
 
 const step = (s: GameState, input: Partial<IntentFrame> = {}, n = 1): EventSink => {
   const out: EventSink = [];
-  for (let i = 0; i < n; i++) tick(s, { ...EMPTY_INTENTS, ...input }, out);
+  for (let i = 0; i < n; i++) tick(s, [{ ...EMPTY_INTENTS, ...input }], out);
   return out;
 };
 

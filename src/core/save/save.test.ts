@@ -14,7 +14,7 @@ import { type SaveFile, deserialize, rleDecode, rleEncode, serialize } from './s
 
 const makeState = () => {
   const s = createRun({ seed: 31337, mode: { kind: 'story', goldium: true } });
-  for (let i = 0; i < 200; i++) tick(s, { ...EMPTY_INTENTS, down: i % 3 === 0 }, []);
+  for (let i = 0; i < 200; i++) tick(s, [{ ...EMPTY_INTENTS, down: i % 3 === 0 }], []);
   s.pod.cash = 4_567;
   s.pod.bayContents[3] = 2;
   s.pod.inventory.dynamite = 5;
@@ -56,7 +56,7 @@ describe('dug tunnels persist across save/load', () => {
     const cleared: Array<{ x: number; y: number }> = [];
     for (let i = 0; i < 420; i++) {
       const sink: SimEvent[] = [];
-      tick(s, { ...EMPTY_INTENTS, down: true }, sink);
+      tick(s, [{ ...EMPTY_INTENTS, down: true }], sink);
       for (const e of sink) if (e.t === 'tileCleared') cleared.push({ x: e.x, y: e.y });
     }
     expect(cleared.length).toBeGreaterThan(3); // the run actually carved a shaft
@@ -68,7 +68,7 @@ describe('dug tunnels persist across save/load', () => {
     // The fog-of-war map round-trips exactly too.
     expect(Buffer.from(back.world.discovered).equals(Buffer.from(s.world.discovered))).toBe(true);
     expect(back.world.discovered.some((v) => v === 0)).toBe(true); // still fogged somewhere
-    for (let i = 0; i < 100; i++) tick(back, EMPTY_INTENTS, []);
+    for (let i = 0; i < 100; i++) tick(back, [EMPTY_INTENTS], []);
     expect(back.outcome).toBe('active');
   });
 });
@@ -94,7 +94,7 @@ describe('frozen v1 fixture migration', () => {
     const f = migrateAndValidate(JSON.parse(JSON.stringify(v1Fixture)));
     const s = deserialize(f);
     expect(s.pod.cash).toBe(4_567);
-    for (let i = 0; i < 100; i++) tick(s, EMPTY_INTENTS, []);
+    for (let i = 0; i < 100; i++) tick(s, [EMPTY_INTENTS], []);
     expect(s.outcome).toBe('active');
   });
 
@@ -114,7 +114,7 @@ describe('frozen v2 fixture migration', () => {
     expect(f.discoveredRle).toEqual([1, WORLD_W * WORLD_H]);
     const st = deserialize(f);
     expect(st.world.discovered.every((v) => v === 1)).toBe(true);
-    for (let i = 0; i < 50; i++) tick(st, EMPTY_INTENTS, []);
+    for (let i = 0; i < 50; i++) tick(st, [EMPTY_INTENTS], []);
     expect(st.outcome).toBe('active');
   });
 });

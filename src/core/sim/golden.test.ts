@@ -36,7 +36,7 @@ function playGolden(): GameState {
     { down: true },
   ];
   for (let i = 0; i < GOLDEN_TICKS; i++) {
-    tick(s, { ...EMPTY_INTENTS, ...script[i % script.length] }, []);
+    tick(s, [{ ...EMPTY_INTENTS, ...script[i % script.length] }], []);
   }
   return s;
 }

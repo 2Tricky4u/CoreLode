@@ -67,7 +67,7 @@ export class GameHost {
       const frame = this.input.gameFocus ? this.input.sample() : EMPTY_INTENTS;
       this.events.length = 0;
       this.beforeTick?.();
-      tick(this.state, frame, this.events);
+      tick(this.state, [frame], this.events);
       this.dispatch();
       this.acc -= DT_MS;
       if (this.paused || this.state.outcome !== 'active') break; // an event paused us mid-batch
