@@ -68,7 +68,7 @@ export {
 } from './data/settings';
 export { SFX, type SfxKey } from './data/sfx';
 export { saleValue, bossFormHp } from './data/difficulty';
-export { serialize, deserialize, type SaveFile } from './save/schema';
+export { serialize, deserialize, SAVE_VERSION, type SaveFile } from './save/schema';
 export { slotSummary, type SlotSummary } from './save/summary';
 export {
   dailyKey,

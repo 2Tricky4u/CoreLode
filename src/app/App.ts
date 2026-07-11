@@ -4,6 +4,7 @@ import {
   BUILDINGS,
   type BuildingId,
   CHALLENGES,
+  EMPTY_INTENTS,
   type GameState,
   ITEMS,
   LOADOUTS,
@@ -11,7 +12,9 @@ import {
   MODULES,
   MODULE_SLOTS,
   type ModuleId,
+  PROTO_VERSION,
   RELICS,
+  SAVE_VERSION,
   SURFACE_ROW,
   type SettingsValues,
   type SimEvent,
@@ -26,10 +29,12 @@ import {
   dailyKey,
   dailySeed,
   decodeDailyResult,
+  decodeMsg,
   defaultSettings,
   deserialize,
   effectiveSettings,
   encodeDailyResult,
+  encodeMsg,
   getTile,
   maxHull,
   podDepthFt,
@@ -42,6 +47,7 @@ import {
 import { decodeSave, encodeSave } from '@core/save/codec';
 import { migrateAndValidate } from '@core/save/migrate';
 import { GameHost, type SimHost } from '@game/GameHost';
+import { LockstepHost } from '@game/LockstepHost';
 import { AudioBus } from '@game/audio/AudioBus';
 import { createPhaserGame } from '@game/phaserGame';
 import type { GameScene } from '@game/scenes/GameScene';
@@ -49,6 +55,8 @@ import { InputManager } from '@input/InputManager';
 import { BIND_ACTIONS, type BindAction } from '@input/bindings';
 import { entropySeed, isTouchDevice } from '@platform/env';
 import { copyToClipboard, downloadText, pickTextFile } from '@platform/exporter';
+import { LocalChannel } from '@platform/net/LocalChannel';
+import type { NetChannel } from '@platform/net/channel';
 import * as storage from '@platform/storage';
 import { Hud } from '@ui/Hud';
 import { TouchControls } from '@ui/TouchControls';
@@ -94,6 +102,8 @@ export class App {
   private lifetime: storage.LifetimeRecords = storage.defaultLifetime();
   private binds: storage.StoredBinds = {};
   private lastManualSlot = 'manual:0';
+  /** This client's seat in a co-op session (0 in solo and for the host). */
+  private localPlayer = 0;
   /** Hidden dev mode: type DEV_SEQUENCE on the title screen to toggle. */
   private static readonly DEV_SEQUENCE = 'digdeep'; // ← change this to your own secret
   private devMode = false;
@@ -127,6 +137,9 @@ export class App {
       this.input.gameFocus = !open && !this.screens.visible;
       if (this.host) (open ? this.host.pause : this.host.resume).call(this.host, 'modal');
       if (open) this.input.clearHeld();
+      // Co-op: leaving the pause menu lifts the synchronized pause for everyone.
+      if (!open && this.host?.state.mode.kind === 'coop' && this.host.pausedBy.has('user'))
+        this.host.resume('user');
       this.audio.duck(open); // music sits under shops/transmissions
     };
 
@@ -198,6 +211,13 @@ export class App {
     });
 
     this.ui.syncScale();
+
+    // Dev/test entry: same-machine co-op tabs (?coop=host|join&room=X&seat=N&players=M).
+    if (params.has('coop')) {
+      await this.startLocalCoop(params);
+      return;
+    }
+
     await this.showTitle();
   }
 
@@ -539,17 +559,114 @@ export class App {
   }
 
   private beginRun(state: GameState): void {
+    const host = new GameHost(state, this.input);
+    // Dev god mode tops up before every tick — race-free against big hits.
+    host.beforeTick = () => {
+      if (!this.devGod) return;
+      state.pod.hp = maxHull(state.pod);
+      state.pod.fuel = tankCapacity(state.pod);
+    };
+    this.attachHost(host, 0);
+  }
+
+  /** Start a networked co-op session on a prebuilt lockstep driver. */
+  private beginCoopRun(host: SimHost, localPlayer: number): void {
+    this.attachHost(host, localPlayer);
+  }
+
+  private coopSampler(): () => ReturnType<InputManager['sample']> {
+    return () => (this.input.gameFocus ? this.input.sample() : EMPTY_INTENTS);
+  }
+
+  private wireLockstep(host: LockstepHost): void {
+    host.onDesync = (player) => {
+      this.ui.toast(`SYNC LOST with player ${player + 1} — see console`, 6000);
+      console.error(`[coop] desync detected for player ${player}`);
+    };
+    host.onDisconnect = (player) => {
+      if (player === null) this.ui.toast('HOST DISCONNECTED — session over', 6000);
+      else this.ui.toast(`Player ${player + 1} disconnected`, 5000);
+    };
+  }
+
+  /**
+   * Same-machine co-op via BroadcastChannel tabs (dev/testing, zero WebRTC):
+   *   host tab:  ?coop=host&room=dev&players=2
+   *   guest tab: ?coop=join&room=dev&seat=1
+   */
+  private async startLocalCoop(params: URLSearchParams): Promise<void> {
+    const room = params.get('room') ?? 'dev';
+    if (params.get('coop') === 'host') {
+      const players = Math.max(2, Math.min(6, Number(params.get('players') ?? 2)));
+      const channels: NetChannel[] = [];
+      for (let seat = 1; seat < players; seat++)
+        channels.push(new LocalChannel(room, seat, 'host'));
+      this.ui.toast(`Hosting local co-op '${room}' — waiting for ${players - 1} tab(s)…`, 8000);
+      await new Promise<void>((res) => {
+        let ready = 0;
+        channels.forEach((ch, i) => {
+          ch.onMessage = (text) => {
+            const msg = decodeMsg(text);
+            if (msg?.m !== 'hi') return;
+            ch.send(encodeMsg({ m: 'hi', proto: PROTO_VERSION, saveV: SAVE_VERSION }));
+            ch.send(encodeMsg({ m: 'join', player: i + 1, players }));
+            if (++ready === players - 1) res();
+          };
+        });
+      });
+      const seed = entropySeed();
+      const mode = { kind: 'coop' as const, goldium: true, players };
+      for (const ch of channels) ch.send(encodeMsg({ m: 'start', seed, mode, level: 1 }));
+      const state = createRun({ seed, mode });
+      const host = new LockstepHost(state, {
+        role: 'host',
+        localPlayer: 0,
+        players,
+        channels,
+        sampleInput: this.coopSampler(),
+      });
+      this.wireLockstep(host);
+      this.beginCoopRun(host, 0);
+    } else {
+      const seat = Math.max(1, Math.min(5, Number(params.get('seat') ?? 1)));
+      const ch = new LocalChannel(room, seat, 'guest');
+      this.ui.toast(`Joining local co-op '${room}' as seat ${seat}…`, 8000);
+      const session = await new Promise<
+        { player: number; players: number } & {
+          seed: number;
+          mode: GameState['mode'];
+          level: number;
+        }
+      >((res) => {
+        let joined: { player: number; players: number } | null = null;
+        ch.onMessage = (text) => {
+          const msg = decodeMsg(text);
+          if (msg?.m === 'join') joined = { player: msg.player, players: msg.players };
+          if (msg?.m === 'start' && joined) res({ ...joined, ...msg });
+        };
+        ch.send(encodeMsg({ m: 'hi', proto: PROTO_VERSION, saveV: SAVE_VERSION }));
+      });
+      const state = createRun({ seed: session.seed, mode: session.mode, level: session.level });
+      const host = new LockstepHost(state, {
+        role: 'guest',
+        localPlayer: session.player,
+        players: session.players,
+        channels: [ch],
+        sampleInput: this.coopSampler(),
+      });
+      this.wireLockstep(host);
+      this.beginCoopRun(host, session.player);
+    }
+  }
+
+  private attachHost(host: SimHost, localPlayer: number): void {
     try {
+      const state = host.state;
       this.stopRun();
       this.screens.clear();
-      this.host = new GameHost(state, this.input);
-      this.host.onEvent((e) => this.onSimEvent(e));
-      // Dev god mode tops up before every tick — race-free against big hits.
-      this.host.beforeTick = () => {
-        if (!this.devGod) return;
-        state.pod.hp = maxHull(state.pod);
-        state.pod.fuel = tankCapacity(state.pod);
-      };
+      this.host = host;
+      this.localPlayer = localPlayer;
+      host.onEvent((e) => this.onSimEvent(e));
       if (state.tick === 0) {
         this.lifetime.totalRuns++;
         this.saveLifetime();
@@ -636,6 +753,8 @@ export class App {
       case 'transaction':
         if (e.kind === 'chainBonus')
           this.ui.toast(`${t('uiChainBonus')} +$${e.amount.toLocaleString('en-US')}`);
+        // Lockstep: the command landed now — re-render the open shop dialog.
+        this.modals.refreshTop?.();
         break;
       case 'contractDone':
         this.ui.toast(`${t('uiContractDone')} +$${e.rewardCash.toLocaleString('en-US')}`, 3200);
@@ -719,6 +838,9 @@ export class App {
       this.ui.toast(t('uiNoPauseArena')); // authentic: no pausing during the fight
       return;
     }
+    // Co-op: the pause menu is a SYNCHRONIZED pause — everyone stops together
+    // (LockstepHost ignores the ordinary 'modal' reason; 'user' is broadcast).
+    if (host.state.mode.kind === 'coop') host.pause('user');
     openPause(
       this.modals,
       () => {},

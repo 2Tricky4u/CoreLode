@@ -64,6 +64,13 @@ export class ModalManager {
     }
   }
 
+  /**
+   * Re-render hook for the top dialog. Lockstep co-op applies commands a few
+   * ticks after the click, so dialogs re-render again when the transaction
+   * event actually lands (solo is synchronous — the extra render is a no-op).
+   */
+  refreshTop: (() => void) | null = null;
+
   open(content: HTMLElement): void {
     const wrap = el('div', { class: 'modal-wrap' }, content);
     this.layer.append(wrap);
@@ -73,6 +80,7 @@ export class ModalManager {
 
   close(): void {
     this.stack.pop()?.remove();
+    this.refreshTop = null;
     if (!this.isOpen) this.onOpenChange?.(false);
   }
 
@@ -181,6 +189,7 @@ function openFuel(m: ModalManager, s: GameState, command: (c: Command) => void):
     body.replaceChildren(el('p', { text: t('bldFuelBlurb') }), pumpLcd(s), statusLine(s));
   };
   m.open(dlg);
+  m.refreshTop = () => refresh(() => {});
 }
 
 function openSell(m: ModalManager, s: GameState, command: (c: Command) => void): void {
@@ -239,6 +248,7 @@ function openSell(m: ModalManager, s: GameState, command: (c: Command) => void):
       't-smelt',
     ),
   );
+  m.refreshTop = render;
 }
 
 function openUpgrades(m: ModalManager, s: GameState, command: (c: Command) => void): void {
@@ -275,6 +285,7 @@ function openUpgrades(m: ModalManager, s: GameState, command: (c: Command) => vo
   m.open(
     dialog(t('bldOutfitter'), body, el('div', { class: 'btn-row' }, exitBtn(m)), 't-blueprint'),
   );
+  m.refreshTop = render;
 }
 
 function openItems(m: ModalManager, s: GameState, command: (c: Command) => void): void {
@@ -325,6 +336,7 @@ function openItems(m: ModalManager, s: GameState, command: (c: Command) => void)
   };
   render();
   m.open(dialog(t('bldItemShop'), body, el('div', { class: 'btn-row' }, exitBtn(m)), 't-store'));
+  m.refreshTop = render;
 }
 
 function openSaveStation(m: ModalManager, onSave: () => void): void {
@@ -546,6 +558,7 @@ export function openInventory(m: ModalManager, s: GameState, command: (c: Comman
   };
   render();
   m.open(dialog(t('invTitle'), body, el('div', { class: 'btn-row' }, exitBtn(m)), 't-cargo'));
+  m.refreshTop = render;
 }
 
 export interface GameOverStats {
