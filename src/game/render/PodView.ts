@@ -1,9 +1,6 @@
-import { type GameState, maxHull } from '@core/index';
+import { type GameState, PLAYER_TINTS, maxHull } from '@core/index';
 /** Pod sprite — reads interpolated sim state; animation from pod mode/inputs. */
 import type Phaser from 'phaser';
-
-/** Per-player accent tints (index = player; 0 = untinted). Consistent on every peer. */
-export const PLAYER_TINTS = [0xffffff, 0x99e550, 0x5fcde4, 0xd77bba, 0xfbf236, 0xdf7126];
 
 export class PodView {
   sprite!: Phaser.GameObjects.Sprite;
@@ -31,7 +28,7 @@ export class PodView {
     this.sprite.setDepth(10);
     // Battered-hull decal — rides on top of every animation frame.
     this.scuff = this.scene.add
-      .image(this.state.pod.x, this.state.pod.y, 'atlas', 'pod_scuff1')
+      .image(this.p.x, this.p.y, 'atlas', 'pod_scuff1')
       .setOrigin(0.5, 25 / 56)
       .setDepth(10.5)
       .setVisible(false);

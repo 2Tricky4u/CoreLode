@@ -839,7 +839,7 @@ export class App {
       // HUD refresh loop (display-rate, cheap).
       const hudLoop = () => {
         if (!this.host) return;
-        this.hud.update(this.host.state);
+        this.hud.update(this.host.state, this.localPlayer);
         this.hudTimer = requestAnimationFrame(hudLoop);
       };
       this.hudTimer = requestAnimationFrame(hudLoop);
@@ -868,11 +868,15 @@ export class App {
   private onSimEvent(e: SimEvent): void {
     const host = this.host;
     if (!host) return;
+    // Pod-attributed events: prompts, menus and toasts belong to the LOCAL player.
+    const local = ('player' in e ? (e.player ?? 0) : 0) === this.localPlayer;
     switch (e.t) {
       case 'buildingPrompt':
+        if (!local) break;
         this.hud.setPrompt(e.id ? t(BUILDINGS.find((b) => b.id === e.id)?.key ?? e.id) : null);
         break;
       case 'enterBuilding':
+        if (!local) break;
         if (this.modals.isOpen) break; // already inside a menu
         if (host.state.mode.kind === 'expedition') {
           // Single life: expeditions suspend (crash-safe) instead of saving slots.
@@ -890,10 +894,19 @@ export class App {
         this.pumpPendingTransmission();
         break;
       case 'cargoFullLost':
-        this.ui.toast(t('uiCargoFull'));
+        if (local) this.ui.toast(t('uiCargoFull'));
         break;
       case 'rescue':
-        this.ui.toast(`${t('uiRescue')} (-$${e.cost.toLocaleString('en-US')})`);
+        if (local) this.ui.toast(`${t('uiRescue')} (-$${e.cost.toLocaleString('en-US')})`);
+        break;
+      case 'podDown':
+        this.ui.toast(
+          `P${e.player + 1} ${t('coopDownToast')} -$${e.fee.toLocaleString('en-US')}`,
+          3200,
+        );
+        break;
+      case 'podRespawned':
+        this.ui.toast(`P${e.player + 1} ${t('coopBackToast')}`);
         break;
       case 'transaction':
         if (e.kind === 'chainBonus')
@@ -913,7 +926,7 @@ export class App {
         break;
       case 'damage':
         // First-ever encounter with each hazard gets a one-line log entry (lifetime-once).
-        if (!this.lifetime.hazardsSeen.includes(e.cause)) {
+        if (local && !this.lifetime.hazardsSeen.includes(e.cause)) {
           this.lifetime.hazardsSeen.push(e.cause);
           this.saveLifetime();
           const key = `hazard${e.cause.charAt(0).toUpperCase()}${e.cause.slice(1)}`;

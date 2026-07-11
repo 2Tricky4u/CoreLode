@@ -92,4 +92,4 @@ export {
   type Bundle,
   type PlayerInput,
 } from './net/lockstep';
-export { COOP } from './data/coop';
+export { COOP, PLAYER_TINTS } from './data/coop';

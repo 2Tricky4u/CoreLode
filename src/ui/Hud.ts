@@ -9,6 +9,7 @@ import {
   ITEMS,
   type ItemId,
   type Objective,
+  PLAYER_TINTS,
   STRATA_KEYS,
   SURFACE_ROW,
   TRANSMISSIONS,
@@ -24,6 +25,7 @@ import {
   isLava,
   isMineral,
   maxHull,
+  podAlive,
   podDepthFt,
   podTileX,
   podTileY,
@@ -38,6 +40,16 @@ const MAP_W = WORLD_W;
 const MAP_H = 200;
 /** Soil tint per depth band (mirrors GameScene BAND_TINTS). */
 const MAP_BANDS = ['#d9a066', '#8f563b', '#663931', '#45283c', '#45283c', '#323c39'];
+
+const cssTint = (tint: number): string => `#${tint.toString(16).padStart(6, '0')}`;
+
+/** One compact teammate row: tint dot, hp/fuel micro-bars, depth or DOWN countdown. */
+interface TeamRow {
+  node: HTMLElement;
+  hp: HTMLElement;
+  fuel: HTMLElement;
+  info: HTMLElement;
+}
 
 /** Human label for a contract/challenge objective. */
 const objectiveLabel = (o: Objective): string => {
@@ -91,6 +103,8 @@ export class Hud {
   private stratumNode: HTMLElement;
   private lastStratum = 0;
   private stratumTimer: ReturnType<typeof setTimeout> | null = null;
+  private teamNode: HTMLElement;
+  private teamRows: TeamRow[] = [];
   private minimapNode: HTMLElement;
   private minimapCanvas: HTMLCanvasElement;
   private minimapCtx: CanvasRenderingContext2D | null;
@@ -148,6 +162,8 @@ export class Hud {
     this.objectiveNode = el('div', { class: 'hud-contracts hidden' });
     this.stratumNode = el('div', { class: 'stratum-banner' });
 
+    this.teamNode = el('div', { class: 'hud-team hidden' });
+
     this.minimapCanvas = el('canvas', { class: 'minimap-canvas' });
     this.minimapCanvas.width = MAP_W;
     this.minimapCanvas.height = MAP_H;
@@ -185,6 +201,7 @@ export class Hud {
         this.chainNode,
       ),
       el('div', { class: 'hud-right' }, this.cashText, hotbar),
+      this.teamNode,
       this.minimapNode,
       this.contractsNode,
       this.objectiveNode,
@@ -236,8 +253,9 @@ export class Hud {
     }
   }
 
-  update(s: GameState): void {
-    const p = s.pod;
+  update(s: GameState, localPlayer = 0): void {
+    const p = s.pods[localPlayer] ?? s.pod;
+    const coop = s.mode.kind === 'coop';
     this.fuelFill.style.width = `${Math.max(0, Math.min(100, (p.fuel / tankCapacity(p)) * 100))}%`;
     this.fuelFill.classList.toggle('warn', p.fuel / tankCapacity(p) < 0.25);
     this.hullFill.style.width = `${Math.max(0, Math.min(100, (p.hp / maxHull(p)) * 100))}%`;
@@ -294,7 +312,10 @@ export class Hud {
       this.chainNode.textContent = `CHAIN ${run} · VAULT +${s.chain.bankPct}%`;
     }
     this.cargoFill.style.width = `${Math.min(100, (bayUsed(p) / bayCapacity(p)) * 100)}%`;
-    this.cashText.textContent = `$${Math.floor(p.cash).toLocaleString('en-US')}`;
+    // Co-op: the wallet is the whole crew's — always pod 0's cash field.
+    const cash = Math.floor(s.pod.cash).toLocaleString('en-US');
+    this.cashText.textContent = coop ? `$${cash} · ${t('hudShared')}` : `$${cash}`;
+    this.updateTeam(s, localPlayer, coop);
     this.pointsText.textContent = `${t('uiScore')} ${p.points.toLocaleString('en-US')}`;
 
     // Altimeter — authentic display rules.
@@ -325,7 +346,7 @@ export class Hud {
     // The expedition surveyor module forces it on regardless of the QoL toggle.
     const mapOn = this.showMinimap || (exp && hasSurveyor(p));
     this.minimapNode.classList.toggle('hidden', !mapOn);
-    if (mapOn && this.minimapFrame++ % 10 === 0) this.drawMinimap(s);
+    if (mapOn && this.minimapFrame++ % 10 === 0) this.drawMinimap(s, localPlayer);
   }
 
   /**
@@ -334,7 +355,49 @@ export class Hud {
    * featureless silhouette (the band's shape unlocks, detail still needs
    * exploration); deeper strata stay pure fog. Gas draws as soil (fidelity).
    */
-  private drawMinimap(s: GameState): void {
+  /** Compact crew readout — everyone but the local player, in seat order. */
+  private updateTeam(s: GameState, localPlayer: number, coop: boolean): void {
+    this.teamNode.classList.toggle('hidden', !coop || s.pods.length < 2);
+    if (!coop) return;
+    const mates = s.pods.map((q, i) => ({ q, i })).filter(({ i }) => i !== localPlayer);
+    while (this.teamRows.length < mates.length) {
+      const seat = mates[this.teamRows.length].i;
+      const hp = el('div', { class: 'team-fill hull' });
+      const fuel = el('div', { class: 'team-fill fuel' });
+      const info = el('span', { class: 'team-info', text: '' });
+      const node = el(
+        'div',
+        { class: 'team-row' },
+        el('span', {
+          class: 'team-dot',
+          style: `background:${cssTint(PLAYER_TINTS[seat] ?? 0xffffff)}`,
+        }),
+        el('span', { class: 'team-name', text: `P${seat + 1}` }),
+        el(
+          'div',
+          { class: 'team-bars' },
+          el('div', { class: 'team-track' }, hp),
+          el('div', { class: 'team-track' }, fuel),
+        ),
+        info,
+      );
+      this.teamNode.append(node);
+      this.teamRows.push({ node, hp, fuel, info });
+    }
+    mates.forEach(({ q }, r) => {
+      const row = this.teamRows[r];
+      if (!row) return;
+      const down = !podAlive(q);
+      row.node.classList.toggle('down', down);
+      row.hp.style.width = `${Math.max(0, Math.min(100, (q.hp / maxHull(q)) * 100))}%`;
+      row.fuel.style.width = `${Math.max(0, Math.min(100, (q.fuel / tankCapacity(q)) * 100))}%`;
+      row.info.textContent = down
+        ? `${t('hudDown')} ${Math.max(0, Math.ceil((q.respawnAtTick - s.tick) / 42))}s`
+        : `${Math.min(0, Math.round(podDepthFt(q)))} ft`;
+    });
+  }
+
+  private drawMinimap(s: GameState, localPlayer = 0): void {
     const ctx = this.minimapCtx;
     if (!ctx) return;
     ctx.fillStyle = '#0a0a12';
@@ -370,9 +433,17 @@ export class Hud {
         ctx.fillRect(x, cy, 1, 1);
       }
     }
-    // Pod marker.
-    const px = podTileX(s.pod);
-    const py = Math.floor((podTileY(s.pod) / WORLD_H) * MAP_H);
+    // Pod markers: teammates as tinted dots, the local pod white with a scanline.
+    s.pods.forEach((q, i) => {
+      if (i === localPlayer || !podAlive(q)) return;
+      const qx = podTileX(q);
+      const qy = Math.floor((podTileY(q) / WORLD_H) * MAP_H);
+      ctx.fillStyle = cssTint(PLAYER_TINTS[i] ?? 0xffffff);
+      ctx.fillRect(Math.max(0, Math.min(WORLD_W - 2, qx - 1)), Math.max(0, qy - 1), 2, 2);
+    });
+    const lp = s.pods[localPlayer] ?? s.pod;
+    const px = podTileX(lp);
+    const py = Math.floor((podTileY(lp) / WORLD_H) * MAP_H);
     ctx.fillStyle = 'rgba(255,255,255,0.25)';
     ctx.fillRect(0, py, MAP_W, 1);
     ctx.fillStyle = '#ffffff';

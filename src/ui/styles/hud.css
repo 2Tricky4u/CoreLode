@@ -267,3 +267,65 @@
     transform: translate(-50%, 0);
   }
 }
+
+/* Co-op teammate readout — compact rows pinned under the HUD on the right,
+   left of the minimap strip. */
+.hud-team {
+  position: absolute;
+  top: calc(var(--px) * 60px);
+  right: calc(var(--px) * 70px);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--px) * 2px);
+  font-size: calc(var(--px) * 8px);
+  color: var(--c-text);
+  text-shadow: 1px 1px 0 #000;
+  pointer-events: none;
+}
+.hud-team.hidden {
+  display: none;
+}
+.team-row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--px) * 3px);
+  padding: calc(var(--px) * 1px) calc(var(--px) * 3px);
+  background: #140c1caa;
+  border: 1px solid var(--c-panel2);
+}
+.team-row.down {
+  border-color: var(--c-red, #d95763);
+}
+.team-row.down .team-info {
+  color: var(--c-red, #d95763);
+}
+.team-dot {
+  width: calc(var(--px) * 5px);
+  height: calc(var(--px) * 5px);
+  border-radius: 50%;
+  border: 1px solid #000;
+}
+.team-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.team-track {
+  width: calc(var(--px) * 26px);
+  height: calc(var(--px) * 3px);
+  background: #0008;
+}
+.team-fill {
+  height: 100%;
+}
+.team-fill.hull {
+  background: var(--c-green, #99e550);
+}
+.team-fill.fuel {
+  background: var(--c-gold, #fbf236);
+}
+.team-info {
+  min-width: calc(var(--px) * 30px);
+  text-align: right;
+  opacity: 0.85;
+}

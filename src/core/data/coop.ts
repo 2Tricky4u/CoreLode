@@ -14,3 +14,6 @@ export const COOP = {
   /** Spawn column spacing: pod i starts at SPAWN_COL + i * 2. */
   spawnColStride: 2,
 } as const;
+
+/** Per-player accent tints (index = player; 0 = untinted). Same on every peer. */
+export const PLAYER_TINTS = [0xffffff, 0x99e550, 0x5fcde4, 0xd77bba, 0xfbf236, 0xdf7126] as const;
