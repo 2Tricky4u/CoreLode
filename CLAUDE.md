@@ -59,6 +59,17 @@ The single orchestrator (`src/app/App.ts`) owns the title ↔ run ↔ ending flo
 - `BootScene`: loads the two texture atlases (`public/atlas/game.json`, `tiles.json`), fires `assets-ready`.
 - `GameScene`: the play field. Owns lighting (half-res canvas texture, pod headlight, arena pulse), particles (debris/thrust/smoke/motes/embers), lava palette cycling, day/night sky, and the collect-popup overlay. Visual "juice" lives here; gameplay logic does not.
 
+### Viewport / responsiveness
+
+The canvas fills the viewport (`Phaser.Scale.RESIZE`); `src/game/viewportPolicy.ts` is
+the single source of truth for the camera zoom (`zoomForViewport` — always shows at
+least the designed 550×400 view; extra screen reveals more world), the DOM `--px` UI
+scale, and `coverScreenRect` (placing scrollFactor-0 overlays under zoom).
+**Invariant: all world↔screen math must go through `cam.worldView`** — its x/width
+differ from `scrollX`/`cam.width` whenever zoom ≠ 1 — never `scrollX + cam.width`.
+Touch/HUD/screens are responsive via `--px`, safe-area insets, and two breakpoints
+(≤480px width, ≤450px height) in `src/ui/styles/`.
+
 ### Audio
 
 `AudioBus` (`src/game/audio/AudioBus.ts`) is the single audio surface. It translates `SimEvent` to:

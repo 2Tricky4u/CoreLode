@@ -17,6 +17,12 @@ npm run preview    # serve the production build
 
 Deploy: any static host (GitHub/GitLab Pages — set `BASE_PATH=/repo-name/` when building).
 
+**Mobile**: the game fills the whole screen (no letterbox) on any device — bigger screens
+just see more of the mine. On a phone, use the title-menu **Fullscreen** button or install
+it from the browser menu ("Add to Home Screen" — it ships a web manifest) for a true
+full-screen app. Touch controls scale with the screen and have a size setting under
+Settings → Controls.
+
 ## Controls
 
 Arrows / WASD — move, fly (up), and drill (down/left/right; you can never drill upward;
