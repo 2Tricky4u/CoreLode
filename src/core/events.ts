@@ -47,6 +47,9 @@ export type SimEvent =
   | { t: 'critterSpawned'; x: number; y: number }
   | { t: 'critterKilled'; x: number; y: number }
   | { t: 'podExploded'; cause: 'hull' | 'fuel'; player?: number }
+  /** Co-op: a pod went down (respawns later); fee already charged to the wallet. */
+  | { t: 'podDown'; player: number; cause: 'hull' | 'fuel'; fee: number }
+  | { t: 'podRespawned'; player: number }
   | { t: 'explosion'; x: number; y: number; radiusTiles: number; item: ItemId }
   | { t: 'gasIgnite'; x: number; y: number }
   | { t: 'teleport'; item: ItemId; player?: number }

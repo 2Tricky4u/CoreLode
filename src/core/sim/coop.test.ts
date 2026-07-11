@@ -114,6 +114,59 @@ describe('co-op commands act on the right pod, cash on the wallet', () => {
   });
 });
 
+describe('co-op death and respawn', () => {
+  it('a downed pod pays the fee, loses cargo, and respawns after the timer', () => {
+    const s = coopRun(2);
+    stepN(s, [{}, {}], 3);
+    wallet(s).cash = 1_000;
+    s.pods[1].bayContents[0] = 5;
+    s.pods[1].hp = 0;
+    const out = stepN(s, [{}, {}]);
+    const down = out.find((e) => e.t === 'podDown');
+    expect(down?.t === 'podDown' && down.player).toBe(1);
+    expect(down?.t === 'podDown' && down.fee).toBe(200); // 20% of the wallet
+    expect(wallet(s).cash).toBe(800);
+    expect(s.pods[1].bayContents[0]).toBe(0);
+    expect(s.pods[1].respawnAtTick).toBeGreaterThan(s.tick);
+    expect(s.outcome).toBe('active'); // partner is still up
+    expect(out.some((e) => e.t === 'podExploded')).toBe(false);
+
+    // Down pods are frozen: no movement, no digging.
+    const x = s.pods[1].x;
+    stepN(s, [{}, { down: true, left: true }], 10);
+    expect(s.pods[1].x).toBe(x);
+
+    // ...and come back at their own spawn column, repaired and fueled.
+    const respawnOut = stepN(s, [{}, {}], COOP.respawnTicks);
+    expect(respawnOut.some((e) => e.t === 'podRespawned' && e.player === 1)).toBe(true);
+    expect(s.pods[1].respawnAtTick).toBe(0);
+    expect(s.pods[1].hp).toBe(10); // stock hull
+    expect(s.pods[1].fuel).toBe(10); // min(stock tank 10, respawn 25)
+    expect(s.pods[1].x).toBe((SPAWN_COL + COOP.spawnColStride + 0.5) * TILE_PX);
+  });
+
+  it('a simultaneous full wipe ends the run', () => {
+    const s = coopRun(2);
+    stepN(s, [{}, {}], 3);
+    s.pods[0].hp = 0;
+    s.pods[1].hp = 0;
+    const out = stepN(s, [{}, {}]);
+    expect(out.filter((e) => e.t === 'podDown')).toHaveLength(2);
+    expect(out.some((e) => e.t === 'podExploded')).toBe(true);
+    expect(s.outcome).toBe('destroyed');
+  });
+
+  it('a fuel death in co-op goes down instead of ending the run', () => {
+    const s = coopRun(2);
+    stepN(s, [{}, {}], 3);
+    s.pods[0].fuel = 0;
+    s.pods[0].y += TILE_PX * 4; // stranded underground
+    const out = stepN(s, [{}, {}]);
+    expect(out.some((e) => e.t === 'podDown' && e.player === 0 && e.cause === 'fuel')).toBe(true);
+    expect(s.outcome).toBe('active');
+  });
+});
+
 describe('co-op determinism', () => {
   const script = (s: GameState): string => {
     const inputs: Array<Array<Partial<IntentFrame>>> = [

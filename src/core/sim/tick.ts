@@ -9,8 +9,9 @@
  * executes in EXACTLY the historical order — the golden replay test pins it.
  */
 import { BLUEPRINT_EFFECTS } from '../data/blueprints';
-import { BUILDINGS } from '../data/buildings';
+import { BUILDINGS, SPAWN_COL } from '../data/buildings';
 import { SURFACE_ROW, TILE_PX } from '../data/constants';
+import { COOP } from '../data/coop';
 import type { EventSink } from '../events';
 import { EMPTY_INTENTS, type IntentFrame } from '../intents';
 import { markDiscovered } from '../world/world';
@@ -36,6 +37,8 @@ import {
   podDepthFt,
   podTileX,
   podTileY,
+  tankCapacity,
+  wallet,
 } from './state';
 
 export function tick(s: GameState, inputs: readonly IntentFrame[], out: EventSink): void {
@@ -122,13 +125,15 @@ export function tick(s: GameState, inputs: readonly IntentFrame[], out: EventSin
   // 8. boss (arena only)
   stepBoss(s, out);
 
-  // 9. death conditions (loop C)
+  // 9. death conditions (loop C) — plus co-op respawns
   for (let i = 0; i < s.pods.length && s.outcome === 'active'; i++) {
     const p = s.pods[i];
-    if (!podAlive(p)) continue;
+    if (!podAlive(p)) {
+      if (s.mode.kind === 'coop' && s.tick >= p.respawnAtTick) respawnPod(s, p, i, out);
+      continue;
+    }
     if (p.hp <= 0) {
-      s.outcome = 'destroyed';
-      out.push({ t: 'podExploded', cause: 'hull', player: i });
+      podLost(s, p, i, 'hull', out);
     } else if (p.fuel <= 0 && p.mode !== 'ground') {
       // out of fuel airborne/digging → the pod is lost (authentic: explosion)
       fuelEmergency(s, p, out);
@@ -150,8 +155,58 @@ function fuelEmergency(s: GameState, p: PodState, out: EventSink): void {
     rescueTow(s, p, out);
     return;
   }
-  s.outcome = 'destroyed';
-  out.push({ t: 'podExploded', cause: 'fuel', player: s.pods.indexOf(p) });
+  podLost(s, p, s.pods.indexOf(p), 'fuel', out);
+}
+
+/**
+ * A pod is destroyed. Solo/challenge/expedition: the run ends (authentic).
+ * Co-op: the pod goes down for COOP.respawnTicks — cargo forfeited, a cut of
+ * the team wallet charged — and the run only ends on a simultaneous full wipe.
+ */
+function podLost(
+  s: GameState,
+  p: PodState,
+  player: number,
+  cause: 'hull' | 'fuel',
+  out: EventSink,
+): void {
+  if (s.mode.kind !== 'coop') {
+    s.outcome = 'destroyed';
+    out.push({ t: 'podExploded', cause, player });
+    return;
+  }
+  const fee = Math.floor(wallet(s).cash * COOP.respawnFeePct);
+  wallet(s).cash -= fee;
+  p.bayContents.fill(0);
+  p.drilling = null;
+  p.mode = 'air';
+  p.respawnAtTick = s.tick + COOP.respawnTicks;
+  out.push({ t: 'podDown', player, cause, fee });
+  out.push({ t: 'sfx', key: 'podExplode' });
+  if (s.pods.every((q) => !podAlive(q))) {
+    // Total wipe — every pod down at once ends the session for the team.
+    s.outcome = 'destroyed';
+    out.push({ t: 'podExploded', cause, player });
+  }
+}
+
+/** Co-op respawn: back at your own spawn column, repaired, tank topped to the cap. */
+function respawnPod(s: GameState, p: PodState, player: number, out: EventSink): void {
+  p.respawnAtTick = 0;
+  p.hp = maxHull(p);
+  p.fuel = Math.min(tankCapacity(p), COOP.respawnFuelLiters);
+  p.x = (SPAWN_COL + player * COOP.spawnColStride + 0.5) * TILE_PX;
+  p.y = SURFACE_ROW * TILE_PX - TILE_PX / 2;
+  p.prevX = p.x;
+  p.prevY = p.y;
+  p.xVel = 0;
+  p.yVel = 0;
+  p.mode = 'air';
+  p.drilling = null;
+  p.launchCount = 0;
+  p.nearBuilding = null;
+  out.push({ t: 'podRespawned', player });
+  out.push({ t: 'sfx', key: 'teleportUp' });
 }
 
 function stepChallenge(s: GameState, out: EventSink): void {
