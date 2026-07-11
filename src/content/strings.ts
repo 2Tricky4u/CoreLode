@@ -382,6 +382,8 @@ export const STRINGS: Record<string, string> = {
   coopRigNote: 'Pick your rig in case the host starts an expedition:',
   coopRigStandard: 'standard rig',
   coopHostSuspends: 'The host keeps the expedition suspended',
+  coopRelicFound: 'reached a relic cache and is choosing…',
+  hudLost: 'LOST',
   uiFullscreen: 'Fullscreen',
   hudDown: 'DOWN',
   coopDownToast: 'is down! Respawn fee',

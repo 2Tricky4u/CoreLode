@@ -1172,6 +1172,12 @@ export class App {
         this.ui.toast(`${t('uiContractDone')} +$${e.rewardCash.toLocaleString('en-US')}`, 3200);
         break;
       case 'relicOffer':
+        // The offer belongs to the pod that crossed the milestone; everyone
+        // else keeps digging (the sim never pauses for the modal in co-op).
+        if (!local) {
+          this.ui.toast(`P${(e.player ?? 0) + 1} ${t('coopRelicFound')}`);
+          break;
+        }
         openRelicChoice(this.modals, e.choices, (id) => {
           host.command({ c: 'chooseRelic', id });
           const cap = id.charAt(0).toUpperCase() + id.slice(1);

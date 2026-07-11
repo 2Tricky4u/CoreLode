@@ -561,23 +561,26 @@ export class GameScene extends Phaser.Scene {
                 : e.count >= 5
                   ? 0xdf7126
                   : 0xfbf236;
-        this.popup(`×${e.count} CHAIN`, c);
-        if (e.count >= 8 && this.screenShake) this.cameras.main.shake(110, 0.003);
+        this.popup(`×${e.count} CHAIN`, c, this.podOf(e.player));
+        if (e.count >= 8 && this.screenShake && this.isLocal(e.player))
+          this.cameras.main.shake(110, 0.003);
         break;
       }
       case 'chainBroken':
-        if (!e.banked && e.count >= 3) this.popup('CHAIN LOST', 0xd95763);
+        if (!e.banked && e.count >= 3) this.popup('CHAIN LOST', 0xd95763, this.podOf(e.player));
         break;
       case 'critterKilled':
         if (this.fxFull) this.embersE.explode(10, e.x, e.y);
         break;
-      case 'heatWarning':
-        // Overheat feedback: ember burst, plus a warm flash at the critical tier.
-        if (this.fxFull)
-          this.embersE.explode(e.level === 2 ? 18 : 8, this.state.pod.x, this.state.pod.y);
-        if (e.level === 2 && this.damageFlash)
+      case 'heatWarning': {
+        // Overheat feedback: embers at the overheating pod; the warm screen
+        // flash belongs to the local player alone.
+        const hot = this.podOf(e.player);
+        if (this.fxFull) this.embersE.explode(e.level === 2 ? 18 : 8, hot.x, hot.y);
+        if (e.level === 2 && this.damageFlash && this.isLocal(e.player))
           this.vignetteAlpha = Math.max(this.vignetteAlpha, 0.5);
         break;
+      }
       case 'teleport':
       case 'rescue': {
         const who = this.podOf(e.player);

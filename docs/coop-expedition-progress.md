@@ -31,7 +31,7 @@ Branch `feat/coop-expedition`; one commit per step; merge --ff-only per mileston
 
 ## M4 — HUD, rendering, spectator UX
 
-- [ ] [X13] Seat-aware expedition HUD + relic/heat/chain event routing
+- [x] [X13] Seat-aware expedition HUD + relic/heat/chain event routing
 - [ ] [X14] Spectator camera + LOST UX + dev-panel lockstep guard
 - [ ] M4 gate: full suite + build + multi-tab death smoke, merge
 

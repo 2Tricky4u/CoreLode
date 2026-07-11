@@ -412,7 +412,9 @@ export class Hud {
       row.info.textContent = dropped
         ? t('hudOffline')
         : down
-          ? `${t('hudDown')} ${Math.max(0, Math.ceil((q.respawnAtTick - s.tick) / 42))}s`
+          ? q.respawnAtTick < 0
+            ? t('hudLost') // expedition: permanently out
+            : `${t('hudDown')} ${Math.max(0, Math.ceil((q.respawnAtTick - s.tick) / 42))}s`
           : `${Math.min(0, Math.round(podDepthFt(q)))} ft`;
     });
   }
