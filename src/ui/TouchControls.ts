@@ -50,4 +50,10 @@ export class TouchControls {
     this.node.classList.remove('layout-left', 'layout-right');
     this.node.classList.add(`layout-${layout}`);
   }
+
+  /** Scale multiplier for the whole cluster (drives the --tc-scale CSS hook). */
+  setSize(size: 'small' | 'medium' | 'large'): void {
+    const scale = size === 'small' ? 0.8 : size === 'large' ? 1.2 : 1;
+    this.node.style.setProperty('--tc-scale', String(scale));
+  }
 }

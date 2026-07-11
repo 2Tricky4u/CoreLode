@@ -267,6 +267,7 @@ export const STRINGS: Record<string, string> = {
   setControlScheme: 'Key scheme (classic / vim trainer)',
   setTouchControls: 'Touch controls',
   setTouchLayout: 'Touch layout',
+  setTouchSize: 'Touch button size',
   setAutosave: 'Autosave on surfacing (QoL)',
   setMinimap: 'Minimap (QoL)',
   setSpeedrunTimer: 'Speedrun timer (QoL)',

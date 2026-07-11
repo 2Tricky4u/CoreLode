@@ -104,6 +104,15 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     options: ['left', 'right'],
     affectsFidelity: false,
   },
+  {
+    id: 'touchSize',
+    labelKey: 'setTouchSize',
+    category: 'controls',
+    type: 'enum',
+    default: 'medium',
+    options: ['small', 'medium', 'large'],
+    affectsFidelity: false,
+  },
   // Fidelity-affecting QoL — all default OFF.
   {
     id: 'autosaveOnSurface',

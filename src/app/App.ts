@@ -356,6 +356,8 @@ export class App {
       this.host !== null && (touchMode === 'on' || (touchMode === 'auto' && isTouchDevice())),
     );
     this.touch.setLayout(String(fx.touchLayout) === 'left' ? 'left' : 'right');
+    const tSize = String(fx.touchSize);
+    this.touch.setSize(tSize === 'small' || tSize === 'large' ? tSize : 'medium');
     this.input.setScheme(String(fx.controlScheme) === 'vim' ? 'vim' : 'classic');
 
     // HUD-side QoL (independent of the Phaser scene).

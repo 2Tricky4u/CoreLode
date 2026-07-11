@@ -19,7 +19,7 @@ Autonomous sessions: resume at the first unchecked step.
 ## M2 — Touch controls: smaller, dimmer, configurable
 
 - [x] [R5] touch.css restyle (clamp sizing, idle opacity 0.45, safe-area offsets)
-- [ ] [R6] touchSize setting (small/medium/large) wired settings → TouchControls → App
+- [x] [R6] touchSize setting (small/medium/large) wired settings → TouchControls → App
 - [ ] [R7] De-collide interact prompt + hotbar on coarse pointers
 - [ ] M2 gate: 3 sizes × 2 layouts at 360×740 + 740×360, merge, push
 
