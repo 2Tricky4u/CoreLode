@@ -18,7 +18,7 @@ Branch `feat/coop-expedition`; one commit per step; merge --ff-only per mileston
 - [x] [X5] Relics per-pod (maxDepthFt watermark, pending slots array, relicOffer{player})
 - [x] [X6] Critters + contracts multi-pod (nearest-pod AI, digger-keyed spawn, bay aggregation)
 - [x] [X7] Save schema v5 (SavedPod.chain/maxDepthFt, v4 fixture, migration)
-- [ ] [X8] createRun expedition multiplayer (players clamp, perPod rigs, daily coercion)
+- [x] [X8] createRun expedition multiplayer (players clamp, perPod rigs, daily coercion)
 - [ ] [X9] True single life + twin-hash determinism suite (2 & 6 players)
 - [ ] M2 gate: full suite + build, both goldens frozen, merge
 

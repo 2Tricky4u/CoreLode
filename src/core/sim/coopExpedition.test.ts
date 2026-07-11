@@ -202,3 +202,62 @@ describe('expedition co-op: critters and contracts', () => {
     expect(s.pods[0].cash).toBe(cash + contract.rewardCash); // paid to the shared wallet
   });
 });
+
+describe('expedition co-op: per-seat rigs', () => {
+  it('each pod gets its own loadout and modules from perPod', () => {
+    const s = createRun({
+      seed: 7,
+      mode: {
+        kind: 'expedition',
+        goldium: true,
+        players: 3,
+        expedition: {
+          loadoutId: 'standard',
+          modules: ['surveyor'],
+          perPod: [
+            { loadoutId: 'standard', modules: ['surveyor'] },
+            { loadoutId: 'heavyRig', modules: ['thermalFins', 'bulkhead'] },
+            { loadoutId: 'prospector', modules: [] },
+          ],
+        },
+      },
+    });
+    expect(s.pods).toHaveLength(3);
+    expect(s.pods[0].upgrades.hull).toBe(0);
+    expect(s.pods[0].modules).toEqual(['surveyor']);
+    expect(s.pods[1].upgrades.hull).toBe(2); // heavyRig
+    expect(s.pods[1].upgrades.radiator).toBe(2);
+    expect(s.pods[1].modules).toEqual(['thermalFins', 'bulkhead']);
+    expect(s.pods[2].upgrades.drill).toBe(2); // prospector
+    expect(s.pods[2].upgrades.engine).toBe(1);
+    expect(s.pods[2].modules).toEqual([]);
+    // Wallet convention holds: only pod 0 carries cash; everyone starts fueled.
+    expect(s.pods[1].cash).toBe(0);
+    for (const p of s.pods) expect(p.fuel).toBeGreaterThan(6);
+  });
+
+  it('a daily coerces EVERY pod to standard with no modules', () => {
+    const s = createRun({
+      seed: 7,
+      mode: {
+        kind: 'expedition',
+        goldium: true,
+        players: 2,
+        expedition: {
+          dateKey: '2026-07-12',
+          loadoutId: 'standard',
+          modules: [],
+          perPod: [
+            { loadoutId: 'heavyRig', modules: ['thermalFins'] },
+            { loadoutId: 'prospector', modules: ['sparkPlug'] },
+          ],
+        },
+      },
+    });
+    for (const p of s.pods) {
+      expect(p.modules).toEqual([]);
+      expect(p.upgrades.hull).toBe(0);
+      expect(p.upgrades.drill).toBe(0);
+    }
+  });
+});

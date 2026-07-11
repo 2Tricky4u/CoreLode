@@ -318,7 +318,33 @@ export function createRun(opts: NewRunOptions = {}): GameState {
     ...(loadout?.upgrades ?? {}),
   };
 
+  /** Expedition co-op: resolve a seat's own rig (pod 0 without perPod keeps
+   *  the exact merge above — solo byte-invariant). Daily coerces everyone. */
+  const podRig = (
+    player: number,
+  ): { upgrades: Record<UpgradeCategory, number>; modules: string[] } => {
+    if (!exp) return { upgrades, modules: [] };
+    if (exp.dateKey) return { upgrades: { ...upgrades }, modules: [] }; // daily: standard, no modules
+    const rig = exp.perPod?.[player];
+    if (!rig)
+      return { upgrades: player > 0 ? { ...upgrades } : upgrades, modules: [...exp.modules] };
+    const lo = LOADOUTS.find((l) => l.id === rig.loadoutId);
+    return {
+      upgrades: {
+        drill: 0,
+        hull: 0,
+        engine: 0,
+        fuelTank: 0,
+        radiator: 0,
+        bay: 0,
+        ...(lo?.upgrades ?? {}),
+      },
+      modules: [...rig.modules],
+    };
+  };
+
   const makePod = (player: number): PodState => {
+    const rig = exp ? podRig(player) : null;
     const p: PodState = {
       x: (SPAWN_COL + player * COOP.spawnColStride + 0.5) * TILE_PX,
       y: SURFACE_ROW * TILE_PX - TILE_PX / 2, // standing on the turf row
@@ -335,7 +361,7 @@ export function createRun(opts: NewRunOptions = {}): GameState {
       // Co-op: the shared wallet lives on pod 0 — extra pods start broke.
       cash: player > 0 ? 0 : ch ? ch.loadout.cash : (opts.carry?.cash ?? 20),
       points: player > 0 ? 0 : (opts.carry?.points ?? 0),
-      upgrades: player > 0 ? { ...upgrades } : upgrades,
+      upgrades: rig ? rig.upgrades : player > 0 ? { ...upgrades } : upgrades,
       blueprints: player > 0 ? [] : (opts.carry?.blueprints ?? []),
       bayContents: new Array(COLLECTIBLES.length).fill(0),
       inventory:
@@ -351,7 +377,7 @@ export function createRun(opts: NewRunOptions = {}): GameState {
       maxDepthFt: 0,
       relics: [],
       // Daily runs ignore modules so result codes stay comparable across players.
-      modules: exp && !exp.dateKey ? [...exp.modules] : [],
+      modules: rig ? rig.modules : [],
       lastDamage: null,
       respawnAtTick: 0,
     };
@@ -364,8 +390,6 @@ export function createRun(opts: NewRunOptions = {}): GameState {
     return p;
   };
 
-  // Expedition multiplayer lands with the co-op expedition plan (X8); until
-  // then podCount still yields 1 for a default expedition config.
   const players = podCount(mode);
   if (players > 1) mode.players = players; // clamp persists into the save
   const pods = Array.from({ length: players }, (_, i) => makePod(i));

@@ -19,6 +19,8 @@ export interface ExpeditionConfig {
   dateKey?: string;
   loadoutId: LoadoutId;
   modules: ModuleId[];
+  /** Co-op: each seat's rig, indexed by player (falls back to the fields above). */
+  perPod?: Array<{ loadoutId: LoadoutId; modules: ModuleId[] }>;
 }
 
 export const EXPEDITION = {
