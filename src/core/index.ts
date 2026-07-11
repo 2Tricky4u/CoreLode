@@ -18,6 +18,8 @@ export {
   challengeDef,
   hasSurveyor,
   podAlive,
+  podCount,
+  isCoopRun,
   wallet,
   type Critter,
   type GameState,

@@ -18,6 +18,8 @@ import {
   bayUsed,
   createRun,
   drillSpeed,
+  isCoopRun,
+  podCount,
   podDepthFt,
   podTileX,
   podTileY,
@@ -495,5 +497,27 @@ describe('determinism', () => {
   });
   it('different seed → different world state', () => {
     expect(script(run(777))).not.toBe(script(run(778)));
+  });
+});
+
+describe('podCount / isCoopRun helpers', () => {
+  it('podCount clamps per kind', () => {
+    expect(podCount({ kind: 'story', goldium: true })).toBe(1);
+    expect(podCount({ kind: 'challenge', challengeId: 'c1', goldium: true })).toBe(1);
+    expect(podCount({ kind: 'coop', goldium: true })).toBe(2);
+    expect(podCount({ kind: 'coop', goldium: true, players: 9 })).toBe(6);
+    expect(podCount({ kind: 'coop', goldium: true, players: 1 })).toBe(2);
+    // Expedition defaults solo; multiplayer clamps to the crew cap.
+    const exp = { loadoutId: 'standard' as const, modules: [] };
+    expect(podCount({ kind: 'expedition', goldium: true, expedition: exp })).toBe(1);
+    expect(podCount({ kind: 'expedition', goldium: true, expedition: exp, players: 4 })).toBe(4);
+    expect(podCount({ kind: 'expedition', goldium: true, expedition: exp, players: 9 })).toBe(6);
+  });
+
+  it('isCoopRun reads the pod roster, not the kind', () => {
+    const solo = createRun({ seed: 1, mode: { kind: 'story', goldium: true } });
+    expect(isCoopRun(solo)).toBe(false);
+    const duo = createRun({ seed: 1, mode: { kind: 'coop', goldium: true, players: 2 } });
+    expect(isCoopRun(duo)).toBe(true);
   });
 });

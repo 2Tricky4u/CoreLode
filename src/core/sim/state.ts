@@ -247,6 +247,16 @@ export const podMass = (p: PodState): number => {
   for (let i = 0; i < p.bayContents.length; i++) m += p.bayContents[i] * COLLECTIBLES[i].mass;
   return m;
 };
+/** How many pods a mode config produces (co-op story 2–6; expedition 1–6; else 1). */
+export const podCount = (mode: ModeConfig): number => {
+  if (mode.kind === 'coop') return Math.max(2, Math.min(COOP.maxPlayers, mode.players ?? 2));
+  if (mode.kind === 'expedition') return Math.max(1, Math.min(COOP.maxPlayers, mode.players ?? 1));
+  return 1;
+};
+
+/** True for any multiplayer session, regardless of the content kind. */
+export const isCoopRun = (s: GameState): boolean => s.pods.length > 1;
+
 export const bayUsed = (p: PodState): number => p.bayContents.reduce((a, b) => a + b, 0);
 export const bayContentsCount = (p: PodState, collectibleId: number): number =>
   p.bayContents[collectibleId] ?? 0;
@@ -346,9 +356,10 @@ export function createRun(opts: NewRunOptions = {}): GameState {
     return p;
   };
 
-  const players =
-    mode.kind === 'coop' ? Math.max(2, Math.min(COOP.maxPlayers, mode.players ?? 2)) : 1;
-  if (mode.kind === 'coop') mode.players = players; // clamp persists into the save
+  // Expedition multiplayer lands with the co-op expedition plan (X8); until
+  // then podCount still yields 1 for a default expedition config.
+  const players = podCount(mode);
+  if (players > 1) mode.players = players; // clamp persists into the save
   const pods = Array.from({ length: players }, (_, i) => makePod(i));
 
   return {

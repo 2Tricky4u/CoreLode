@@ -4,6 +4,7 @@ import {
   type ModuleId,
   type SaveFile,
   type SlotSummary,
+  podCount,
   slotSummary,
 } from '@core/index';
 import type { SettingsValues } from '@core/index';
@@ -81,10 +82,7 @@ export function listSaves(): Promise<SlotMeta[]> {
           // v4 pods[]; pre-migration raw saves may still carry a single `pod`
           cash: raw.pods?.[0]?.cash ?? (raw as { pod?: { cash?: number } }).pod?.cash ?? 0,
           level: raw.level ?? 1,
-          coopPlayers:
-            raw.mode?.kind === 'coop'
-              ? ((raw.mode as { players?: number }).players ?? 2)
-              : undefined,
+          coopPlayers: raw.mode && podCount(raw.mode) > 1 ? podCount(raw.mode) : undefined,
           summary,
         });
       } catch {

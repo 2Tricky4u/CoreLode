@@ -40,6 +40,7 @@ import {
   encodeSave,
   getTile,
   maxHull,
+  podCount,
   podDepthFt,
   podTileX,
   podTileY,
@@ -150,8 +151,8 @@ export class App {
       if (this.host) (open ? this.host.pause : this.host.resume).call(this.host, 'modal');
       if (open) this.input.clearHeld();
       // Co-op: leaving the pause menu lifts the synchronized pause for everyone.
-      if (!open && this.host?.state.mode.kind === 'coop' && this.host.pausedBy.has('user'))
-        this.host.resume('user');
+      const h = this.host;
+      if (!open && h && h.state.pods.length > 1 && h.pausedBy.has('user')) h.resume('user');
       this.audio.duck(open); // music sits under shops/transmissions
     };
 
@@ -699,7 +700,7 @@ export class App {
   /** Crew size fixed by the pending save (0 when hosting a fresh world). */
   private coopPendingPlayers(): number {
     const mode = this.coopPendingSave?.mode;
-    return mode?.kind === 'coop' ? (mode.players ?? 2) : 0;
+    return mode && podCount(mode) > 1 ? podCount(mode) : 0;
   }
 
   private startCoopSession(): void {
@@ -1101,7 +1102,7 @@ export class App {
     }
     // Co-op: the pause menu is a SYNCHRONIZED pause — everyone stops together
     // (LockstepHost ignores the ordinary 'modal' reason; 'user' is broadcast).
-    if (host.state.mode.kind === 'coop') host.pause('user');
+    if (host.state.pods.length > 1) host.pause('user');
     openPause(
       this.modals,
       () => {},
@@ -1371,7 +1372,7 @@ export class App {
   private async saveToSlot(slot: string, toast: boolean): Promise<void> {
     const host = this.host;
     if (!host) return;
-    if (host.state.mode.kind === 'coop' && this.localPlayer !== 0) {
+    if (host.state.pods.length > 1 && this.localPlayer !== 0) {
       this.ui.toast(t('coopHostSaves'));
       return;
     }
@@ -1414,7 +1415,7 @@ export class App {
         save = migrateAndValidate(raw); // fall back to the dual-write backup
       }
       this.lastManualSlot = key.startsWith('manual') ? key : this.lastManualSlot;
-      if (save.mode.kind === 'coop') {
+      if (podCount(save.mode) > 1) {
         // A crew world resumes through the host lobby — everyone reconnects first.
         this.coopPendingSave = save;
         this.teardownCoopLobby();

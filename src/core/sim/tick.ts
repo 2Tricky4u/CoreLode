@@ -32,6 +32,7 @@ import {
   type PodState,
   bayContentsCount,
   challengeDef,
+  isCoopRun,
   maxHull,
   podAlive,
   podDepthFt,
@@ -170,7 +171,7 @@ function podLost(
   cause: 'hull' | 'fuel',
   out: EventSink,
 ): void {
-  if (s.mode.kind !== 'coop') {
+  if (!isCoopRun(s)) {
     s.outcome = 'destroyed';
     out.push({ t: 'podExploded', cause, player });
     return;
