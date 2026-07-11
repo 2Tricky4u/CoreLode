@@ -33,6 +33,7 @@ import { CritterView } from '../render/CritterView';
 import { FaunaLayer } from '../render/FaunaLayer';
 import { PodView } from '../render/PodView';
 import { TileRenderer } from '../render/TileRenderer';
+import { coverScreenRect, zoomForViewport } from '../viewportPolicy';
 
 /** Soil ramp base colors per band for debris tinting (mirrors tools/art palette). */
 const BAND_TINTS = [0xd9a066, 0x8f563b, 0x663931, 0x45283c, 0x45283c, 0x323c39];
@@ -179,7 +180,6 @@ export class GameScene extends Phaser.Scene {
     // --- sky gradient (canvas strip, stretched full-screen, behind everything) ---
     const skyTex = this.canvasTex('skyTex', 1, 64);
     this.skyImg = this.add.image(0, 0, 'skyTex').setOrigin(0).setScrollFactor(0).setDepth(-12);
-    this.skyImg.setDisplaySize(this.scale.width, this.scale.height);
     void skyTex;
 
     // --- star field (parallax, only visible up high) ---
@@ -309,12 +309,7 @@ export class GameScene extends Phaser.Scene {
 
     // --- darkness/light buffer + damage vignette ---
     this.canvasTex('lightTex', LIGHT_W, LIGHT_H);
-    this.lightImg = this.add
-      .image(0, 0, 'lightTex')
-      .setOrigin(0)
-      .setScrollFactor(0)
-      .setDepth(40)
-      .setScale(this.scale.width / LIGHT_W, this.scale.height / LIGHT_H);
+    this.lightImg = this.add.image(0, 0, 'lightTex').setOrigin(0).setScrollFactor(0).setDepth(40);
     this.buildVignette();
 
     const cam = this.cameras.main;
@@ -323,12 +318,41 @@ export class GameScene extends Phaser.Scene {
     cam.setBackgroundColor(0x140c1c);
     this.setPixelPerfect(this.pixelPerfect);
 
+    // Full-bleed canvas: zoom to show at least the designed 550×400 view and
+    // pin the screen-space overlays (sky/light/vignette) to the live viewport.
+    this.scale.on('resize', this.handleResize, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>
+      this.scale.off('resize', this.handleResize, this),
+    );
+    this.handleResize();
+
     this.host.onEvent((e) => this.onSimEvent(e));
 
     if (this.introPending) {
       this.introPending = false;
       this.playLanding();
     }
+  }
+
+  /**
+   * Re-fit the picture to the viewport: camera zoom from the shared policy,
+   * and the scrollFactor(0) overlays re-covered (Phaser zooms screen-space
+   * objects about the viewport centre — coverScreenRect compensates).
+   */
+  private handleResize(): void {
+    const w = this.scale.width;
+    const h = this.scale.height;
+    if (w < 1 || h < 1) return;
+    const cam = this.cameras.main;
+    const zoom = zoomForViewport(w, h);
+    cam.setZoom(zoom);
+    const fit = (img: Phaser.GameObjects.Image, texW: number, texH: number) => {
+      const r = coverScreenRect(w, h, zoom, texW, texH);
+      img.setPosition(r.x, r.y).setScale(r.scaleX, r.scaleY);
+    };
+    fit(this.skyImg, 1, 64); // skyTex is a 1×64 gradient strip
+    fit(this.lightImg, LIGHT_W, LIGHT_H);
+    fit(this.vignette, 138, 100); // vignetteTex canvas size (buildVignette)
   }
 
   /**
@@ -436,8 +460,7 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0)
       .setScrollFactor(0)
       .setDepth(45)
-      .setAlpha(0)
-      .setScale(this.scale.width / w, this.scale.height / h);
+      .setAlpha(0);
   }
 
   private onSimEvent(e: SimEvent): void {
