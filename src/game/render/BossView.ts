@@ -88,8 +88,15 @@ export class BossView {
     });
 
     // HP bar (fixed to camera) — bottom of the stage per the original (24, 349),
-    // clear of the DOM HUD that owns the top edge.
+    // clear of the DOM HUD that owns the top edge. The camera zooms
+    // scrollFactor(0) objects about the viewport centre, so counter-scale the
+    // graphics by 1/zoom and offset its origin — the bar then draws in screen px.
     const cam = this.scene.cameras.main;
+    const z = cam.zoom;
+    this.hpBar!.setScale(1 / z).setPosition(
+      (cam.width / 2) * (1 - 1 / z),
+      (cam.height / 2) * (1 - 1 / z),
+    );
     const barX = 24;
     const barY = cam.height - 51;
     const w = cam.width - 48;

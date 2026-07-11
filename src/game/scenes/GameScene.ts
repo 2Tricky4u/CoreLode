@@ -885,11 +885,13 @@ export class GameScene extends Phaser.Scene {
       heldAt.get(y * WORLD_W + x) ?? getTile(w, x, y);
     const R = 14; // full wedge size
     const R2 = 7; // soft inner-corner wedge size
-    const x0 = Math.max(1, Math.floor(cam.scrollX / TILE_PX));
-    const x1 = Math.min(WORLD_W - 1, Math.ceil((cam.scrollX + cam.width) / TILE_PX) + 1);
+    const wv = cam.worldView; // zoom-aware visible rect (≠ scrollX/cam.width at zoom≠1)
+    if (wv.width < 1) return; // camera hasn't pre-rendered yet (first frame)
+    const x0 = Math.max(1, Math.floor(wv.x / TILE_PX));
+    const x1 = Math.min(WORLD_W - 1, Math.ceil(wv.right / TILE_PX) + 1);
     // Underground only — a reflex wedge at a surface hole must not float in the sky.
-    const y0 = Math.max(SURFACE_ROW + 1, Math.floor(cam.scrollY / TILE_PX));
-    const y1 = Math.min(WORLD_H - 1, Math.ceil((cam.scrollY + cam.height) / TILE_PX) + 1);
+    const y0 = Math.max(SURFACE_ROW + 1, Math.floor(wv.y / TILE_PX));
+    const y1 = Math.min(WORLD_H - 1, Math.ceil(wv.bottom / TILE_PX) + 1);
     let n = 0;
     for (let cy = y0; cy <= y1; cy++) {
       const band = bandAt(cy);
@@ -943,8 +945,8 @@ export class GameScene extends Phaser.Scene {
     // end margins — overlapping a corner wedge is harmless (same soil texture).
     const LUMP_LEN = [12, 8, 14, 10, 16, 26, 30, 5, 4, 18, 14];
     const LUMP_PICK = [0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 2, 4, 1, 3, 5, 6, 7, 8, 7, 8, 9, 10];
-    const tx0 = Math.max(0, Math.floor(cam.scrollX / TILE_PX));
-    const tx1 = Math.min(WORLD_W - 1, Math.ceil((cam.scrollX + cam.width) / TILE_PX));
+    const tx0 = Math.max(0, Math.floor(wv.x / TILE_PX));
+    const tx1 = Math.min(WORLD_W - 1, Math.ceil(wv.right / TILE_PX));
     for (let ty = y0; ty <= y1; ty++) {
       const band = bandAt(ty);
       for (let tx = tx0; tx <= tx1; tx++) {
@@ -993,10 +995,12 @@ export class GameScene extends Phaser.Scene {
     const survey = this.state.mode.kind === 'expedition' && hasSurveyor(this.state.pod);
     if (!this.oreGlyphs && !survey) return; // pool is hidden by applyFx when toggled off
     const cam = this.cameras.main;
-    const x0 = Math.max(0, Math.floor(cam.scrollX / TILE_PX));
-    const x1 = Math.min(WORLD_W - 1, Math.ceil((cam.scrollX + cam.width) / TILE_PX));
-    const y0 = Math.max(0, Math.floor(cam.scrollY / TILE_PX));
-    const y1 = Math.min(WORLD_H - 1, Math.ceil((cam.scrollY + cam.height) / TILE_PX));
+    const wv = cam.worldView;
+    if (wv.width < 1) return;
+    const x0 = Math.max(0, Math.floor(wv.x / TILE_PX));
+    const x1 = Math.min(WORLD_W - 1, Math.ceil(wv.right / TILE_PX));
+    const y0 = Math.max(0, Math.floor(wv.y / TILE_PX));
+    const y1 = Math.min(WORLD_H - 1, Math.ceil(wv.bottom / TILE_PX));
     let n = 0;
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
@@ -1074,13 +1078,18 @@ export class GameScene extends Phaser.Scene {
     ctx.fillStyle = inArena ? `rgba(38,6,6,${dark})` : `rgba(2,1,6,${dark})`;
     ctx.fillRect(0, 0, LIGHT_W, LIGHT_H);
     // Punch each pod's headlight out of the darkness (local pod gets the full beam).
-    const cam = this.cameras.main;
+    // worldView is the zoom-aware visible rect; the buffer maps the SCREEN 1:1.
+    const wv = this.cameras.main.worldView;
+    if (wv.width < 1) {
+      tex.refresh();
+      return;
+    }
     const flick = this.fxFull ? Math.sin(this.time.now / 70) * 1.2 : 0;
     ctx.globalCompositeOperation = 'destination-out';
     this.podViews.forEach((v, i) => {
       if (!v.sprite.visible) return;
-      const px = ((v.sprite.x - cam.scrollX) / this.scale.width) * LIGHT_W;
-      const py = ((v.sprite.y - cam.scrollY) / this.scale.height) * LIGHT_H;
+      const px = ((v.sprite.x - wv.x) / wv.width) * LIGHT_W;
+      const py = ((v.sprite.y - wv.y) / wv.height) * LIGHT_H;
       const radius = (i === this.localIdx ? 62 : 44) + flick + (1 - dark) * 24;
       if (px < -radius || px > LIGHT_W + radius || py < -radius || py > LIGHT_H + radius) return;
       const g = ctx.createRadialGradient(px, py, 6, px, py, radius);

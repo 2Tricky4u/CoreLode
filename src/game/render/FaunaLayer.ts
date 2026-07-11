@@ -32,22 +32,20 @@ export class FaunaLayer {
       if (this.bugs.length > 0) this.clear();
       return;
     }
-    const cam = this.scene.cameras.main;
+    const wv = this.scene.cameras.main.worldView; // zoom-aware visible rect
+    if (wv.width < 1) return;
     // Cull bugs that scrolled far off screen.
     this.bugs = this.bugs.filter((b) => {
       const off =
-        b.x0 < cam.scrollX - 120 ||
-        b.x0 > cam.scrollX + cam.width + 120 ||
-        b.y0 < cam.scrollY - 120 ||
-        b.y0 > cam.scrollY + cam.height + 120;
+        b.x0 < wv.x - 120 || b.x0 > wv.right + 120 || b.y0 < wv.y - 120 || b.y0 > wv.bottom + 120;
       if (off) b.img.destroy();
       return !off;
     });
 
     // Occasionally wake a glowbug in a random on-screen air tile underground.
     if (this.bugs.length < MAX_BUGS && Math.random() < 0.02) {
-      const tx = Math.floor((cam.scrollX + Math.random() * cam.width) / TILE_PX);
-      const ty = Math.floor((cam.scrollY + Math.random() * cam.height) / TILE_PX);
+      const tx = Math.floor((wv.x + Math.random() * wv.width) / TILE_PX);
+      const ty = Math.floor((wv.y + Math.random() * wv.height) / TILE_PX);
       if (
         tx > 1 &&
         tx < WORLD_W - 2 &&
