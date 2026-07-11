@@ -19,7 +19,7 @@ Autonomous sessions resume at the first unchecked step; genuine design forks go 
 - [x] [N5] Route all cash through wallet(s)
 - [x] [N6] Per-pod parameterization of pod systems + player? on events
 - [x] [N7] tick(s, inputs: IntentFrame[], out) + per-pod pipeline loop
-- [ ] [N8] Save schema v4 (pods[]) + frozen v3 fixture + migration
+- [x] [N8] Save schema v4 (pods[]) + frozen v3 fixture + migration
 - [ ] M2 gate: full suite + build + manual solo smoke, merge
 
 ## M3 — Co-op sim rules

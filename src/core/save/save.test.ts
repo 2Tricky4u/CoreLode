@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import v1Fixture from '../../../tests/fixtures/saves/v1.json';
 import v2Fixture from '../../../tests/fixtures/saves/v2.json';
+import v3Fixture from '../../../tests/fixtures/saves/v3.json';
 import { WORLD_H, WORLD_W } from '../data/constants';
 import type { SimEvent } from '../events';
 import { EMPTY_INTENTS } from '../intents';
@@ -76,12 +77,12 @@ describe('dug tunnels persist across save/load', () => {
 describe('frozen v1 fixture migration', () => {
   it('migrates v1 to the current version with inert defaults', () => {
     const f = migrateAndValidate(JSON.parse(JSON.stringify(v1Fixture)));
-    expect(f.v).toBe(3);
+    expect(f.v).toBe(4);
     expect(f.seed).toBe(31337);
-    expect(f.pod.heat).toBe(0);
-    expect(f.pod.relics).toEqual([]);
-    expect(f.pod.modules).toEqual([]);
-    expect(f.pod.lastDamage).toBeNull();
+    expect(f.pods[0].heat).toBe(0);
+    expect(f.pods[0].relics).toEqual([]);
+    expect(f.pods[0].modules).toEqual([]);
+    expect(f.pods[0].lastDamage).toBeNull();
     expect(f.chain).toBeNull();
     expect(f.contracts).toEqual([]);
     expect(f.stats.bestChain).toBe(0);
@@ -101,19 +102,35 @@ describe('frozen v1 fixture migration', () => {
   it('decodes a v1 export code through migration', () => {
     const code = encodeSave(v1Fixture as unknown as SaveFile);
     const back = decodeSave(code);
-    expect(back.v).toBe(3);
+    expect(back.v).toBe(4);
     expect(back.seed).toBe(31337);
-    expect(back.pod.heat).toBe(0);
+    expect(back.pods[0].heat).toBe(0);
   });
 });
 
 describe('frozen v2 fixture migration', () => {
   it('migrates v2 → v3 with a fully revealed map (grandfathered fog)', () => {
     const f = migrateAndValidate(JSON.parse(JSON.stringify(v2Fixture)));
-    expect(f.v).toBe(3);
+    expect(f.v).toBe(4);
     expect(f.discoveredRle).toEqual([1, WORLD_W * WORLD_H]);
     const st = deserialize(f);
     expect(st.world.discovered.every((v) => v === 1)).toBe(true);
+    for (let i = 0; i < 50; i++) tick(st, [EMPTY_INTENTS], []);
+    expect(st.outcome).toBe('active');
+  });
+});
+
+describe('frozen v3 fixture migration', () => {
+  it('migrates v3 → v4: the single pod becomes pods[0], alive', () => {
+    const f = migrateAndValidate(JSON.parse(JSON.stringify(v3Fixture)));
+    expect(f.v).toBe(4);
+    expect(f.pods).toHaveLength(1);
+    expect(f.pods[0].cash).toBe(4_567);
+    expect(f.pods[0].respawnAtTick).toBe(0);
+    expect('pod' in f).toBe(false); // the old key is dropped, not duplicated
+    const st = deserialize(f);
+    expect(st.pod).toBe(st.pods[0]);
+    expect(st.pod.cash).toBe(4_567);
     for (let i = 0; i < 50; i++) tick(st, [EMPTY_INTENTS], []);
     expect(st.outcome).toBe('active');
   });
@@ -126,7 +143,7 @@ describe('export codec', () => {
     expect(code.startsWith('CLD1.')).toBe(true);
     const back = decodeSave(code);
     expect(back.seed).toBe(s.seed);
-    expect(back.pod.cash).toBe(s.pod.cash);
+    expect(back.pods[0].cash).toBe(s.pod.cash);
   });
   it('rejects tampered payloads', () => {
     const s = makeState();

@@ -76,7 +76,8 @@ export function listSaves(): Promise<SlotMeta[]> {
           key: k.slice(SLOT_PREFIX.length),
           updatedAt: raw.updatedAt ?? 0,
           depthFt: raw.story?.maxDepthFt ?? 0,
-          cash: raw.pod?.cash ?? 0,
+          // v4 pods[]; pre-migration raw saves may still carry a single `pod`
+          cash: raw.pods?.[0]?.cash ?? (raw as { pod?: { cash?: number } }).pod?.cash ?? 0,
           level: raw.level ?? 1,
           summary,
         });

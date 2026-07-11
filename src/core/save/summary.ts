@@ -16,7 +16,7 @@ export interface SlotSummary {
 const CATEGORIES = Object.keys(UPGRADES) as UpgradeCategory[];
 
 export function slotSummary(f: SaveFile): SlotSummary {
-  const pod = f.pod;
+  const pod = f.pods[0];
   const has = (id: string) => pod.blueprints.includes(id as (typeof pod.blueprints)[number]);
   const bayCap = has('pocketSingularity') ? 9_999 : (UPGRADES.bay[pod.upgrades.bay]?.stat ?? 7);
   const used = pod.bayContents.reduce((a, b) => a + b, 0);

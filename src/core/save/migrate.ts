@@ -32,6 +32,11 @@ const MIGRATIONS: Record<number, Migration> = {
     v: 3,
     discoveredRle: [1, WORLD_W * WORLD_H],
   }),
+  // v4: multi-pod saves — the single pod becomes pods[0] (alive).
+  3: (raw) => {
+    const { pod, ...rest } = raw as Record<string, unknown> & { pod: Record<string, unknown> };
+    return { ...rest, v: 4, pods: [{ ...pod, respawnAtTick: 0 }] };
+  },
 };
 
 export class SaveError extends Error {}
@@ -70,15 +75,17 @@ function validate(f: Record<string, unknown>): void {
   };
   req(rleCovers(f.worldRle), 'worldRle shape/length');
   req(rleCovers(f.discoveredRle), 'discoveredRle shape/length');
-  const pod = f.pod as Record<string, unknown>;
-  req(typeof pod === 'object' && pod !== null, 'pod');
-  for (const k of ['x', 'y', 'hp', 'fuel', 'cash', 'points'])
-    req(typeof pod[k] === 'number', `pod.${k}`);
-  req(typeof pod.upgrades === 'object' && pod.upgrades !== null, 'pod.upgrades');
-  req(Array.isArray(pod.bayContents), 'pod.bayContents');
-  req(typeof pod.heat === 'number', 'pod.heat');
-  req(Array.isArray(pod.relics), 'pod.relics');
-  req(Array.isArray(pod.modules), 'pod.modules');
+  const pods = f.pods as Array<Record<string, unknown>>;
+  req(Array.isArray(pods) && pods.length >= 1 && pods.length <= 6, 'pods');
+  for (const pod of pods) {
+    req(typeof pod === 'object' && pod !== null, 'pod');
+    for (const k of ['x', 'y', 'hp', 'fuel', 'cash', 'points', 'heat', 'respawnAtTick'])
+      req(typeof pod[k] === 'number', `pod.${k}`);
+    req(typeof pod.upgrades === 'object' && pod.upgrades !== null, 'pod.upgrades');
+    req(Array.isArray(pod.bayContents), 'pod.bayContents');
+    req(Array.isArray(pod.relics), 'pod.relics');
+    req(Array.isArray(pod.modules), 'pod.modules');
+  }
   const story = f.story as Record<string, unknown>;
   req(typeof story === 'object' && story !== null && Array.isArray(story.fired), 'story');
   req(f.chain === null || (typeof f.chain === 'object' && f.chain !== null), 'chain');

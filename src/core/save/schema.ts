@@ -20,7 +20,27 @@ import type {
   RunStats,
 } from '../sim/state';
 
-export const SAVE_VERSION = 3;
+export interface SavedPod {
+  x: number;
+  y: number;
+  hp: number;
+  fuel: number;
+  cash: number;
+  points: number;
+  facing: -1 | 1;
+  upgrades: Record<UpgradeCategory, number>;
+  blueprints: BlueprintId[];
+  bayContents: number[];
+  inventory: Partial<Record<ItemId, number>>;
+  guardian: boolean;
+  heat: number;
+  relics: string[];
+  modules: string[];
+  lastDamage: { cause: DamageCause; atTick: number } | null;
+  respawnAtTick: number;
+}
+
+export const SAVE_VERSION = 4;
 
 export interface SaveFile {
   v: number;
@@ -34,24 +54,8 @@ export interface SaveFile {
   /** Minimap fog of war, RLE like worldRle (runs of 0/1 pack tightly). */
   discoveredRle: number[];
   slate: { x: number; y: number; blueprint: BlueprintId } | null;
-  pod: {
-    x: number;
-    y: number;
-    hp: number;
-    fuel: number;
-    cash: number;
-    points: number;
-    facing: -1 | 1;
-    upgrades: Record<UpgradeCategory, number>;
-    blueprints: BlueprintId[];
-    bayContents: number[];
-    inventory: Partial<Record<ItemId, number>>;
-    guardian: boolean;
-    heat: number;
-    relics: string[];
-    modules: string[];
-    lastDamage: { cause: DamageCause; atTick: number } | null;
-  };
+  /** All pods, index = player (v4+). Solo saves carry one entry. */
+  pods: SavedPod[];
   story: { fired: string[]; maxDepthFt: number; maxAltFt: number; nextQuakeTick: number };
   stats: RunStats;
   chain: ChainState | null;
@@ -108,24 +112,25 @@ export function serialize(s: GameState, updatedAt: number): SaveFile {
     worldRle: rleEncode(s.world.tiles),
     discoveredRle: rleEncode(s.world.discovered),
     slate: s.world.slate,
-    pod: {
-      x: s.pod.x,
-      y: s.pod.y,
-      hp: s.pod.hp,
-      fuel: s.pod.fuel,
-      cash: s.pod.cash,
-      points: s.pod.points,
-      facing: s.pod.facing,
-      upgrades: { ...s.pod.upgrades },
-      blueprints: [...s.pod.blueprints],
-      bayContents: [...s.pod.bayContents],
-      inventory: { ...s.pod.inventory },
-      guardian: s.pod.guardian,
-      heat: s.pod.heat,
-      relics: [...s.pod.relics],
-      modules: [...s.pod.modules],
-      lastDamage: s.pod.lastDamage ? { ...s.pod.lastDamage } : null,
-    },
+    pods: s.pods.map((p) => ({
+      x: p.x,
+      y: p.y,
+      hp: p.hp,
+      fuel: p.fuel,
+      cash: p.cash,
+      points: p.points,
+      facing: p.facing,
+      upgrades: { ...p.upgrades },
+      blueprints: [...p.blueprints],
+      bayContents: [...p.bayContents],
+      inventory: { ...p.inventory },
+      guardian: p.guardian,
+      heat: p.heat,
+      relics: [...p.relics],
+      modules: [...p.modules],
+      lastDamage: p.lastDamage ? { ...p.lastDamage } : null,
+      respawnAtTick: p.respawnAtTick,
+    })),
     story: {
       fired: [...s.story.fired],
       maxDepthFt: s.story.maxDepthFt,
@@ -139,40 +144,43 @@ export function serialize(s: GameState, updatedAt: number): SaveFile {
 }
 
 /** Rebuild a live GameState from a (already migrated + validated) save. */
-export function deserialize(f: SaveFile): GameState {
+function revivePod(sp: SavedPod): PodState {
   const bay = new Array(COLLECTIBLES.length).fill(0);
-  for (let i = 0; i < Math.min(bay.length, f.pod.bayContents.length); i++)
-    bay[i] = f.pod.bayContents[i];
-  const pod: PodState = {
-    x: f.pod.x,
-    y: f.pod.y,
-    prevX: f.pod.x,
-    prevY: f.pod.y,
+  for (let i = 0; i < Math.min(bay.length, sp.bayContents.length); i++) bay[i] = sp.bayContents[i];
+  return {
+    x: sp.x,
+    y: sp.y,
+    prevX: sp.x,
+    prevY: sp.y,
     xVel: 0,
     yVel: 0,
-    facing: f.pod.facing,
+    facing: sp.facing,
     mode: 'air', // settles to ground on the first tick
     launchCount: 0,
     drilling: null,
-    hp: f.pod.hp,
-    fuel: f.pod.fuel,
-    cash: f.pod.cash,
-    points: f.pod.points,
-    upgrades: f.pod.upgrades,
-    blueprints: f.pod.blueprints,
+    hp: sp.hp,
+    fuel: sp.fuel,
+    cash: sp.cash,
+    points: sp.points,
+    upgrades: sp.upgrades,
+    blueprints: sp.blueprints,
     bayContents: bay,
-    inventory: f.pod.inventory,
+    inventory: sp.inventory,
     itemCooldown: 0,
     itemLock: 0,
-    guardian: f.pod.guardian,
+    guardian: sp.guardian,
     lavaLatch: 0,
     nearBuilding: null,
-    heat: f.pod.heat,
-    relics: f.pod.relics,
-    modules: f.pod.modules,
-    lastDamage: f.pod.lastDamage,
-    respawnAtTick: 0,
+    heat: sp.heat,
+    relics: sp.relics,
+    modules: sp.modules,
+    lastDamage: sp.lastDamage,
+    respawnAtTick: sp.respawnAtTick,
   };
+}
+
+export function deserialize(f: SaveFile): GameState {
+  const pods = f.pods.map(revivePod);
   return {
     seed: f.seed,
     level: f.level,
@@ -184,8 +192,8 @@ export function deserialize(f: SaveFile): GameState {
       slate: f.slate,
       discovered: rleDecodeBytes(f.discoveredRle),
     },
-    pods: [pod],
-    pod,
+    pods,
+    pod: pods[0],
     boss: null,
     projectiles: [],
     charges: [],
