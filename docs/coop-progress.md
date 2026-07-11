@@ -43,7 +43,7 @@ Autonomous sessions resume at the first unchecked step; genuine design forks go 
 
 ## M5 — WebRTC + UI + rendering
 
-- [ ] [N20] RtcChannel (manual SDP tokens CLDP1/CLDP2, iceServers: [])
+- [x] [N20] RtcChannel (manual SDP tokens CLDP1/CLDP2, iceServers: [])
 - [ ] [N21] Co-op menu + lobby (per-seat offers, ready states)
 - [ ] [N22] Session bootstrap end-to-end (start / chunked SaveFile, version handshake)
 - [ ] [N23] Rendering: PodView per pod + tints, local camera, per-pod FX
