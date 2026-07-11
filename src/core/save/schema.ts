@@ -38,9 +38,12 @@ export interface SavedPod {
   modules: string[];
   lastDamage: { cause: DamageCause; atTick: number } | null;
   respawnAtTick: number;
+  /** v5: this pod's collect chain and personal depth watermark. */
+  chain: ChainState | null;
+  maxDepthFt: number;
 }
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 export interface SaveFile {
   v: number;
@@ -58,7 +61,6 @@ export interface SaveFile {
   pods: SavedPod[];
   story: { fired: string[]; maxDepthFt: number; maxAltFt: number; nextQuakeTick: number };
   stats: RunStats;
-  chain: ChainState | null;
   contracts: ContractState[];
 }
 
@@ -130,6 +132,8 @@ export function serialize(s: GameState, updatedAt: number): SaveFile {
       modules: [...p.modules],
       lastDamage: p.lastDamage ? { ...p.lastDamage } : null,
       respawnAtTick: p.respawnAtTick,
+      chain: p.chain ? { ...p.chain } : null,
+      maxDepthFt: p.maxDepthFt,
     })),
     story: {
       fired: [...s.story.fired],
@@ -138,8 +142,6 @@ export function serialize(s: GameState, updatedAt: number): SaveFile {
       nextQuakeTick: s.story.nextQuakeTick,
     },
     stats: { ...s.stats, soldCount: [...s.stats.soldCount] },
-    // v4 file shape: the file-level chain field carries pod 0's chain until v5.
-    chain: s.pods[0].chain ? { ...s.pods[0].chain } : null,
     contracts: s.contracts.map((c) => ({ ...c, objective: { ...c.objective } })),
   };
 }
@@ -161,8 +163,8 @@ function revivePod(sp: SavedPod): PodState {
     drilling: null,
     hp: sp.hp,
     heatWarn: 0, // transient latch — a re-warning after load is harmless
-    chain: null, // v4 saves carry pod 0's chain at file level; deserialize re-attaches
-    maxDepthFt: 0, // v4 saves: re-seeded from story.maxDepthFt below (schema v5 stores it)
+    chain: sp.chain ? { ...sp.chain } : null,
+    maxDepthFt: sp.maxDepthFt,
     fuel: sp.fuel,
     cash: sp.cash,
     points: sp.points,
@@ -185,10 +187,6 @@ function revivePod(sp: SavedPod): PodState {
 
 export function deserialize(f: SaveFile): GameState {
   const pods = f.pods.map(revivePod);
-  // v4 file shape: the file-level chain field is pod 0's (schema v5 moves it per-pod).
-  pods[0].chain = f.chain ? { ...f.chain } : null;
-  // Best available v4 watermark: the team record (exact for solo saves).
-  for (const p of pods) p.maxDepthFt = f.story.maxDepthFt;
   return {
     seed: f.seed,
     level: f.level,

@@ -37,6 +37,18 @@ const MIGRATIONS: Record<number, Migration> = {
     const { pod, ...rest } = raw as Record<string, unknown> & { pod: Record<string, unknown> };
     return { ...rest, v: 4, pods: [{ ...pod, respawnAtTick: 0 }] };
   },
+  // v5: per-pod chain + depth watermark — the file-level chain was pod 0's,
+  // and the team depth record is the best available per-pod watermark.
+  4: (raw) => {
+    const { chain, ...rest } = raw as Record<string, unknown> & { chain: unknown };
+    const story = rest.story as { maxDepthFt: number };
+    const pods = (rest.pods as Array<Record<string, unknown>>).map((pod, i) => ({
+      ...pod,
+      chain: i === 0 ? (chain ?? null) : null,
+      maxDepthFt: story.maxDepthFt,
+    }));
+    return { ...rest, v: 5, pods };
+  },
 };
 
 export class SaveError extends Error {}
@@ -85,9 +97,10 @@ function validate(f: Record<string, unknown>): void {
     req(Array.isArray(pod.bayContents), 'pod.bayContents');
     req(Array.isArray(pod.relics), 'pod.relics');
     req(Array.isArray(pod.modules), 'pod.modules');
+    req(typeof pod.maxDepthFt === 'number', 'pod.maxDepthFt');
+    req(pod.chain === null || (typeof pod.chain === 'object' && pod.chain !== null), 'pod.chain');
   }
   const story = f.story as Record<string, unknown>;
   req(typeof story === 'object' && story !== null && Array.isArray(story.fired), 'story');
-  req(f.chain === null || (typeof f.chain === 'object' && f.chain !== null), 'chain');
   req(Array.isArray(f.contracts), 'contracts');
 }

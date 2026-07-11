@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import v1Fixture from '../../../tests/fixtures/saves/v1.json';
 import v2Fixture from '../../../tests/fixtures/saves/v2.json';
 import v3Fixture from '../../../tests/fixtures/saves/v3.json';
+import v4Fixture from '../../../tests/fixtures/saves/v4.json';
 import { WORLD_H, WORLD_W } from '../data/constants';
 import type { SimEvent } from '../events';
 import { EMPTY_INTENTS } from '../intents';
@@ -77,13 +78,13 @@ describe('dug tunnels persist across save/load', () => {
 describe('frozen v1 fixture migration', () => {
   it('migrates v1 to the current version with inert defaults', () => {
     const f = migrateAndValidate(JSON.parse(JSON.stringify(v1Fixture)));
-    expect(f.v).toBe(4);
+    expect(f.v).toBe(5);
     expect(f.seed).toBe(31337);
     expect(f.pods[0].heat).toBe(0);
     expect(f.pods[0].relics).toEqual([]);
     expect(f.pods[0].modules).toEqual([]);
     expect(f.pods[0].lastDamage).toBeNull();
-    expect(f.chain).toBeNull();
+    expect(f.pods[0].chain).toBeNull();
     expect(f.contracts).toEqual([]);
     expect(f.stats.bestChain).toBe(0);
     expect(f.stats.rescues).toBe(0);
@@ -102,7 +103,7 @@ describe('frozen v1 fixture migration', () => {
   it('decodes a v1 export code through migration', () => {
     const code = encodeSave(v1Fixture as unknown as SaveFile);
     const back = decodeSave(code);
-    expect(back.v).toBe(4);
+    expect(back.v).toBe(5);
     expect(back.seed).toBe(31337);
     expect(back.pods[0].heat).toBe(0);
   });
@@ -111,7 +112,7 @@ describe('frozen v1 fixture migration', () => {
 describe('frozen v2 fixture migration', () => {
   it('migrates v2 → v3 with a fully revealed map (grandfathered fog)', () => {
     const f = migrateAndValidate(JSON.parse(JSON.stringify(v2Fixture)));
-    expect(f.v).toBe(4);
+    expect(f.v).toBe(5);
     expect(f.discoveredRle).toEqual([1, WORLD_W * WORLD_H]);
     const st = deserialize(f);
     expect(st.world.discovered.every((v) => v === 1)).toBe(true);
@@ -123,7 +124,7 @@ describe('frozen v2 fixture migration', () => {
 describe('frozen v3 fixture migration', () => {
   it('migrates v3 → v4: the single pod becomes pods[0], alive', () => {
     const f = migrateAndValidate(JSON.parse(JSON.stringify(v3Fixture)));
-    expect(f.v).toBe(4);
+    expect(f.v).toBe(5);
     expect(f.pods).toHaveLength(1);
     expect(f.pods[0].cash).toBe(4_567);
     expect(f.pods[0].respawnAtTick).toBe(0);
@@ -131,6 +132,22 @@ describe('frozen v3 fixture migration', () => {
     const st = deserialize(f);
     expect(st.pod).toBe(st.pods[0]);
     expect(st.pod.cash).toBe(4_567);
+    for (let i = 0; i < 50; i++) tick(st, [EMPTY_INTENTS], []);
+    expect(st.outcome).toBe('active');
+  });
+});
+
+describe('frozen v4 fixture migration', () => {
+  it("migrates v4 → v5: the file chain becomes pod 0's, watermark seeded", () => {
+    const f = migrateAndValidate(JSON.parse(JSON.stringify(v4Fixture)));
+    expect(f.v).toBe(5);
+    expect(f.pods[0].chain).toEqual({ id: 2, count: 4, bankPct: 12, lastCollectTick: 190 });
+    expect(f.pods[0].maxDepthFt).toBe(f.story.maxDepthFt);
+    expect('chain' in f).toBe(false); // file-level key dropped, not duplicated
+    const st = deserialize(f);
+    expect(st.pod.chain?.bankPct).toBe(12);
+    expect(st.pod.maxDepthFt).toBe(st.story.maxDepthFt);
+    expect(st.pod.relics).toEqual(['oreMagnet']);
     for (let i = 0; i < 50; i++) tick(st, [EMPTY_INTENTS], []);
     expect(st.outcome).toBe('active');
   });
