@@ -28,7 +28,7 @@ Autonomous sessions: resume at the first unchecked step.
 - [x] [R8] Safe-area foundations (.hud/.screen/toast padding)
 - [x] [R9] Narrow-portrait breakpoint (max-width: 480px)
 - [x] [R10] Short-landscape breakpoint (max-height: 450px)
-- [ ] [R11] Modal min-width fixes for 360px screens
+- [x] [R11] Modal min-width fixes for 360px screens
 - [ ] [R12] Screens + co-op lobby phone layout
 - [ ] M3 gate: full matrix walk of every screen/modal/lobby, merge, push
 

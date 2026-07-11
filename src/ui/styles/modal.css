@@ -14,7 +14,7 @@
   border: 3px solid var(--c-panel2);
   border-radius: 4px;
   box-shadow: 0 0 0 3px #000, 0 0 22px #5b6ee133, 0 12px 40px #000c;
-  min-width: 340px;
+  min-width: min(340px, 92vw);
   max-width: min(560px, 92vw);
   max-height: 86vh;
   overflow-y: auto;
@@ -144,7 +144,7 @@
   background: linear-gradient(180deg, #2a0d14 0%, #140c1c 80%);
   border-color: var(--c-danger);
   box-shadow: 0 0 0 3px #000, 0 0 34px #d9576366, 0 12px 46px #000e;
-  min-width: 380px;
+  min-width: min(380px, 94vw);
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -304,7 +304,7 @@
 
 /* ---- In-field cargo inventory (I key) ---- */
 .inv-body {
-  min-width: 300px;
+  min-width: min(300px, 86vw);
 }
 .inv-gauge {
   position: relative;
