@@ -6,13 +6,16 @@
 import { describe, expect, it } from 'vitest';
 import { applyCommand } from '../commands';
 import { SURFACE_ROW, TILE_PX, WORLD_W } from '../data/constants';
+import { COOP } from '../data/coop';
 import { EXPEDITION } from '../data/expedition';
 import type { SimEvent } from '../events';
-import { EMPTY_INTENTS } from '../intents';
+import { EMPTY_INTENTS, type IntentFrame } from '../intents';
+import { coopStateHash } from '../net/lockstep';
 import { Tile } from '../world/tiles';
 import { chainOnCollect, chainOnDamage } from './chain';
 import { CRITTER, stepCritters } from './critters';
-import { type GameState, createRun } from './state';
+import { applyDamage } from './physics';
+import { type GameState, createRun, podAlive } from './state';
 import { tick } from './tick';
 
 const DEEP_ROW = SURFACE_ROW + 440; // ~-5,510 ft — inside the heat-gain band
@@ -259,5 +262,100 @@ describe('expedition co-op: per-seat rigs', () => {
       expect(p.upgrades.hull).toBe(0);
       expect(p.upgrades.drill).toBe(0);
     }
+  });
+});
+
+describe('expedition co-op: true single life', () => {
+  it('a destroyed pod never respawns; survivors keep playing', () => {
+    const s = expeditionDuo();
+    applyDamage(s, s.pods[1], 999, 'fall', []);
+    const ev = stepN(s, 1);
+    const down = ev.find((e) => e.t === 'podDown');
+    expect(down?.t === 'podDown' && down.player).toBe(1);
+    expect(down?.t === 'podDown' && down.fee).toBe(0); // no fee in expedition
+    expect(s.pods[1].respawnAtTick).toBe(-1); // permanent sentinel
+    expect(s.outcome).toBe('active'); // the run survives one loss
+    stepN(s, COOP.respawnTicks + 60); // far past the story-coop respawn window
+    expect(podAlive(s.pods[1])).toBe(false);
+    expect(podAlive(s.pods[0])).toBe(true);
+    expect(s.outcome).toBe('active');
+  });
+
+  it('the last pod down wipes the run', () => {
+    const s = expeditionDuo();
+    applyDamage(s, s.pods[1], 999, 'fall', []);
+    stepN(s, 1);
+    applyDamage(s, s.pods[0], 999, 'fall', []);
+    const ev = stepN(s, 1);
+    expect(s.outcome).toBe('destroyed');
+    expect(ev.some((e) => e.t === 'podExploded')).toBe(true);
+  });
+
+  it('victory stands even with a pod permanently down', () => {
+    const s = expeditionDuo();
+    applyDamage(s, s.pods[1], 999, 'fall', []);
+    stepN(s, 1);
+    s.outcome = 'victory'; // boss kill path is covered by the boss suite
+    expect(podAlive(s.pods[1])).toBe(false);
+    expect(s.outcome).toBe('victory');
+  });
+});
+
+describe('expedition co-op: lockstep determinism', () => {
+  /** Twin scripted run: same seed + same inputs on two states → equal hashes.
+   *  Exercises deaths and a DELAYED chooseRelic mid-run (the relic modal never
+   *  blocks the sim — the offer just sits in that pod's slot until the pick). */
+  const twinRun = (players: number): void => {
+    const mk = () =>
+      createRun({
+        seed: 9_009,
+        mode: {
+          kind: 'expedition',
+          goldium: true,
+          players,
+          expedition: { loadoutId: 'standard', modules: ['thermalFins'] },
+        },
+      });
+    const a = mk();
+    const b = mk();
+    for (const s of [a, b]) {
+      for (let i = 0; i < s.pods.length; i++) {
+        placePod(s, i, DEEP_ROW - i * 40, 12 + i * 3);
+        s.pods[i].fuel = 500;
+        s.pods[i].upgrades.drill = 5;
+        s.pods[i].hp = 300;
+      }
+    }
+    const frame = (pl: number, i: number): IntentFrame => ({
+      ...EMPTY_INTENTS,
+      down: (i + pl) % 3 !== 2,
+      left: (i + pl) % 7 === 0,
+    });
+    for (let i = 0; i < 900; i++) {
+      for (const s of [a, b]) {
+        tick(
+          s,
+          s.pods.map((_, pl) => frame(pl, i)),
+          [],
+        );
+        // Delayed relic pick: 80 ticks after an offer appears for player 1.
+        const offer = s.pendingRelicChoices[1 % players];
+        if (i === 500 && offer)
+          applyCommand(s, { c: 'chooseRelic', id: offer[0] }, 1 % players, []);
+        // A scripted mid-run death (same tick on both states).
+        if (i === 600) applyDamage(s, s.pods[players - 1], 999, 'lava', []);
+      }
+      if (i % 42 === 0) expect(coopStateHash(a)).toBe(coopStateHash(b));
+    }
+    expect(coopStateHash(a)).toBe(coopStateHash(b));
+    expect(podAlive(a.pods[players - 1])).toBe(false); // the scripted death stuck
+  };
+
+  it('2 players stay bit-identical through relic picks and a death', () => {
+    twinRun(2);
+  });
+
+  it('6 players stay bit-identical through relic picks and a death', () => {
+    twinRun(6);
   });
 });

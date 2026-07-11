@@ -160,6 +160,9 @@ export function coopStateHash(s: GameState): number {
       p.points,
       p.heat,
       p.respawnAtTick,
+      p.chain?.count ?? -1,
+      p.chain?.bankPct ?? -1,
+      p.maxDepthFt,
       bayUsed(p),
     );
   }

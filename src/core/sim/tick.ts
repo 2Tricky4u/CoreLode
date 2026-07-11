@@ -130,7 +130,9 @@ export function tick(s: GameState, inputs: readonly IntentFrame[], out: EventSin
   for (let i = 0; i < s.pods.length && s.outcome === 'active'; i++) {
     const p = s.pods[i];
     if (!podAlive(p)) {
-      if (s.mode.kind === 'coop' && s.tick >= p.respawnAtTick) respawnPod(s, p, i, out);
+      // Only story co-op respawns; an expedition pod's -1 sentinel is forever.
+      if (s.mode.kind === 'coop' && p.respawnAtTick > 0 && s.tick >= p.respawnAtTick)
+        respawnPod(s, p, i, out);
       continue;
     }
     if (p.hp <= 0) {
@@ -174,6 +176,21 @@ function podLost(
   if (!isCoopRun(s)) {
     s.outcome = 'destroyed';
     out.push({ t: 'podExploded', cause, player });
+    return;
+  }
+  if (s.mode.kind === 'expedition') {
+    // Roguelike crew rules: no fee, no respawn — the pod is permanently lost
+    // (respawnAtTick -1 sentinel; podAlive reads any non-zero value as down).
+    p.bayContents.fill(0);
+    p.drilling = null;
+    p.mode = 'air';
+    p.respawnAtTick = -1;
+    out.push({ t: 'podDown', player, cause, fee: 0 });
+    out.push({ t: 'sfx', key: 'podExplode' });
+    if (s.pods.every((q) => !podAlive(q))) {
+      s.outcome = 'destroyed'; // full wipe — the expedition ends here
+      out.push({ t: 'podExploded', cause, player });
+    }
     return;
   }
   const fee = Math.floor(wallet(s).cash * COOP.respawnFeePct);
