@@ -9,7 +9,7 @@ Autonomous sessions resume at the first unchecked step; genuine design forks go 
 ## M1 — Determinism hardening + golden guard
 
 - [x] [N1] Golden solo replay test (frozen hash literals — the solo fidelity contract)
-- [ ] [N2] Replace Math.hypot ×5 with sqrt form (boss/critters/explosives)
+- [x] [N2] Replace Math.hypot ×5 with sqrt form (boss/critters/explosives)
 - [ ] [N3] Deterministic atan2d in lib/math + boss laser swap + unit tests
 - [ ] M1 gate: full suite + build, merge to main
 

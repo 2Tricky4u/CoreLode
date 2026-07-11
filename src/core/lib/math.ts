@@ -2,6 +2,15 @@ export const clamp = (v: number, lo: number, hi: number): number => (v < lo ? lo
 
 export const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 
+/**
+ * Euclidean distance via sqrt(dx²+dy²) — NOT Math.hypot. sqrt/mul/add are
+ * IEEE-754 correctly-rounded (bit-identical across engines); Math.hypot is
+ * implementation-defined and may differ by an ulp between browsers, which
+ * would desync networked lockstep. Sim coordinates are far from overflow,
+ * so hypot's extra range safety buys nothing here.
+ */
+export const dist = (dx: number, dy: number): number => Math.sqrt(dx * dx + dy * dy);
+
 /** FNV-1a over a numeric array — used for golden replay state hashes. */
 export function fnv1a(values: ArrayLike<number>): number {
   let h = 0x811c9dc5;

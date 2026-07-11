@@ -7,6 +7,7 @@ import { TILE_PX } from '../data/constants';
  */
 import { ITEM_EFFECTS } from '../data/items';
 import type { EventSink } from '../events';
+import { dist } from '../lib/math';
 import { Tile, isBlastable, isGas } from '../world/tiles';
 import { getTile, setTile } from '../world/world';
 import { applyGasPocket } from './hazards';
@@ -76,7 +77,7 @@ function detonate(
   // Blasts clear magmites caught in (or one tile beyond) the radius.
   if (s.critters.length > 0) {
     s.critters = s.critters.filter((c) => {
-      const hit = Math.hypot(c.x - px, c.y - py) / TILE_PX <= radiusTiles + 1;
+      const hit = dist(c.x - px, c.y - py) / TILE_PX <= radiusTiles + 1;
       if (hit) out.push({ t: 'critterKilled', x: c.x, y: c.y });
       return !hit;
     });
@@ -85,7 +86,7 @@ function detonate(
   // Boss damage — center hit vs off-center (authentic values).
   const b = s.boss;
   if (b && b.phase !== 'dead' && b.phase !== 'transition') {
-    const distTiles = Math.hypot(b.x - px, b.y - py) / TILE_PX;
+    const distTiles = dist(b.x - px, b.y - py) / TILE_PX;
     const centerRange = ITEM_EFFECTS.bossCenterRangeTiles + radiusTiles - 1;
     let dmg = 0;
     if (distTiles <= centerRange) {

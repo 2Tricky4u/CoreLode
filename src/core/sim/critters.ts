@@ -7,6 +7,7 @@
  */
 import { TILE_PX } from '../data/constants';
 import type { EventSink } from '../events';
+import { dist } from '../lib/math';
 import { Tile } from '../world/tiles';
 import { getTile } from '../world/world';
 import { applyDamage } from './physics';
@@ -63,7 +64,7 @@ export function stepCritters(s: GameState, out: EventSink): void {
         }
       }
     }
-    if (Math.hypot(p.x - c.x, p.y - c.y) <= CRITTER.contactTiles * TILE_PX) {
+    if (dist(p.x - c.x, p.y - c.y) <= CRITTER.contactTiles * TILE_PX) {
       applyDamage(s, CRITTER.damage * radiatorMult(p), 'critter', out);
       out.push({ t: 'critterKilled', x: c.x, y: c.y });
       continue; // pops on contact

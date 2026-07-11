@@ -9,6 +9,7 @@ import { HELL_FLOOR_ROW, TILE_PX, WORLD_H } from '../data/constants';
 import { bossDamageMult, bossFormHp } from '../data/difficulty';
 import { FORM1_DROPS, FORM2_DROPS, VICTORY_REWARDS } from '../data/minerals';
 import type { EventSink } from '../events';
+import { dist } from '../lib/math';
 import { solidAt } from '../world/world';
 import { applyDamage } from './physics';
 import { fireTransmission } from './scripted';
@@ -75,7 +76,7 @@ export function stepBoss(s: GameState, out: EventSink): void {
   const dmul = bossDamageMult(s.level);
   const p = s.pod;
   const dx = p.x - b.x;
-  const distTiles = Math.hypot(dx, p.y - b.y) / TILE_PX;
+  const distTiles = dist(dx, p.y - b.y) / TILE_PX;
 
   b.phaseTicks++;
   if (b.contactCooldown > 0) b.contactCooldown--;
@@ -266,8 +267,8 @@ function stepProjectiles(s: GameState, dmul: number, out: EventSink): void {
     ) {
       pr.xVel = -pr.xVel;
     }
-    const dist = Math.hypot(s.pod.x - pr.x, s.pod.y - pr.y);
-    if (dist < 30) {
+    const d = dist(s.pod.x - pr.x, s.pod.y - pr.y);
+    if (d < 30) {
       const def = formDef(s.boss?.form ?? 2);
       const fb = def.attacks.find((a) => a.kind === 'fireball');
       applyDamage(s, (fb?.damage ?? 20) * dmul, 'boss', out);
