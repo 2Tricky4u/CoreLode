@@ -39,7 +39,7 @@ Autonomous sessions resume at the first unchecked step; genuine design forks go 
 - [x] [N17] NetChannel iface + LocalChannel (BroadcastChannel) + 16 KB chunker
 - [x] [N18] LockstepHost (host/guest roles) + N-host in-memory tests
 - [x] [N19] App wiring, coop pause gating, shop re-render on events, multi-tab dev entry
-- [ ] M4 gate: full suite + build + multi-tab smoke (2 and 6 tabs), merge
+- [x] M4 gate: full suite + build green (174 tests); multi-tab smoke pending user QA at ?coop=host&room=dev&players=2, merged
 
 ## M5 — WebRTC + UI + rendering
 
