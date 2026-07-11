@@ -244,6 +244,33 @@ describe('co-op boss rules', () => {
   });
 });
 
+describe('six players end-to-end', () => {
+  it('wallet, deaths, respawns and the wipe rule all hold at the cap', () => {
+    const s = coopRun(6);
+    stepN(s, [{}, {}, {}, {}, {}, {}], 3);
+    wallet(s).cash = 10_000;
+
+    // Players 3 and 5 sell into the shared wallet.
+    s.pods[3].bayContents[0] = 10;
+    s.pods[5].bayContents[2] = 2; // Argentite $100
+    applyCommand(s, { c: 'sellAllCargo' }, 3, []);
+    applyCommand(s, { c: 'sellAllCargo' }, 5, []);
+    expect(wallet(s).cash).toBe(10_500);
+
+    // Five pods go down — the run survives on the last one standing.
+    for (const i of [0, 1, 2, 3, 4]) s.pods[i].hp = 0;
+    stepN(s, new Array(6).fill({}));
+    expect(s.pods.filter((p) => p.respawnAtTick > 0)).toHaveLength(5);
+    expect(s.outcome).toBe('active');
+
+    // They all come back, staggered respawns land on their own columns.
+    stepN(s, new Array(6).fill({}), COOP.respawnTicks + 2);
+    expect(s.pods.every((p) => p.respawnAtTick === 0)).toBe(true);
+    for (let i = 0; i < 6; i++)
+      expect(s.pods[i].x).toBe((SPAWN_COL + i * COOP.spawnColStride + 0.5) * TILE_PX);
+  });
+});
+
 describe('co-op determinism', () => {
   const script = (s: GameState): string => {
     const inputs: Array<Array<Partial<IntentFrame>>> = [
