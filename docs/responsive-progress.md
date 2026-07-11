@@ -34,7 +34,7 @@ Autonomous sessions: resume at the first unchecked step.
 
 ## M4 — Fullscreen + PWA polish
 
-- [ ] [R13] Fullscreen helpers + title-screen button (+ optional orientation lock)
+- [x] [R13] Fullscreen helpers + title-screen button (+ optional orientation lock)
 - [ ] [R14] manifest.webmanifest + procedural icons (gen-icons.mjs in npm run atlas)
 - [ ] [R15] Docs: README mobile note, CLAUDE.md RESIZE/worldView invariant
 - [ ] M4 gate: suite + build + device smoke, merge --ff-only, push

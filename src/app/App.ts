@@ -55,7 +55,7 @@ import { createPhaserGame } from '@game/phaserGame';
 import type { GameScene } from '@game/scenes/GameScene';
 import { InputManager } from '@input/InputManager';
 import { BIND_ACTIONS, type BindAction } from '@input/bindings';
-import { entropySeed, isTouchDevice } from '@platform/env';
+import { entropySeed, isTouchDevice, toggleFullscreen } from '@platform/env';
 import { copyToClipboard, downloadText, pickTextFile } from '@platform/exporter';
 import { LocalChannel } from '@platform/net/LocalChannel';
 import { RtcChannel } from '@platform/net/RtcChannel';
@@ -257,6 +257,7 @@ export class App {
         onChallenges: () => void this.showChallenges(),
         onSettings: () => this.showSettings(() => this.showTitle()),
         onHelp: () => this.screens.show(helpScreen(() => void this.showTitle())),
+        onFullscreen: () => void toggleFullscreen(),
       }),
     );
   }

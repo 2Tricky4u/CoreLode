@@ -374,6 +374,7 @@ export const STRINGS: Record<string, string> = {
   coopHostSaves: 'Only the host can save the crew world',
   coopResumeLobby: 'Resuming a saved crew world',
   coopNeedCrew: 'The whole crew must reconnect to resume',
+  uiFullscreen: 'Fullscreen',
   hudDown: 'DOWN',
   coopDownToast: 'is down! Respawn fee',
   coopBackToast: 'is back on the surface',

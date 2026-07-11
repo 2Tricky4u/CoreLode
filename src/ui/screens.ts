@@ -53,6 +53,7 @@ export function titleScreen(opts: {
   onExpedition: () => void;
   onCoop: () => void;
   onLoad: () => void;
+  onFullscreen?: () => void;
   onChallenges: () => void;
   onSettings: () => void;
   onHelp: () => void;
@@ -94,6 +95,9 @@ export function titleScreen(opts: {
       el('button', { class: 'btn', onclick: opts.onLoad }, t('uiLoad')),
       el('button', { class: 'btn', onclick: opts.onChallenges }, t('challenges')),
       el('button', { class: 'btn', onclick: opts.onHelp }, 'Controls & Guide'),
+      opts.onFullscreen
+        ? el('button', { class: 'btn', onclick: opts.onFullscreen }, t('uiFullscreen'))
+        : null,
       el('button', { class: 'btn', onclick: opts.onSettings }, t('settings')),
     ),
     bests,
