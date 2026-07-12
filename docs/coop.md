@@ -48,11 +48,22 @@ native BarcodeDetector where available and a lazy-loaded jsQR chunk elsewhere; c
 permission is only requested when *Scan reply* is tapped (HTTPS or localhost required —
 GitHub Pages qualifies), and denying it just leaves the paste box.
 
+### Why the reply QR sometimes "refreshes"
+
+ICE starts probing the moment the guest mints its reply, but the host can't answer the
+probes until the reply is scanned — and browsers give up after ~15 s. When that
+happens the guest automatically remints against the same offer and swaps the QR in
+place (up to ~10 attempts ≈ 3 min), so whatever the host finally scans is always
+fresh. Only after that does the guest surface *Connection lost → Start over*.
+
 ### LAN / offline caveat
 
 Connections use `iceServers: []` — host/mDNS candidates only. This works great on a LAN
 (even fully offline: `npm run build && npx serve dist`), which is the supported v1 target.
 NAT traversal across the open internet (STUN/TURN) is intentionally out of scope.
+Beware **phone hotspots and guest Wi-Fi**: they commonly enable client isolation, which
+blocks device-to-device traffic entirely — pairing will always fail there no matter how
+the codes are exchanged. Use a regular router (mDNS/multicast must also be allowed).
 
 ### Same-machine tabs (dev mode)
 

@@ -54,3 +54,8 @@ per milestone gate.
 - Manual QA at the end (user's phones, one Wi-Fi): QR loop, invite link via messenger,
   mid-join reload recovery, New code, stale answer, camera denied, desktop paste,
   ?coop= dev tabs, 3-player, solo/story/expedition smoke.
+- Field bug (2026-07-12): guest showed "connection lost" right as the host scanned the
+  reply — ICE had already given up (~15 s) while the QR waited to be scanned. Fixed:
+  guest auto-remints the answer on transport death (QR refreshes in place, ≤10 tries),
+  'disconnected' no longer kills pre-open waiters, hashchange re-joins a reused tab,
+  and the join-lost view now hints about hotspot client isolation.

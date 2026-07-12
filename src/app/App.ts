@@ -239,7 +239,12 @@ export class App {
     this.ui.syncScale();
 
     // Invite link (#coop=<token>): a scanned or tapped invite drops the guest
-    // straight into the join flow — no typing on phones.
+    // straight into the join flow — no typing on phones. The hashchange
+    // listener covers a camera app reusing an open tab instead of booting one.
+    window.addEventListener('hashchange', () => {
+      const tok = parseInviteHash(location.hash);
+      if (tok && !this.host && !this.lockstep) this.showCoopJoin(tok);
+    });
     const invite = parseInviteHash(location.hash);
     if (invite) {
       this.showCoopJoin(invite);
@@ -646,6 +651,8 @@ export class App {
   private coopAnswerToken: string | null = null;
   /** Guest: the lobby transport died mid-handshake — show the start-over view. */
   private coopJoinLost = false;
+  /** Auto-remint attempts after ICE gave up waiting for the host's scan. */
+  private coopJoinRetries = 0;
   /** Bumped on teardown/start-over so stale async lobby frames abort silently. */
   private coopEpoch = 0;
   /** Close handle of the open reply scanner, if any. */
@@ -690,6 +697,7 @@ export class App {
       guest.close();
     }
     this.coopJoinLost = false;
+    this.coopJoinRetries = 0;
     this.coopAnswerToken = null;
     this.coopStatus = '';
     const invite = parseInviteHash(location.hash);
@@ -714,6 +722,7 @@ export class App {
     this.coopSeats = [];
     this.coopAnswerToken = null;
     this.coopJoinLost = false;
+    this.coopJoinRetries = 0;
     const guest = this.coopGuestChannel;
     this.coopGuestChannel = null;
     if (guest) {
@@ -1099,6 +1108,7 @@ export class App {
       this.renderCoop();
       await channel.waitOpen();
       if (epoch !== this.coopEpoch) return;
+      this.coopJoinRetries = 0;
       this.clearInviteHash(); // connected — a reload no longer needs the token
       // Waiting-for-start phase: a host that vanishes must not strand us.
       // (LockstepHost replaces this handler once the session begins.)
@@ -1117,9 +1127,24 @@ export class App {
     } catch (err) {
       if (epoch !== this.coopEpoch) return;
       const reason = err instanceof Error ? err.message : '';
+      const dead = this.coopGuestChannel;
+      this.coopGuestChannel = null;
+      if (dead) {
+        dead.onMessage = null;
+        dead.onClose = null;
+        dead.close();
+      }
       this.coopStatus = '';
       if (reason === 'coop-closed' || reason === 'coop-timeout') {
-        this.coopJoinLost = true; // transport died mid-handshake — offer a redo
+        // ICE gives the host ~15s to scan the reply before giving up. The
+        // offer stays valid, so remint the answer — the QR on screen silently
+        // refreshes and whatever the host finally scans is always young.
+        if (this.coopJoinRetries < 10) {
+          this.coopJoinRetries++;
+          void this.joinCoop(offerToken);
+          return;
+        }
+        this.coopJoinLost = true; // ~3 min unscanned — offer a manual redo
       } else {
         this.coopAnswerToken = null;
         this.ui.toast(t('coopBadToken'));

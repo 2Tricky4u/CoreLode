@@ -369,6 +369,8 @@ export const STRINGS: Record<string, string> = {
   coopStartOver: 'Start over',
   coopSeatLost: 'Connection lost — generate a new invite for this seat.',
   coopJoinLost: 'Connection lost — start over with a fresh invite.',
+  coopIsolationHint:
+    'Still failing? Phone hotspots often block device-to-device traffic — use a regular Wi-Fi router.',
   coopConnectTimeout: 'Still connecting — same Wi-Fi? Try a new code.',
   coopSeatStale: 'That invite was already answered — use New code for a fresh one.',
   coopJoining: 'Joining the crew…',

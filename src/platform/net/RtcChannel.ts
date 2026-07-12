@@ -51,10 +51,10 @@ export class RtcChannel implements NetChannel {
     this.pc = new RTCPeerConnection({ iceServers: [] });
     this.pc.onconnectionstatechange = () => {
       const st = this.pc.connectionState;
-      if (st === 'failed' || st === 'disconnected' || st === 'closed') {
-        this.settleOpen(new Error('coop-closed'));
-        this.onClose?.();
-      }
+      // Pre-open waiters die only on terminal states — 'disconnected' can be
+      // a transient blip that still recovers into 'connected'.
+      if (st === 'failed' || st === 'closed') this.settleOpen(new Error('coop-closed'));
+      if (st === 'failed' || st === 'disconnected' || st === 'closed') this.onClose?.();
     };
   }
 

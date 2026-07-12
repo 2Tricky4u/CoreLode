@@ -279,6 +279,7 @@ export function coopScreen(o: CoopScreenOpts): HTMLElement {
     // join view, connection died — only a fresh handshake can help.
     kids.push(
       el('p', { class: 'exp-daily-note', text: t('coopJoinLost') }),
+      el('p', { class: 'exp-daily-note', text: t('coopIsolationHint') }),
       el(
         'div',
         { class: 'btn-row' },
