@@ -92,6 +92,7 @@ import {
   openRelicChoice,
   openTransmission,
 } from '@ui/modals';
+import { openQrScanner } from '@ui/qrScanOverlay';
 import {
   ScreenHost,
   challengeScreen,
@@ -632,6 +633,8 @@ export class App {
     channel: RtcChannel;
     offerToken: string;
     connected: boolean;
+    /** The transport died — the pc is single-use, only a fresh invite helps. */
+    lost: boolean;
     rig: { loadoutId: LoadoutId; modules: ModuleId[] } | null;
   }> = [];
   private coopView: 'menu' | 'host' | 'join' = 'menu';
@@ -643,6 +646,10 @@ export class App {
   private coopAnswerToken: string | null = null;
   /** Guest: the lobby transport died mid-handshake — show the start-over view. */
   private coopJoinLost = false;
+  /** Bumped on teardown/start-over so stale async lobby frames abort silently. */
+  private coopEpoch = 0;
+  /** Close handle of the open reply scanner, if any. */
+  private coopScanClose: (() => void) | null = null;
 
   private showCoop(): void {
     this.teardownCoopLobby();
@@ -674,8 +681,14 @@ export class App {
 
   /** Guest redo after a dead handshake: fresh channel, same invite if we have it. */
   private startOverJoin(): void {
-    this.coopGuestChannel?.close();
+    this.coopEpoch++; // the previous join attempt must not repaint over us
+    const guest = this.coopGuestChannel;
     this.coopGuestChannel = null;
+    if (guest) {
+      guest.onMessage = null;
+      guest.onClose = null;
+      guest.close();
+    }
     this.coopJoinLost = false;
     this.coopAnswerToken = null;
     this.coopStatus = '';
@@ -690,11 +703,24 @@ export class App {
   }
 
   private teardownCoopLobby(): void {
-    for (const seat of this.coopSeats) seat.channel.close();
+    this.coopEpoch++; // in-flight lobby awaits notice and abort silently
+    this.coopScanClose?.();
+    this.coopScanClose = null;
+    for (const seat of this.coopSeats) {
+      seat.channel.onMessage = null;
+      seat.channel.onClose = null;
+      seat.channel.close();
+    }
     this.coopSeats = [];
     this.coopAnswerToken = null;
     this.coopJoinLost = false;
+    const guest = this.coopGuestChannel;
     this.coopGuestChannel = null;
+    if (guest) {
+      guest.onMessage = null;
+      guest.onClose = null;
+      guest.close();
+    }
   }
 
   /** My current rig, from the local expedition profile (standard until loaded). */
@@ -762,7 +788,11 @@ export class App {
         view: this.coopView,
         status: this.coopStatus,
         seats: this.coopSeats.map((s, i) => ({
-          status: s.connected ? ('connected' as const) : ('waiting' as const),
+          status: s.connected
+            ? ('connected' as const)
+            : s.lost
+              ? ('lost' as const)
+              : ('waiting' as const),
           offerToken: s.offerToken,
           inviteUrl: this.inviteUrlFor(s.offerToken),
           label: `Player ${i + 2}`,
@@ -819,6 +849,9 @@ export class App {
         onShareAnswer: () => {
           if (this.coopAnswerToken) void this.shareOrCopy(shareText, this.coopAnswerToken);
         },
+        onScanReply: (i) => this.openReplyScanner(i),
+        onNewCode: (i) => void this.replaceCoopSeat(i),
+        onRemoveSeat: (i) => this.removeCoopSeat(i),
         joinLost: this.coopJoinLost,
         onStartOver: () => this.startOverJoin(),
         onStart: () => this.startCoopSession(),
@@ -831,56 +864,145 @@ export class App {
     );
   }
 
+  /** Version/cfg intake + lobby-time death watch for one seat's channel. */
+  private wireSeatChannel(seat: (typeof this.coopSeats)[number]): void {
+    const channel = seat.channel;
+    // Version handshake: the guest sends hi when its channel opens; its rig
+    // (cfg) follows and may be re-sent whenever the guest changes gear.
+    channel.onMessage = (text) => {
+      const msg = decodeMsg(text);
+      if (msg?.m === 'cfg') {
+        seat.rig = sanitizeRig(msg.loadout, msg.modules); // null → standard + badge
+        this.renderCoop();
+        return;
+      }
+      if (msg?.m !== 'hi') return;
+      if (msg.proto !== PROTO_VERSION || msg.saveV !== SAVE_VERSION) {
+        this.ui.toast(t('coopVersionMismatch'), 6000);
+        channel.onMessage = null;
+        channel.onClose = null;
+        channel.close();
+        this.coopSeats = this.coopSeats.filter((x) => x !== seat);
+      } else {
+        channel.send(encodeMsg({ m: 'hi', proto: PROTO_VERSION, saveV: SAVE_VERSION }));
+        seat.connected = true;
+        this.coopStatus = '';
+      }
+      this.renderCoop();
+    };
+    // Lobby-time only — LockstepHost re-wires session channels at start.
+    channel.onClose = () => {
+      if (!this.coopSeats.includes(seat)) return;
+      seat.lost = true;
+      seat.connected = false;
+      this.renderCoop();
+    };
+  }
+
   private async addCoopSeat(): Promise<void> {
     this.coopStatus = 'Minting invite code…';
     this.renderCoop();
+    const epoch = this.coopEpoch;
     try {
       const { channel, offerToken } = await RtcChannel.host();
+      if (epoch !== this.coopEpoch) {
+        channel.close(); // the lobby was torn down while we minted
+        return;
+      }
       const seat: (typeof this.coopSeats)[number] = {
         channel,
         offerToken,
         connected: false,
+        lost: false,
         rig: null,
       };
-      // Version handshake: the guest sends hi when its channel opens; its rig
-      // (cfg) follows and may be re-sent whenever the guest changes gear.
-      channel.onMessage = (text) => {
-        const msg = decodeMsg(text);
-        if (msg?.m === 'cfg') {
-          seat.rig = sanitizeRig(msg.loadout, msg.modules); // null → standard + badge
-          this.renderCoop();
-          return;
-        }
-        if (msg?.m !== 'hi') return;
-        if (msg.proto !== PROTO_VERSION || msg.saveV !== SAVE_VERSION) {
-          this.ui.toast(t('coopVersionMismatch'), 6000);
-          channel.close();
-          this.coopSeats = this.coopSeats.filter((x) => x !== seat);
-        } else {
-          channel.send(encodeMsg({ m: 'hi', proto: PROTO_VERSION, saveV: SAVE_VERSION }));
-          seat.connected = true;
-        }
-        this.renderCoop();
-      };
+      this.wireSeatChannel(seat);
       this.coopSeats.push(seat);
       this.coopStatus = '';
     } catch {
+      if (epoch !== this.coopEpoch) return;
       this.coopStatus = 'WebRTC unavailable in this browser.';
     }
+    if (epoch !== this.coopEpoch) return;
     this.renderCoop();
+  }
+
+  /** A dead (or already-answered) pc is single-use — mint this seat a fresh one. */
+  private async replaceCoopSeat(i: number): Promise<void> {
+    const seat = this.coopSeats[i];
+    if (!seat) return;
+    seat.channel.onMessage = null;
+    seat.channel.onClose = null;
+    seat.channel.close();
+    this.coopStatus = 'Minting invite code…';
+    this.renderCoop();
+    const epoch = this.coopEpoch;
+    try {
+      const fresh = await RtcChannel.host();
+      if (epoch !== this.coopEpoch || !this.coopSeats.includes(seat)) {
+        fresh.channel.close();
+        return;
+      }
+      seat.channel = fresh.channel;
+      seat.offerToken = fresh.offerToken;
+      seat.connected = false;
+      seat.lost = false;
+      seat.rig = null;
+      this.wireSeatChannel(seat);
+      this.coopStatus = '';
+    } catch {
+      if (epoch !== this.coopEpoch) return;
+      this.coopStatus = 'WebRTC unavailable in this browser.';
+    }
+    if (epoch !== this.coopEpoch) return;
+    this.renderCoop();
+  }
+
+  private removeCoopSeat(i: number): void {
+    const seat = this.coopSeats[i];
+    if (!seat) return;
+    seat.channel.onMessage = null;
+    seat.channel.onClose = null;
+    seat.channel.close();
+    this.coopSeats = this.coopSeats.filter((x) => x !== seat);
+    this.renderCoop();
+  }
+
+  private openReplyScanner(i: number): void {
+    this.coopScanClose?.(); // one scanner at a time
+    this.coopScanClose = openQrScanner({
+      title: t('coopScanTitle'),
+      hint: t('coopScanHint'),
+      filter: (text) => text.startsWith('CLDP2.'),
+      onResult: (text) => {
+        this.coopScanClose = null;
+        void this.acceptCoopAnswer(i, text);
+      },
+    });
   }
 
   private async acceptCoopAnswer(i: number, text: string): Promise<void> {
     const seat = this.coopSeats[i];
     if (!seat) return;
+    if (seat.channel.hasRemoteAnswer) {
+      this.ui.toast(t('coopSeatStale')); // one offer, one answer — mint a new code
+      return;
+    }
+    const epoch = this.coopEpoch;
     try {
       await seat.channel.acceptAnswer(text);
+      if (epoch !== this.coopEpoch) return;
       this.coopStatus = 'Connecting…';
       this.renderCoop();
-      await seat.channel.waitOpen(); // hi arrives via the handler set in addCoopSeat
+      await seat.channel.waitOpen(15_000); // hi arrives via wireSeatChannel
+      if (epoch !== this.coopEpoch) return;
       this.coopStatus = '';
-    } catch {
-      this.ui.toast(t('coopBadToken'));
+    } catch (err) {
+      if (epoch !== this.coopEpoch) return;
+      const reason = err instanceof Error ? err.message : '';
+      if (reason === 'coop-timeout') this.coopStatus = t('coopConnectTimeout');
+      else if (reason !== 'coop-closed') this.ui.toast(t('coopBadToken'));
+      // 'coop-closed' marks the seat lost via its onClose — the row explains itself.
     }
     this.renderCoop();
   }
@@ -948,27 +1070,52 @@ export class App {
       sampleInput: this.coopSampler(),
     });
     this.wireLockstep(host);
-    this.coopSeats = []; // channels now belong to the session
+    // Waiting/lost seats never joined the session — release their channels.
+    for (const s of this.coopSeats) {
+      if (!s.connected) {
+        s.channel.onMessage = null;
+        s.channel.onClose = null;
+        s.channel.close();
+      }
+    }
+    this.coopSeats = []; // connected channels now belong to the session
     this.beginCoopRun(host, 0);
   }
 
   private async joinCoop(offerToken: string): Promise<void> {
+    const epoch = this.coopEpoch;
     try {
       this.coopStatus = 'Connecting…';
       this.renderCoop();
       const { channel, answerToken } = await RtcChannel.join(offerToken);
+      if (epoch !== this.coopEpoch) {
+        channel.close();
+        return;
+      }
+      this.coopGuestChannel = channel; // Back / Start-over can now close it
       this.coopAnswerToken = answerToken;
       this.coopStatus = t('coopWaiting');
       void copyToClipboard(answerToken);
       this.renderCoop();
       await channel.waitOpen();
+      if (epoch !== this.coopEpoch) return;
       this.clearInviteHash(); // connected — a reload no longer needs the token
+      // Waiting-for-start phase: a host that vanishes must not strand us.
+      // (LockstepHost replaces this handler once the session begins.)
+      channel.onClose = () => {
+        if (this.coopGuestChannel !== channel) return;
+        this.coopGuestChannel = null;
+        this.coopJoinLost = true;
+        this.coopStatus = '';
+        this.coopAnswerToken = null;
+        this.renderCoop();
+      };
       channel.send(encodeMsg({ m: 'hi', proto: PROTO_VERSION, saveV: SAVE_VERSION }));
       const rig = this.myRig();
       channel.send(encodeMsg({ m: 'cfg', loadout: rig.loadoutId, modules: rig.modules }));
-      this.coopGuestChannel = channel;
       await this.guestAwaitAndBegin(channel);
     } catch (err) {
+      if (epoch !== this.coopEpoch) return;
       const reason = err instanceof Error ? err.message : '';
       this.coopStatus = '';
       if (reason === 'coop-closed' || reason === 'coop-timeout') {

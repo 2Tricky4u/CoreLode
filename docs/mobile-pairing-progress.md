@@ -36,7 +36,9 @@ per milestone gate.
 
 - [x] [P9] Invite-URL/share/copy wiring in renderCoop (strings landed with P7)
 - [x] [P10] #coop= hash boot → auto-join; clearInviteHash on open/back; reload self-recovery
-- [ ] [P11] Lobby resilience: wireSeatChannel onClose, replaceCoopSeat/Remove, stale-answer guard, waitOpen(15s), scan-reply wiring, startCoopSession channel leak fix
+- [x] [P11] Lobby resilience: wireSeatChannel onClose, replaceCoopSeat/Remove, stale-answer
+      guard, waitOpen(15s), scan-reply wiring, coopEpoch stale-frame guard, startCoopSession
+      channel leak fix
 - [ ] [P12] Docs (coop.md pairing rewrite, CLAUDE.md) + final gate: full suite + build, merged, pushed
 
 ## Notes / decisions
