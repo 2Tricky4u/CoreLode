@@ -30,6 +30,11 @@
           "suspicious": { "noAssignInExpressions": "off" }
         }
       }
+    },
+    {
+      "include": ["src/platform/qr/qrcodegen.ts"],
+      "formatter": { "enabled": false },
+      "linter": { "enabled": false }
     }
   ]
 }

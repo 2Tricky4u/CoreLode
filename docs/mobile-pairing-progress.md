@@ -22,7 +22,7 @@ per milestone gate.
 
 ## M2 — QR generation, camera scanner, lobby UI
 
-- [ ] [P4] Vendor qrcodegen (MIT) + jsQR dep + Node encode→decode round-trip test
+- [x] [P4] Vendor qrcodegen (MIT) + jsQR dep + Node encode→decode round-trip test
 - [ ] [P5] drawQrCanvas renderer (+ .coop-qr CSS)
 - [ ] [P6] startQrScan camera module (BarcodeDetector fast path, lazy jsQR fallback)
 - [ ] [P7] qrScanOverlay + exporter shareText/canShare + scanner strings
