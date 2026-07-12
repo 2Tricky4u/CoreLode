@@ -14,7 +14,7 @@ per milestone gate.
 ## M1 — Compressed tokens + transport resilience + pure URL helpers
 
 - [x] [P0] Branch + this progress doc
-- [ ] [P1] sdpToken.ts: {v:2, z:deflate-raw} token codec, v1 fallback/back-compat, tests
+- [x] [P1] sdpToken.ts: {v:2, z:deflate} token codec, v1 fallback/back-compat, tests
 - [ ] [P2] RtcChannel: compressed payloads, waitOpen(timeoutMs) + close rejection, hasRemoteAnswer
 - [ ] [P3] core/net/invite.ts: buildInviteUrl / parseInviteHash / pageBase, tests, core export
 - [ ] M1 gate: full suite + build, desktop paste flow re-paired, token length recorded, merged
