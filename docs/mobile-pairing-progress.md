@@ -34,7 +34,7 @@ per milestone gate.
 
 ## M3 — App flow, hash boot, lobby resilience, docs
 
-- [ ] [P9] Strings batch + invite-URL/share/copy wiring in renderCoop
+- [x] [P9] Invite-URL/share/copy wiring in renderCoop (strings landed with P7)
 - [ ] [P10] #coop= hash boot → auto-join; clearInviteHash on open/back; reload self-recovery
 - [ ] [P11] Lobby resilience: wireSeatChannel onClose, replaceCoopSeat/Remove, stale-answer guard, waitOpen(15s), scan-reply wiring, startCoopSession channel leak fix
 - [ ] [P12] Docs (coop.md pairing rewrite, CLAUDE.md) + final gate: full suite + build, merged, pushed

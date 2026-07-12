@@ -26,6 +26,7 @@ import {
   UPGRADE_CATEGORIES,
   WORLD_H,
   WORLD_W,
+  buildInviteUrl,
   coresEarned,
   createRun,
   dailyKey,
@@ -41,6 +42,7 @@ import {
   encodeSave,
   getTile,
   maxHull,
+  pageBase,
   podCount,
   podDepthFt,
   podTileX,
@@ -59,7 +61,14 @@ import type { GameScene } from '@game/scenes/GameScene';
 import { InputManager } from '@input/InputManager';
 import { BIND_ACTIONS, type BindAction } from '@input/bindings';
 import { entropySeed, isTouchDevice, toggleFullscreen } from '@platform/env';
-import { copyToClipboard, downloadText, pickTextFile } from '@platform/exporter';
+import {
+  canShare,
+  copyToClipboard,
+  downloadText,
+  pickTextFile,
+  shareText,
+  shareUrl,
+} from '@platform/exporter';
 import { LocalChannel } from '@platform/net/LocalChannel';
 import { RtcChannel } from '@platform/net/RtcChannel';
 import { ChunkAssembler, type NetChannel, chunkSplit } from '@platform/net/channel';
@@ -677,6 +686,20 @@ export class App {
     };
   }
 
+  /** Invite links resolve against the running page (works at / and /CoreLode/). */
+  private inviteUrlFor(token: string): string {
+    return buildInviteUrl(pageBase(location.origin, location.pathname), token);
+  }
+
+  private async copyWithToast(text: string): Promise<void> {
+    if (await copyToClipboard(text)) this.ui.toast(t('coopCopied'));
+  }
+
+  /** Native share sheet, falling back to the clipboard when there is none. */
+  private async shareOrCopy(share: (s: string) => Promise<boolean>, text: string): Promise<void> {
+    if (!(await share(text))) await this.copyWithToast(text);
+  }
+
   /** Lobby rig edits: persist the preference and (as a guest) re-mail the cfg. */
   private async lobbyRigChange(fn: (pr: storage.ExpeditionProfile) => void): Promise<void> {
     const pr = this.coopProfile ?? (await storage.readExpeditionProfile());
@@ -696,8 +719,9 @@ export class App {
         view: this.coopView,
         status: this.coopStatus,
         seats: this.coopSeats.map((s, i) => ({
-          status: s.connected ? 'connected' : 'waiting',
+          status: s.connected ? ('connected' as const) : ('waiting' as const),
           offerToken: s.offerToken,
+          inviteUrl: this.inviteUrlFor(s.offerToken),
           label: `Player ${i + 2}`,
           rig: this.coopMode === 'exp' && s.connected ? this.rigBadge(s.rig) : null,
         })),
@@ -739,7 +763,19 @@ export class App {
         onAddSeat: () => void this.addCoopSeat(),
         onAnswerPaste: (i, text) => void this.acceptCoopAnswer(i, text),
         onOfferPaste: (text) => void this.joinCoop(text),
-        onCopy: (token) => void copyToClipboard(token).then((ok) => ok && this.ui.toast('Copied.')),
+        onCopy: (token) => void this.copyWithToast(token),
+        canShare: canShare(),
+        onShareInvite: (i) => {
+          const s = this.coopSeats[i];
+          if (s) void this.shareOrCopy(shareUrl, this.inviteUrlFor(s.offerToken));
+        },
+        onCopyInvite: (i) => {
+          const s = this.coopSeats[i];
+          if (s) void this.copyWithToast(this.inviteUrlFor(s.offerToken));
+        },
+        onShareAnswer: () => {
+          if (this.coopAnswerToken) void this.shareOrCopy(shareText, this.coopAnswerToken);
+        },
         onStart: () => this.startCoopSession(),
         onBack: () => {
           this.teardownCoopLobby();
