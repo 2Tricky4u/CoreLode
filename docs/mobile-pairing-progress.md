@@ -16,7 +16,7 @@ per milestone gate.
 - [x] [P0] Branch + this progress doc
 - [x] [P1] sdpToken.ts: {v:2, z:deflate} token codec, v1 fallback/back-compat, tests
 - [x] [P2] RtcChannel: compressed payloads, waitOpen(timeoutMs) + close rejection, hasRemoteAnswer
-- [ ] [P3] core/net/invite.ts: buildInviteUrl / parseInviteHash / pageBase, tests, core export
+- [x] [P3] core/net/invite.ts: buildInviteUrl / parseInviteHash / pageBase, tests, core export
 - [ ] M1 gate: full suite + build, desktop paste flow re-paired, token length recorded, merged
 
 ## M2 — QR generation, camera scanner, lobby UI

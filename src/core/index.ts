@@ -73,6 +73,7 @@ export { saleValue, bossFormHp } from './data/difficulty';
 export { serialize, deserialize, SAVE_VERSION, type SaveFile } from './save/schema';
 export { encodeSave, decodeSave, encodeToken, decodeToken } from './save/codec';
 export { encodeSnapshot, decodeSnapshot } from './net/snapshot';
+export { buildInviteUrl, pageBase, parseInviteHash } from './net/invite';
 export { slotSummary, type SlotSummary } from './save/summary';
 export {
   dailyKey,
