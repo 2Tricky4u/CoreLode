@@ -1,15 +1,20 @@
 import { t } from '@content/strings';
+import { drawQrCanvas } from '@platform/qr/render';
 /**
- * Co-op lobby: host mints one offer token per seat and pastes each guest's
- * answer back; guests paste the offer and return their answer. All state
- * lives in App (which re-renders this screen on every lobby change).
+ * Co-op lobby. Pairing is scan-first: each waiting host seat shows its invite
+ * link as a QR (a guest's camera app opens it — zero typing) plus share/copy
+ * buttons, and the guest's reply token renders as a QR the host scans
+ * in-page. The textareas stay as the desktop fallback. All state lives in App
+ * (which re-renders this screen on every lobby change).
  */
 import { el } from './reactive';
 
 export interface CoopSeatView {
-  status: 'waiting' | 'connected';
+  status: 'waiting' | 'connected' | 'lost';
   offerToken: string;
   label: string;
+  /** Invite link for this seat's offer — rendered as a QR + share buttons. */
+  inviteUrl?: string;
   /** Expedition sessions: the rig this seat mailed in (badge text), if any. */
   rig?: string | null;
 }
@@ -28,12 +33,16 @@ export interface CoopScreenOpts {
   seats: CoopSeatView[];
   canStart: boolean;
   canAddSeat: boolean;
-  /** Guest: the minted answer token to send back (null until an offer is pasted). */
+  /** Guest: the minted answer token to send back (null until an offer arrives). */
   answerToken: string | null;
+  /** Guest: the lobby connection died — offer a fresh start instead of content. */
+  joinLost?: boolean;
   /** Host: which session flavor Start will launch. */
   mode: CoopSessionMode;
   /** My rig (shown on the host view in expedition modes, and on the join view). */
   rig: CoopRigView | null;
+  /** navigator.share available — show the share-sheet buttons. */
+  canShare?: boolean;
   onMode: (m: CoopSessionMode) => void;
   onPickLoadout: (id: string) => void;
   onToggleModule: (id: string) => void;
@@ -43,6 +52,13 @@ export interface CoopScreenOpts {
   onAnswerPaste: (seat: number, text: string) => void;
   onOfferPaste: (text: string) => void;
   onCopy: (text: string) => void;
+  onShareInvite?: (seat: number) => void;
+  onCopyInvite?: (seat: number) => void;
+  onScanReply?: (seat: number) => void;
+  onNewCode?: (seat: number) => void;
+  onRemoveSeat?: (seat: number) => void;
+  onShareAnswer?: () => void;
+  onStartOver?: () => void;
   onStart: () => void;
   onBack: () => void;
 }
@@ -81,6 +97,12 @@ const pasteBox = (placeholder: string, onSubmit: (text: string) => void): HTMLEl
   );
 };
 
+/** Canvas QR of the text, or null when it exceeds capacity (textarea remains). */
+const qrCanvas = (text: string): HTMLElement | null => {
+  const canvas = el('canvas', { class: 'coop-qr' });
+  return drawQrCanvas(canvas, text) ? canvas : null;
+};
+
 const rigSection = (o: CoopScreenOpts): HTMLElement | null => {
   if (!o.rig) return null;
   return el(
@@ -114,6 +136,68 @@ const rigSection = (o: CoopScreenOpts): HTMLElement | null => {
     ),
   );
 };
+
+/** A waiting host seat: invite QR + share/copy/new-code, then the reply intake. */
+const waitingSeat = (o: CoopScreenOpts, seat: CoopSeatView, i: number): HTMLElement =>
+  el(
+    'div',
+    {},
+    el('p', { class: 'exp-daily-note', text: t('coopSendOffer') }),
+    seat.inviteUrl ? qrCanvas(seat.inviteUrl) : null,
+    el(
+      'div',
+      { class: 'btn-row' },
+      o.canShare && o.onShareInvite
+        ? el(
+            'button',
+            { class: 'btn tiny', onclick: () => o.onShareInvite?.(i) },
+            t('coopShareLink'),
+          )
+        : null,
+      o.onCopyInvite
+        ? el('button', { class: 'btn tiny', onclick: () => o.onCopyInvite?.(i) }, t('coopCopyLink'))
+        : null,
+      o.onNewCode
+        ? el('button', { class: 'btn tiny', onclick: () => o.onNewCode?.(i) }, t('coopNewCode'))
+        : null,
+    ),
+    tokenBox(seat.offerToken, () => o.onCopy(seat.offerToken)),
+    el('p', { class: 'exp-daily-note', text: t('coopPasteAnswer') }),
+    o.onScanReply
+      ? el(
+          'div',
+          { class: 'btn-row' },
+          el(
+            'button',
+            { class: 'btn tiny primary', onclick: () => o.onScanReply?.(i) },
+            t('coopScanReply'),
+          ),
+        )
+      : null,
+    pasteBox(t('coopAnswerPh'), (text) => o.onAnswerPaste(i, text)),
+  );
+
+/** A dead host seat: the pc is single-use, so only a fresh invite (or removal) helps. */
+const lostSeat = (o: CoopScreenOpts, i: number): HTMLElement =>
+  el(
+    'div',
+    {},
+    el('p', { class: 'exp-daily-note', text: t('coopSeatLost') }),
+    el(
+      'div',
+      { class: 'btn-row' },
+      o.onNewCode
+        ? el('button', { class: 'btn tiny', onclick: () => o.onNewCode?.(i) }, t('coopNewCode'))
+        : null,
+      o.onRemoveSeat
+        ? el(
+            'button',
+            { class: 'btn tiny', onclick: () => o.onRemoveSeat?.(i) },
+            t('coopRemoveSeat'),
+          )
+        : null,
+    ),
+  );
 
 export function coopScreen(o: CoopScreenOpts): HTMLElement {
   const kids: (HTMLElement | null)[] = [
@@ -170,14 +254,9 @@ export function coopScreen(o: CoopScreenOpts): HTMLElement {
               class: 'coop-ok',
               text: ` ${t('coopConnected')}${seat.rig ? ` · ${seat.rig}` : ''}`,
             })
-          : el(
-              'div',
-              {},
-              el('p', { class: 'exp-daily-note', text: t('coopSendOffer') }),
-              tokenBox(seat.offerToken, () => o.onCopy(seat.offerToken)),
-              el('p', { class: 'exp-daily-note', text: t('coopPasteAnswer') }),
-              pasteBox(t('coopAnswerPh'), (text) => o.onAnswerPaste(i, text)),
-            ),
+          : seat.status === 'lost'
+            ? lostSeat(o, i)
+            : waitingSeat(o, seat, i),
       ),
     );
     kids.push(
@@ -196,6 +275,19 @@ export function coopScreen(o: CoopScreenOpts): HTMLElement {
         el('button', { class: 'btn', onclick: o.onBack }, t('backToTitle')),
       ),
     );
+  } else if (o.joinLost) {
+    // join view, connection died — only a fresh handshake can help.
+    kids.push(
+      el('p', { class: 'exp-daily-note', text: t('coopJoinLost') }),
+      el(
+        'div',
+        { class: 'btn-row' },
+        o.onStartOver
+          ? el('button', { class: 'btn primary', onclick: o.onStartOver }, t('coopStartOver'))
+          : null,
+        el('button', { class: 'btn', onclick: o.onBack }, t('backToTitle')),
+      ),
+    );
   } else {
     // join view
     if (o.answerToken === null) {
@@ -206,6 +298,14 @@ export function coopScreen(o: CoopScreenOpts): HTMLElement {
     } else {
       kids.push(
         el('p', { class: 'exp-daily-note', text: t('coopSendAnswer') }),
+        qrCanvas(o.answerToken),
+        o.canShare && o.onShareAnswer
+          ? el(
+              'div',
+              { class: 'btn-row' },
+              el('button', { class: 'btn tiny', onclick: o.onShareAnswer }, t('coopShareLink')),
+            )
+          : null,
         tokenBox(o.answerToken, () => o.onCopy(o.answerToken ?? '')),
       );
     }
