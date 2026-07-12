@@ -59,3 +59,9 @@ per milestone gate.
   guest auto-remints the answer on transport death (QR refreshes in place, ≤10 tries),
   'disconnected' no longer kills pre-open waiters, hashchange re-joins a reused tab,
   and the join-lost view now hints about hotspot client isolation.
+- Field bug (2026-07-12): "HOST DISCONNECTED" on the guest the moment Start digging was
+  pressed — attachHost → stopRun() shut down the session that had JUST been wired
+  (wireLockstep assigns this.lockstep before attachHost), sending 'bye' to every peer.
+  Regressed in de7124d (lifecycle step); every UI-started session since then killed
+  itself at launch, uncaught because the multi-tab smokes were deferred to user QA.
+  Fixed: stopRun(next) skips the session being attached.

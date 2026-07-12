@@ -1297,7 +1297,7 @@ export class App {
   private attachHost(host: SimHost, localPlayer: number): void {
     try {
       const state = host.state;
-      this.stopRun();
+      this.stopRun(host);
       this.screens.clear();
       this.host = host;
       this.localPlayer = localPlayer;
@@ -1355,10 +1355,16 @@ export class App {
     }
   }
 
-  private stopRun(): void {
+  /**
+   * Tear down the current run. `next` is the session about to be attached:
+   * wireLockstep assigns this.lockstep BEFORE attachHost runs, so without the
+   * identity check a freshly started co-op session would shut ITSELF down —
+   * 'bye' to every peer at Start digging.
+   */
+  private stopRun(next?: SimHost): void {
     if (this.hudTimer) cancelAnimationFrame(this.hudTimer);
     this.hud.setSpectating(null);
-    if (this.lockstep) {
+    if (this.lockstep && this.lockstep !== next) {
       this.lockstep.shutdown();
       this.lockstep = null;
       window.removeEventListener('pagehide', this.coopByeOnUnload);
