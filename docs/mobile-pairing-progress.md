@@ -39,9 +39,13 @@ per milestone gate.
 - [x] [P11] Lobby resilience: wireSeatChannel onClose, replaceCoopSeat/Remove, stale-answer
       guard, waitOpen(15s), scan-reply wiring, coopEpoch stale-frame guard, startCoopSession
       channel leak fix
-- [ ] [P12] Docs (coop.md pairing rewrite, CLAUDE.md) + final gate: full suite + build, merged, pushed
+- [x] [P12] Docs (coop.md pairing rewrite, CLAUDE.md) + final gate: full suite + build, merged, pushed
 
 ## Notes / decisions
+
+- Final gate: 219 tests green, both golden suites untouched; dist shows jsQR as its own
+  lazy chunk (≈47 kB gzip, loads only when a non-BarcodeDetector browser opens the
+  scanner); main bundle +≈7 kB gzip for qrcodegen + lobby UI.
 
 - Invite base derived from `location.origin + location.pathname` (no vite/client types
   in tsconfig, so no import.meta.env) — correct under both `/` and `/CoreLode/`.

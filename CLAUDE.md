@@ -32,7 +32,7 @@ src/content/   String tables only — same purity rules as core.
 src/game/      Phaser 3 presentation: tilemap, sprites, camera, audio synthesis.
 src/ui/        DOM overlay: HUD, shops, modals, screens. No framework.
 src/input/     InputManager: keyboard + touch + gamepad → IntentFrame.
-src/platform/  Browser APIs: IndexedDB (idb-keyval), clipboard, file picker.
+src/platform/  Browser APIs: IndexedDB (idb-keyval), clipboard/share, file picker, QR generate+scan (vendored qrcodegen, lazy jsQR), deflated signaling tokens.
 src/app/       App.ts — top-level orchestrator and run lifecycle.
 ```
 
@@ -89,10 +89,13 @@ Art rules are in `tools/art/STYLE.md` (DB32 palette only, ≤4 shades per materi
 
 2–6 player shared-world story co-op, fully static hosting. `src/core/net/` is the pure
 protocol (messages, `HostSequencer`/`BundleLedger` lockstep bookkeeping, `coopStateHash`
-sentinel, exact-state `snapshot.ts` for resync); transports are `src/platform/net/`
-(`RtcChannel` manual paste-code WebRTC with `iceServers: []`, `LocalChannel` over
-BroadcastChannel for same-machine tabs — `?coop=host&room=dev&players=2` /
-`?coop=join&room=dev&seat=1`); the driver is `src/game/LockstepHost.ts` (implements
+sentinel, exact-state `snapshot.ts` for resync, `invite.ts` `#coop=` link helpers);
+transports are `src/platform/net/` (`RtcChannel` manual-signaling WebRTC with
+`iceServers: []`; tokens are deflate-compressed by `sdpToken.ts` and travel as QR
+codes/invite links — scan-first pairing, paste is the desktop fallback — with
+`LocalChannel` over BroadcastChannel for same-machine tabs —
+`?coop=host&room=dev&players=2` / `?coop=join&room=dev&seat=1`); the driver is
+`src/game/LockstepHost.ts` (implements
 `SimHost`, so GameScene/App don't care whether a run is solo or networked). Everyone
 executes only host-sequenced bundles; commands ride the input stream; presentation
 pauses are ignored in co-op ('user' pause is synchronized). Expedition also runs in

@@ -19,20 +19,34 @@ signaling server, no accounts.
 - **Pause is synchronized.** Esc pauses the whole crew. Shops, transmissions, and
   inventories don't.
 
-## Hosting a session (the paste-code handshake)
+## Hosting a session (scan-first, paste as fallback)
 
-WebRTC needs one out-of-band message exchange per guest — a text token pasted over
-anything you like (chat, e-mail, a USB stick, paper):
+WebRTC needs one out-of-band message exchange per guest. Same-room phones do it with
+zero typing and zero app switching (backgrounding a mobile browser mid-handshake kills
+the connection, so the flow is designed to never require it):
 
-1. **Host:** title → **CO-OP** → *Host a crew* → a seat appears with an invite code
-   (`CLDP1.…`). Send it to your friend. *Add a seat* for each additional player (up to 5).
-2. **Guest:** title → **CO-OP** → *Join a crew* → paste the invite code → a reply code
-   (`CLDP2.…`) is minted (and auto-copied). Send it back.
-3. **Host:** paste the reply into that seat → ✓ connected. When every seat is green,
-   **Start digging**.
+1. **Host:** title → **CO-OP** → *Host a crew* → each waiting seat shows its invite as
+   a **QR code** (plus *Share link* / *Copy link*). *Add a seat* per extra player (≤5).
+2. **Guest:** scan the host's screen with the **normal camera app** (or tap the shared
+   link) — the game opens already joining (`#coop=<token>` in the URL) and shows a
+   **reply QR**. Nothing to type; a mid-join reload recovers by itself because the
+   token is still in the hash.
+3. **Host:** tap **Scan reply** and point the camera at the guest's screen →
+   ✓ connected. When every seat is green, **Start digging**.
 
-Tokens are CRC-checked and carry a protocol + save-version handshake; mismatched builds
-are rejected with a clear message rather than a desync.
+On desktop the classic path remains: copy the invite code (`CLDP1.…`), paste the reply
+(`CLDP2.…`). One invite = one guest — if two people scan the same seat, mint a *New
+code* for the second. A dead connection flips the seat to a lost row (*New code* /
+*Remove*); the guest side gets *Start over*.
+
+Tokens are CRC-checked, **deflate-compressed** (`{v:2, z}` via CompressionStream —
+roughly half the size, which is what keeps the QR codes scannable), and the first
+in-band message carries a protocol + save-version handshake; mismatched builds are
+rejected with a clear message rather than a desync. A pre-compression build shown a
+compressed token fails with the ordinary bad-code toast. In-page scanning uses the
+native BarcodeDetector where available and a lazy-loaded jsQR chunk elsewhere; camera
+permission is only requested when *Scan reply* is tapped (HTTPS or localhost required —
+GitHub Pages qualifies), and denying it just leaves the paste box.
 
 ### LAN / offline caveat
 
@@ -76,7 +90,7 @@ rebases and play resumes within a second or two.
 
 Only the **host** can save (guests get a toast at the SaveMate). Co-op slots show a
 `CO-OP ×N` badge; loading one routes into the host lobby, which stays locked until the
-same crew size has reconnected (fresh paste handshake), then ships the save to every
+same crew size has reconnected (fresh scan/paste handshake), then ships the save to every
 guest so all sims resume from the identical file. NG+ is solo-only in v1.
 
 ## Expedition co-op (2–6 players, one life each)
