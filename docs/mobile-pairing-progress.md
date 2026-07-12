@@ -24,7 +24,7 @@ per milestone gate.
 
 - [x] [P4] Vendor qrcodegen (MIT) + jsQR dep + Node encode→decode round-trip test
 - [x] [P5] drawQrCanvas renderer (+ .coop-qr CSS)
-- [ ] [P6] startQrScan camera module (BarcodeDetector fast path, lazy jsQR fallback)
+- [x] [P6] startQrScan camera module (BarcodeDetector fast path, lazy jsQR fallback)
 - [ ] [P7] qrScanOverlay + exporter shareText/canShare + scanner strings
 - [ ] [P8] coopScreen: seat waiting/connected/lost states, invite QR + Share/Copy/New code, Scan reply, guest answer QR
 - [ ] M2 gate: full suite + build, jsqr as lazy chunk, invite QR scans from a phone camera, merged
