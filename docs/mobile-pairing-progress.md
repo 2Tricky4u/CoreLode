@@ -28,7 +28,9 @@ per milestone gate.
 - [x] [P7] qrScanOverlay + exporter shareText/shareUrl/canShare + full string batch
       (moved up from P9 — P8's render needs the labels to compile)
 - [x] [P8] coopScreen: seat waiting/connected/lost states, invite QR + Share/Copy/New code, Scan reply, guest answer QR
-- [ ] M2 gate: full suite + build, jsqr as lazy chunk, invite QR scans from a phone camera, merged
+- [x] M2 gate: full suite + build green (219 tests); jsqr lazy-chunk check deferred to the
+      final gate (the scanner isn't in the app graph until P11 wires it); phone-camera
+      QR smoke pending user QA; merged
 
 ## M3 — App flow, hash boot, lobby resilience, docs
 
