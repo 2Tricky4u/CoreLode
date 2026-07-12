@@ -18,6 +18,24 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
+/** Native share sheet available (mobile browsers, mostly). */
+export function canShare(): boolean {
+  return typeof navigator.share === 'function';
+}
+
+async function shareData(data: ShareData): Promise<boolean> {
+  if (typeof navigator.share !== 'function') return false;
+  try {
+    await navigator.share(data);
+    return true;
+  } catch {
+    return false; // dismissed sheet or refused payload — caller falls back
+  }
+}
+
+export const shareText = (text: string): Promise<boolean> => shareData({ text });
+export const shareUrl = (url: string): Promise<boolean> => shareData({ url });
+
 export function pickTextFile(): Promise<string | null> {
   return new Promise((resolve) => {
     const input = document.createElement('input');
