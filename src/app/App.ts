@@ -43,6 +43,7 @@ import {
   getTile,
   maxHull,
   pageBase,
+  parseInviteHash,
   podCount,
   podDepthFt,
   podTileX,
@@ -235,6 +236,14 @@ export class App {
     });
 
     this.ui.syncScale();
+
+    // Invite link (#coop=<token>): a scanned or tapped invite drops the guest
+    // straight into the join flow — no typing on phones.
+    const invite = parseInviteHash(location.hash);
+    if (invite) {
+      this.showCoopJoin(invite);
+      return;
+    }
 
     // Dev/test entry: same-machine co-op tabs (?coop=host|join&room=X&seat=N&players=M).
     if (params.has('coop')) {
@@ -632,6 +641,8 @@ export class App {
   private coopGuestChannel: NetChannel | null = null;
   private coopStatus = '';
   private coopAnswerToken: string | null = null;
+  /** Guest: the lobby transport died mid-handshake — show the start-over view. */
+  private coopJoinLost = false;
 
   private showCoop(): void {
     this.teardownCoopLobby();
@@ -647,10 +658,42 @@ export class App {
     });
   }
 
+  /** Boot path for #coop= invite links: land in the join view mid-handshake. */
+  private showCoopJoin(token: string): void {
+    this.showCoop();
+    this.coopView = 'join';
+    this.coopStatus = t('coopJoining');
+    this.renderCoop();
+    void this.joinCoop(token);
+  }
+
+  /** The invite hash survives until the channel opens so a reload can retry. */
+  private clearInviteHash(): void {
+    if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+  }
+
+  /** Guest redo after a dead handshake: fresh channel, same invite if we have it. */
+  private startOverJoin(): void {
+    this.coopGuestChannel?.close();
+    this.coopGuestChannel = null;
+    this.coopJoinLost = false;
+    this.coopAnswerToken = null;
+    this.coopStatus = '';
+    const invite = parseInviteHash(location.hash);
+    if (invite) {
+      this.coopStatus = t('coopJoining');
+      this.renderCoop();
+      void this.joinCoop(invite);
+    } else {
+      this.renderCoop();
+    }
+  }
+
   private teardownCoopLobby(): void {
     for (const seat of this.coopSeats) seat.channel.close();
     this.coopSeats = [];
     this.coopAnswerToken = null;
+    this.coopJoinLost = false;
     this.coopGuestChannel = null;
   }
 
@@ -776,9 +819,12 @@ export class App {
         onShareAnswer: () => {
           if (this.coopAnswerToken) void this.shareOrCopy(shareText, this.coopAnswerToken);
         },
+        joinLost: this.coopJoinLost,
+        onStartOver: () => this.startOverJoin(),
         onStart: () => this.startCoopSession(),
         onBack: () => {
           this.teardownCoopLobby();
+          this.clearInviteHash(); // an abandoned invite must not re-join on reload
           void this.showTitle();
         },
       }),
@@ -916,15 +962,21 @@ export class App {
       void copyToClipboard(answerToken);
       this.renderCoop();
       await channel.waitOpen();
+      this.clearInviteHash(); // connected — a reload no longer needs the token
       channel.send(encodeMsg({ m: 'hi', proto: PROTO_VERSION, saveV: SAVE_VERSION }));
       const rig = this.myRig();
       channel.send(encodeMsg({ m: 'cfg', loadout: rig.loadoutId, modules: rig.modules }));
       this.coopGuestChannel = channel;
       await this.guestAwaitAndBegin(channel);
-    } catch {
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : '';
       this.coopStatus = '';
-      this.coopAnswerToken = null;
-      this.ui.toast(t('coopBadToken'));
+      if (reason === 'coop-closed' || reason === 'coop-timeout') {
+        this.coopJoinLost = true; // transport died mid-handshake — offer a redo
+      } else {
+        this.coopAnswerToken = null;
+        this.ui.toast(t('coopBadToken'));
+      }
       this.renderCoop();
     }
   }
